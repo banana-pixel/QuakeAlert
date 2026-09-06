@@ -58,6 +58,10 @@ enum class AppLanguage(val label: String, val tag: String) {
  *   quiet week.
  * @param batteryUnrestricted whether the app is exempt from battery optimisation.
  *   Doze can delay a data-only push, so this is a delivery setting, not a nicety.
+ * @param inUseAlertWarning diagnostic warning about degraded in-use (unlocked)
+ *   alert presentation (D-017, U-012), or null when healthy — in which case no
+ *   warning is rendered at all. Re-read with the other system state on every
+ *   resume; never persisted, never consulted by alert handling.
  * @param isSyncing a position sync is in flight (the refresh control spins).
  * @param statusMessage one-line result of the last action, shown as a pill and
  *   cleared by the next one.
@@ -90,6 +94,7 @@ data class SettingsUiState(
     val notificationPermissionGranted: Boolean = true,
     val locationPermissionGranted: Boolean = true,
     val batteryUnrestricted: Boolean = false,
+    val inUseAlertWarning: String? = null,
     val isSyncing: Boolean = false,
     val statusMessage: String? = null,
     val pseudonym: String? = null,

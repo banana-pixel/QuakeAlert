@@ -10,9 +10,11 @@ import id.web.quakealert.data.network.ApiException
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.QuakeFormat
 import id.web.quakealert.data.users.LocationSyncResult
+import id.web.quakealert.device.alertPresentationHealth
 import id.web.quakealert.device.canPostNotifications
 import id.web.quakealert.device.hasLocationPermission
 import id.web.quakealert.device.isBatteryUnrestricted
+import id.web.quakealert.device.warningCopy
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.ui.common.errorCopy
 import id.web.quakealert.ui.onboarding.TestAlertNotifier
@@ -116,11 +118,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      */
     fun refreshSystemState() {
         val context = getApplication<Application>()
+        val presentationHealth = context.alertPresentationHealth()
+        if (presentationHealth.isNotEmpty()) {
+            Log.w(TAG, "in-use alert presentation degraded: $presentationHealth")
+        }
         _uiState.update {
             it.copy(
                 notificationPermissionGranted = context.canPostNotifications(),
                 locationPermissionGranted = context.hasLocationPermission(),
-                batteryUnrestricted = context.isBatteryUnrestricted()
+                batteryUnrestricted = context.isBatteryUnrestricted(),
+                inUseAlertWarning = presentationHealth.warningCopy()
             )
         }
     }

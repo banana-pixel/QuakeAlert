@@ -69,6 +69,7 @@ import id.web.quakealert.ui.theme.CardTitle
 import id.web.quakealert.ui.theme.ChipLabel
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.MmiRed
+import id.web.quakealert.ui.theme.MmiOrange
 import id.web.quakealert.ui.theme.QuakeAlertTheme
 import id.web.quakealert.ui.theme.SectionHeaderPillFill
 import id.web.quakealert.ui.theme.TextPrimary
@@ -401,6 +402,17 @@ fun SettingsScreen(
                     checked = uiState.notificationsEnabled,
                     onCheckedChange = onNotificationsToggled
                 )
+                // Diagnostic only (D-017, U-012): warns when in-use (unlocked)
+                // presentation is degraded. Rendered text only — it never gates,
+                // suppresses, or clears any alert.
+                uiState.inUseAlertWarning?.let { warning ->
+                    Text(
+                        text = warning,
+                        style = ChipLabel,
+                        color = MmiOrange,
+                        modifier = Modifier.padding(top = Dimens.SettingCardTitleGap)
+                    )
+                }
             }
 
             // Both test controls, in the onboarding order and with the onboarding
