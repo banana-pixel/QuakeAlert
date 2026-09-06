@@ -144,10 +144,8 @@ object BackgroundAlertBridge {
         )
 
         if (!decision.shouldAlarm) {
-            android.util.Log.i(
-                TAG,
-                "background alert ${message.eventId} is ${decision.distanceKm?.toInt()}km away; outside coverage"
-            )
+            // D-019: event_id + gate reason only (same rule as the FCM path).
+            android.util.Log.i(TAG, RaiseOutcomeLog.gatedOut(message.eventId, decision.reason))
             return
         }
 

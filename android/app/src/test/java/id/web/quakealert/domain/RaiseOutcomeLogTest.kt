@@ -50,6 +50,17 @@ class RaiseOutcomeLogTest {
     }
 
     @Test
+    fun `gated-out never phrases distance even for a far frame`() {
+        // Regression for the pre-D-019 wording ("alert <id> is <N>km away"),
+        // which derived location into the log. The reason enum already says why;
+        // distance adds nothing a diagnosis needs.
+        val line = RaiseOutcomeLog.gatedOut("evt-far-001", AlertGateReason.OUTSIDE_RADIUS)
+
+        assertTrue(line.contains("evt-far-001"))
+        assertFalse("no distance phrasing allowed: $line", line.contains("km"))
+    }
+
+    @Test
     fun `duplicate-suppressed carries id`() {
         val line = RaiseOutcomeLog.duplicateSuppressed(id)
 

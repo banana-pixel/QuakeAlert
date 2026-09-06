@@ -126,10 +126,10 @@ class QuakeMessagingService : FirebaseMessagingService() {
             )
 
             if (!decision.shouldAlarm) {
-                Log.i(
-                    TAG,
-                    "alert ${message.eventId} is ${decision.distanceKm?.toInt()}km away; outside coverage"
-                )
+                // D-019: event_id + gate reason only. The previous wording logged
+                // the rounded distance, which is location-derived and now
+                // forbidden on the raise path; the reason enum already says why.
+                Log.i(TAG, RaiseOutcomeLog.gatedOut(message.eventId, decision.reason))
                 return@launch
             }
 
