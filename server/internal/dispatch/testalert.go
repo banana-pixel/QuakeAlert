@@ -52,6 +52,10 @@ func (d *Dispatcher) DispatchTestAlert(msg *AlertMessage) {
 	if msg.Timestamp == 0 {
 		msg.Timestamp = time.Now().UnixMilli()
 	}
+	// Drill memakai resolve-after drill-nya sendiri (20s, bukan 90s): masa
+	// berlaku yang dinyatakan harus sama dengan janji all-clear jalur ini
+	// (D-018), kalau tidak klien menahan drill 90 detik setelah layarnya mati.
+	msg.ValidityMs = testAlertResolveAfter.Milliseconds()
 
 	d.hub.Broadcast(msg)
 	d.dispatchTestFCM(msg)
@@ -95,6 +99,9 @@ func (d *Dispatcher) resolveTestAlert(orig AlertMessage) {
 	resolved := orig
 	resolved.Type = TypeResolved
 	resolved.Timestamp = time.Now().UnixMilli()
+	// All-clear drill mewarisi masa berlaku drill (D-018); lihat catatan pada
+	// DispatchTestAlert. Jalur stand-down klien tidak digerbangi usia.
+	resolved.ValidityMs = testAlertResolveAfter.Milliseconds()
 
 	d.hub.Broadcast(&resolved)
 	d.dispatchTestFCM(&resolved)

@@ -58,7 +58,12 @@ fun WsAlertMessageDto.toDomainOrNull(
         eventRevision = eventRevision,
         originTsMs = originTs,
         originTsSource = originTsSource,
-        independentCellCount = independentCellCount
+        independentCellCount = independentCellCount,
+        // Sender-declared validity (D-018). Parsed leniently on purpose: a
+        // malformed or non-positive value degrades to 0 ("server did not say")
+        // and the legacy recent window applies, because the safe failure
+        // direction is raising what may be live, never silencing it.
+        validityMs = validityMs
     )
 }
 

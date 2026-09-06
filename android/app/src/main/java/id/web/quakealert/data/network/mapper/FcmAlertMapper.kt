@@ -60,6 +60,11 @@ fun Map<String, String>.toWsAlertMessageOrNull(
         eventRevision = this["event_revision"]?.trim()?.toIntOrNull() ?: 0,
         originTs = this["origin_ts"]?.trim()?.toLongOrNull() ?: 0L,
         originTsSource = this["origin_ts_source"].orEmpty().trim(),
-        independentCellCount = this["independent_cell_count"]?.trim()?.toIntOrNull() ?: 0
+        independentCellCount = this["independent_cell_count"]?.trim()?.toIntOrNull() ?: 0,
+        // Sender-declared validity duration in ms (D-018, U-010), all-string on
+        // the wire like every other numeric key. Non-positive or unparseable
+        // reads as 0 ("server did not say") so the legacy recent window
+        // applies — fail loud, never fail silent.
+        validityMs = this["validity_ms"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 0L
     ).toDomainOrNull(allowTestAlerts = allowTestAlerts)
 }

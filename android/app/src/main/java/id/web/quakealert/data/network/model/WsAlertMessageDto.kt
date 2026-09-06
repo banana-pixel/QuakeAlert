@@ -38,6 +38,10 @@ import kotlinx.serialization.Serializable
  *   means unknown; no arithmetic here may treat a bound as a measurement.
  * @param independentCellCount how many separated spatial cells contributed
  *   evidence. 0 means the server did not say.
+ * @param validityMs sender-declared actionable lifetime in **milliseconds**
+ *   (D-018, U-010). 0 means the server did not say (every pre-validity frame):
+ *   the domain falls back to the legacy recent window rather than treating the
+ *   frame as expired.
  */
 @Serializable
 data class WsAlertMessageDto(
@@ -60,5 +64,6 @@ data class WsAlertMessageDto(
     @SerialName("event_revision") val eventRevision: Int = 0,
     @SerialName("origin_ts") val originTs: Long = 0L,
     @SerialName("origin_ts_source") val originTsSource: String = "",
-    @SerialName("independent_cell_count") val independentCellCount: Int = 0
+    @SerialName("independent_cell_count") val independentCellCount: Int = 0,
+    @SerialName("validity_ms") val validityMs: Long = 0L
 )

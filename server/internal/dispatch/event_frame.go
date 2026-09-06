@@ -26,6 +26,15 @@ func (d *Dispatcher) DispatchEventFrame(ctx context.Context, msg *AlertMessage, 
 		return
 	}
 
+	// Masa berlaku yang dinyatakan pengirim (D-018): frame Fase 3 dibangun
+	// Tracker tanpa mengetahui resolve-after dispatcher, jadi transport
+	// mengisinya bila pemanggil belum menyatakan. Nilai yang sudah
+	// dinyatakan eksplisit tidak pernah ditimpa — pengirim yang tahu
+	// (misalnya drill dengan janji 20 detiknya) menang atas default.
+	if msg.ValidityMs == 0 {
+		msg.ValidityMs = d.resolveAfter.Milliseconds()
+	}
+
 	// 1. WebSocket lebih dulu, selalu, untuk setiap transisi. Non-blocking.
 	wsCount := d.hub.Broadcast(msg)
 

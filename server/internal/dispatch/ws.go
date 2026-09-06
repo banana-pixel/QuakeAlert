@@ -66,6 +66,13 @@ type AlertMessage struct {
 	OriginTS             int64  `json:"origin_ts,omitempty"`        // ms epoch UTC, jangkar onset (§4.3)
 	OriginTSSource       string `json:"origin_ts_source,omitempty"` // SENSOR|PUBLISH_BOUND — kejujuran tentang apa origin_ts itu
 	IndependentCellCount int    `json:"independent_cell_count,omitempty"`
+	// ValidityMs adalah masa berlaku frame yang dinyatakan PENGIRIM (D-018,
+	// U-010) sebagai durasi milidetik. Diisi dari resolve-after yang berlaku
+	// pada jalur emisinya (90s jalur nyata, 20s drill), sehingga klien tidak
+	// memegang salinan privat kebijakan server. omitempty seperti field Fase 3:
+	// 0 berarti "server tidak menyatakan" dan klien memakai jendela legacy-nya
+	// — tidak pernah dibaca sebagai kedaluwarsa.
+	ValidityMs int64 `json:"validity_ms,omitempty"` // durasi ms; 0 = tidak dinyatakan
 }
 
 // chatBufferCeiling menjaga separuh buffer per-klien tetap kosong untuk alert.

@@ -373,14 +373,16 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      * and hands it here, so background push and foreground socket converge on one
      * state machine instead of two.
      *
-     * [WsAlertMessage.isRecent] gates the alert path because the stream replays its
+     * [WsAlertMessage.isActionable] gates the alert path because the stream replays its
      * last frame to a new subscriber: without the guard, re-entering the screen
      * hours later would resurrect a finished quake as an active emergency.
+     * Sender-declared validity (D-018) applies when present, the legacy recent
+     * window otherwise.
      */
     fun onAlertReceived(message: WsAlertMessage) {
         viewModelScope.launch {
             when (message.type) {
-                AlertType.EARTHQUAKE_ALERT -> if (message.isRecent()) raiseAlert(message)
+                AlertType.EARTHQUAKE_ALERT -> if (message.isActionable()) raiseAlert(message)
 
                 // Deliberately *not* the emergency screen: an advisory is 1–2 nodes
                 // and unconfirmed, and escalating it would train users to ignore the

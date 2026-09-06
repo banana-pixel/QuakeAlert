@@ -74,6 +74,13 @@ func BuildAlertData(a *AlertMessage) map[string]string {
 	if a.IndependentCellCount > 0 {
 		data["independent_cell_count"] = strconv.Itoa(a.IndependentCellCount)
 	}
+	// Masa berlaku yang dinyatakan pengirim (D-018, U-010): durasi ms sebagai
+	// string desimal (batasan FCM). Hanya bila BERISI, mengikuti konvensi
+	// aditif yang sama: payload lama tanpa field ini tetap valid dan klien
+	// membaca ketiadaannya sebagai jendela legacy — tidak pernah kedaluwarsa.
+	if a.ValidityMs > 0 {
+		data["validity_ms"] = strconv.FormatInt(a.ValidityMs, 10)
+	}
 	return data
 }
 

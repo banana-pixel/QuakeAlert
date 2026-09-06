@@ -114,8 +114,8 @@ object BackgroundAlertBridge {
     private suspend fun handleConfirmedAlert(context: Context, message: WsAlertMessage) {
         val network = QuakeNetwork.from(context)
 
-        if (!message.isRecent()) {
-            android.util.Log.i(TAG, "background ws alert older than recent window; not raising")
+        if (!message.isActionable()) {
+            android.util.Log.i(TAG, "background ws alert older than validity window; not raising")
             return
         }
 

@@ -100,8 +100,8 @@ class QuakeMessagingService : FirebaseMessagingService() {
         // unconfirmed tremor into a full-screen alarm.
         if (message.type == AlertType.EARTHQUAKE_ADVISORY) return
 
-        if (!message.isRecent()) {
-            Log.i(TAG, "push alert older than the recent window; not raising")
+        if (!message.isActionable()) {
+            Log.i(TAG, "push alert older than its validity window; not raising")
             return
         }
 

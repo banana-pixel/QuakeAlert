@@ -124,6 +124,10 @@ paths:
         EARTHQUAKE_ADVISORY dan EVENT_RESOLVED. Jalur foreground; FCM menangani
         background. Server mengirim ping berkala dan menutup koneksi bila pong
         tidak diterima — klien wajib menjawab (OkHttp melakukannya sendiri).
+        Frame dapat membawa `validity_ms` (D-018, U-010): durasi masa berlaku
+        yang dinyatakan pengirim dalam milidetik; klien tidak membunyikan frame
+        yang umurnya melebihi durasi ini, dan ketiadaan field berarti jendela
+        legacy klien — tidak pernah dibaca sebagai kedaluwarsa.
 
 
         Auth memakai Bearer JWT yang sama, dikirim pada header handshake HTTP.

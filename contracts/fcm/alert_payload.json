@@ -119,6 +119,12 @@
               "type": "string",
               "enum": ["true"],
               "description": "Hanya hadir dan bernilai \"true\" pada pesan latihan (drill) yang dikirim lewat POST /api/v1/admin/test-alert. TIDAK pernah hadir pada peringatan gempa sungguhan — ketiadaan field ini berarti real, bukan false. Klien WAJIB memperlakukan nilai apa pun selain string literal \"true\" (termasuk \"false\", \"1\", \"TRUE\", atau absen) sebagai real alert. Ini adalah pagar keselamatan: gempa sungguhan yang salah dibaca sebagai drill akan diabaikan."
+            },
+            "validity_ms": {
+              "type": "string",
+              "description": "Masa berlaku frame yang dinyatakan PENGIRIM (D-018, U-010), sebagai durasi dalam milidetik (string desimal, batasan FCM). Klien TIDAK BOLEH membunyikan frame yang umurnya (jam perangkat minus timestamp) melebihi durasi ini. OPSIONAL dan aditif seperti is_test: server lama tidak mengirimnya, dan ketiadaan field berarti jendela legacy klien yang berlaku — TIDAK PERNAH dibaca sebagai \"kedaluwarsa\". Nilai rusak/tidak terurai wajib diperlakukan sebagai absen (jendela legacy), karena arah gagal yang aman adalah membunyikan yang mungkin-hidup, bukan membungkam yang mungkin-hidup.",
+              "pattern": "^[0-9]+$",
+              "examples": ["90000"]
             }
           }
         },

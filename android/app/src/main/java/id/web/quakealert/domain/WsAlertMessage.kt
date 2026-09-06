@@ -107,7 +107,14 @@ data class WsAlertMessage(
      */
     val originTsSource: String = "",
     /** Separated spatial cells that contributed evidence; 0 when unknown. */
-    val independentCellCount: Int = 0
+    val independentCellCount: Int = 0,
+    /**
+     * Sender-declared actionable lifetime in milliseconds (D-018, U-010).
+     * 0 means the server did not say (every pre-validity frame): [isActionable]
+     * then falls back to the legacy [isRecent] window rather than treating the
+     * frame as expired — absence is legacy, never expired.
+     */
+    val validityMs: Long = 0L
 ) {
 
     /**
@@ -125,6 +132,25 @@ data class WsAlertMessage(
         return age <= windowMs
     }
 
+    /**
+     * True when this alert may still raise: the sender-declared [validityMs]
+     * when the server stated one, the legacy [isRecent] window otherwise
+     * (D-018, U-010). All three raise paths (push, foreground socket,
+     * background socket bridge) must call this instead of [isRecent] directly,
+     * so old and new frames share one expiry rule. Stand-down frames bypass
+     * expiry entirely at their call sites — clearing an ended event is never
+     * dangerous — so this function is only consulted for alerts.
+     */
+    fun isActionable(nowMs: Long = System.currentTimeMillis()): Boolean {
+        if (validityMs > 0) {
+            val age = nowMs - timestampMs
+            // Same skew rule as isRecent: a frame from the future counts as
+            // current. Fail-loud direction throughout: only a frame provably
+            // older than its declared validity is suppressed.
+            return age <= validityMs
+        }
+        return isRecent(nowMs)
+    }
     companion object {
         /**
          * How long an alert is treated as active (15 minutes). Chosen to outlast the

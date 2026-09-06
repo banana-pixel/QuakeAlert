@@ -156,6 +156,10 @@ func (d *Dispatcher) Dispatch(ctx context.Context, ev *consensus.Event) {
 		LocationName:   ev.LocationName,
 		Timestamp:      ev.CreatedAtMs,
 		NodeCount:      ev.NodeCount,
+		// Masa berlaku yang dinyatakan pengirim (D-018): resolve-after yang
+		// berlaku untuk jalur ini, bukan salinan angka kedua. Klien
+		// menghormati pengirim alih-alih menebak dari jendelanya sendiri.
+		ValidityMs: d.resolveAfter.Milliseconds(),
 	}
 
 	switch ev.Status {
@@ -516,6 +520,11 @@ func (d *Dispatcher) resolve(eventID string, orig *AlertMessage) {
 		LocationName:   orig.LocationName,
 		Timestamp:      time.Now().UnixMilli(),
 		NodeCount:      orig.NodeCount,
+		// All-clear juga membawa masa berlaku (D-018): seragam dengan frame
+		// alert. Jalur stand-down klien tidak digerbangi usia (memberi tahu
+		// bahwa sesuatu berakhir tidak pernah berbahaya), jadi nilai ini
+		// informatif di sini, bukan penentu.
+		ValidityMs: d.resolveAfter.Milliseconds(),
 	}
 
 	// Broadcast tetap berjalan walau update DB gagal (idempoten; klien hanya

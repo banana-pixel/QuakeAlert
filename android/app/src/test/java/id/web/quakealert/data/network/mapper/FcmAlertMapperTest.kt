@@ -234,6 +234,39 @@ class FcmAlertMapperTest {
         assertEquals(0, broken.independentCellCount)
     }
 
+    @Test
+    fun `parses validity_ms as a sender-declared duration in ms`() {
+        val message = confirmedPayload()
+            .plus("validity_ms" to "90000")
+            .toWsAlertMessageOrNull(nowMs = NOW_MS)
+
+        requireNotNull(message)
+        assertEquals(90_000L, message.validityMs)
+    }
+
+    @Test
+    fun `absent validity_ms reads as unknown, never as expired`() {
+        val message = confirmedPayload().toWsAlertMessageOrNull(nowMs = NOW_MS)
+
+        requireNotNull(message)
+        assertEquals(0L, message.validityMs)
+    }
+
+    @Test
+    fun `malformed or non-positive validity_ms degrades to unknown, never to expired`() {
+        // Fail-loud direction: a validity the client cannot parse must fall back
+        // to the legacy recent window, because silencing a possibly-live alert
+        // on a garbled number is the worse failure.
+        for (bad in listOf("soon", "", "  ", "-5000", "0", "90.5")) {
+            val message = confirmedPayload()
+                .plus("validity_ms" to bad)
+                .toWsAlertMessageOrNull(nowMs = NOW_MS)
+
+            requireNotNull(message)
+            assertEquals("validity_ms %q must degrade to 0", 0L, message.validityMs)
+        }
+    }
+
     private fun confirmedPayload(): Map<String, String> = mapOf(
         "type" to "EARTHQUAKE_ALERT",
         "event_id" to "evt_01HZX",
