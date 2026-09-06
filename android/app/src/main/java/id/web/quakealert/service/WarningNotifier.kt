@@ -16,6 +16,7 @@ import id.web.quakealert.R
 import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.network.mapper.intensityValueLabel
 import id.web.quakealert.domain.AlertDecision
+import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
 import id.web.quakealert.ui.warning.WarningActivity
 import kotlin.math.roundToInt
@@ -143,6 +144,9 @@ object WarningNotifier {
         }
 
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        // Success posts a line too (D-019, U-013): the failure branch below is
+        // not the only observable outcome. event_id and outcome only.
+        android.util.Log.i(TAG, RaiseOutcomeLog.notificationPosted(message.eventId))
         // Track which event_id is currently displayed so clear() can guard against
         // a stand-down for a different event removing this notification.
         activeEventId = message.eventId

@@ -6,6 +6,7 @@ import id.web.quakealert.domain.AlertGate
 import kotlinx.coroutines.flow.first
 import id.web.quakealert.domain.AlertDecision
 import id.web.quakealert.domain.AlertType
+import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
 import id.web.quakealert.domain.standDownCopyFor
 import id.web.quakealert.service.WarningNotifier
@@ -115,7 +116,7 @@ object BackgroundAlertBridge {
         val network = QuakeNetwork.from(context)
 
         if (!message.isActionable()) {
-            android.util.Log.i(TAG, "background ws alert older than validity window; not raising")
+            android.util.Log.i(TAG, RaiseOutcomeLog.expired(message.eventId, message.validityMs > 0))
             return
         }
 

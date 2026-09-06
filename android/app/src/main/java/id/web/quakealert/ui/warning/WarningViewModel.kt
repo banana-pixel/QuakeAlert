@@ -21,6 +21,7 @@ import id.web.quakealert.domain.EarthquakeEvent
 import id.web.quakealert.domain.EmergencyContacts
 import id.web.quakealert.domain.EventState
 import id.web.quakealert.domain.EventStatus
+import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.domain.UserLocation
 import id.web.quakealert.domain.WsAlertMessage
@@ -382,7 +383,13 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
     fun onAlertReceived(message: WsAlertMessage) {
         viewModelScope.launch {
             when (message.type) {
-                AlertType.EARTHQUAKE_ALERT -> if (message.isActionable()) raiseAlert(message)
+                AlertType.EARTHQUAKE_ALERT -> {
+                    if (message.isActionable()) raiseAlert(message)
+                    else Log.i(
+                        TAG,
+                        RaiseOutcomeLog.expired(message.eventId, message.validityMs > 0)
+                    )
+                }
 
                 // Deliberately *not* the emergency screen: an advisory is 1–2 nodes
                 // and unconfirmed, and escalating it would train users to ignore the
@@ -434,6 +441,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         )
 
         if (!decision.shouldAlarm) {
+            Log.i(TAG, RaiseOutcomeLog.gatedOut(message.eventId, decision.reason))
             _uiState.update { state ->
                 if (state is WarningUiState.Idle) {
                     val snapshot = distantSnapshot(message)
@@ -488,7 +496,12 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         }
 
         // Idempotent, and a no-op while a carried-over mute is in effect.
-        if (startSiren && (_uiState.value as? WarningUiState.ActiveAlert)?.isMuted != true) {
+        // Logged so a raised alarm and a silently gated-out one are never
+        // indistinguishable in logcat again (D-019, U-013): event_id and outcome
+        // only, never position.
+        val sirenStarted = startSiren && (_uiState.value as? WarningUiState.ActiveAlert)?.isMuted != true
+        Log.i(TAG, RaiseOutcomeLog.shown(alert.eventId, sirenStarted))
+        if (sirenStarted) {
             siren.start()
         }
     }

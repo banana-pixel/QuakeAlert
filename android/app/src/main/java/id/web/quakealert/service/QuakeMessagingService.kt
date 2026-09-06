@@ -9,6 +9,7 @@ import id.web.quakealert.data.network.mapper.toOperatorUpdateOrNull
 import id.web.quakealert.data.network.mapper.toWsAlertMessageOrNull
 import id.web.quakealert.domain.AlertGate
 import id.web.quakealert.domain.AlertType
+import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -101,7 +102,7 @@ class QuakeMessagingService : FirebaseMessagingService() {
         if (message.type == AlertType.EARTHQUAKE_ADVISORY) return
 
         if (!message.isActionable()) {
-            Log.i(TAG, "push alert older than its validity window; not raising")
+            Log.i(TAG, RaiseOutcomeLog.expired(message.eventId, message.validityMs > 0))
             return
         }
 
