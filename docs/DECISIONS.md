@@ -841,6 +841,78 @@ sign-off commit `c51c7cc`; it follows it. Not deployed: committed only.
 
 ---
 
+### D-017 — In-use alerts present as heads-up plus siren and never seize the foreground
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-06 · **See:** `docs/DECISIONS.md`
+§ U-012, `PROJECT_RULES.md` §8/§9, `android/.../service/WarningNotifier.kt`,
+`contracts/fcm/alert_payload.json`
+
+An UNLOCKED, screen-on device receiving a CONFIRMED alert shows a heads-up
+notification with siren and vibration. It never launches `WarningActivity` over
+the foreground app and never steals focus. Rationale: warn the holder without
+hijacking a potentially safety-critical surface (driving, calls, typing);
+full-screen-regardless was rejected 2026-08-31 for that reason. False alarms
+cost one dismissible banner (S4). Demonstrated on POCO F1 / API 36 debug drills
+at `heads_up_notifications_enabled=1` (owner visual 2026-09-01; system-timed
+replication 2026-09-06 with zero suppression lines); suppressed device-wide at
+`0` for every app (2026-08-31).
+
+**Scope:** presentation policy only. Locked path unchanged (FSI-over-lock keeps
+working). Release and second-vendor validation remain required as follow-up and
+are never claimed from debug drills. Escalation to takeover is explicitly NOT
+adopted; revisit only after U-010 and U-011 close.
+
+**Requires:** a detector that warns the user when `heads_up_notifications_enabled=0`
+or the emergency channel is degraded (UI/diagnostics text only). No channel-ID
+migration, no importance/FSI re-architecture, no contract change, no threshold,
+quorum, radius, or delivery-tier change.
+
+**Does not decide:** U-001 … U-013 except the U-012 presentation question itself;
+U-010 validity, U-011 concurrency, and U-013 logging granularity all stay open.
+
+---
+
+### D-018 — Alerts carry sender-declared validity; the client honors it
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-06 · **See:** `docs/DECISIONS.md`
+§ U-010, `docs/TEMP_ANDROID_PHASE4_CHECKLIST.md` §1.4, CAP v1.2 (`expires`,
+OASIS), `contracts/fcm/alert_payload.json`, `contracts/openapi/openapi.yaml`,
+`server/internal/config/config.go` (`EventResolveAfter`, `TerminalRetention`)
+
+Every alert frame carries validity as a **duration**. A frame older than its
+validity is never raised (no siren, no activity, no banner). Frames **without**
+the field — every pre-change frame — fall back to the legacy 15-minute
+`RECENT_WINDOW_MS` behaviour and are **never** treated as expired, so one
+deployment lag cannot silence every alert. Suppression on a matched,
+already-stood-down `event_id` remains safe per the terminal-no-exit invariant
+(`state_test.go:55`, D-003): such an id can never become live again, and
+aftershocks carry new ids.
+
+**Order of implementation** (D-001 / ADR-0004): FCM payload contract gains one
+optional validity key, then the OpenAPI mirror, then server stamping at emit,
+then Android enforcement. No threshold, quorum, radius, migration, or
+detection-semantics change.
+
+**Does not decide:** U-001 … U-013 except the U-010 expiry question itself;
+U-011 concurrency, U-012 presentation, and U-013 granularity compose with this
+unchanged and stay open.
+
+---
+
+### D-019 — The alert raise path logs event_id and outcome, never position
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-06 · **See:** `docs/DECISIONS.md`
+§ U-013, `PROJECT_RULES.md` §8/§9
+
+`raiseAlert`, `raise`, the gated-out branch, and `WarningNotifier.notify`
+each emit one info line carrying the frame's `event_id` and the outcome
+(shown, gated-out with gate verdict, duplicate-suppressed, notification
+posted, or expired under D-018 validity). No line carries coordinates,
+precise distance, or anything derived from them; the existing
+`UserLocationRepo` redaction convention governs. Debug and release builds
+log identically. This changes diagnosability only: no threshold, quorum,
+radius, contract, or delivery behaviour changes, and U-011/U-012 policies
+are untouched.
+
+---
+
 ## Unresolved questions
 
 **Do not resolve any of these by implementation.** Each requires an explicit
@@ -1201,6 +1273,10 @@ same shape of gap one tier down: unconfirmed events reach a locked device not at
 all), U-013.
 
 ### U-013 — Should the alert-raising path be observable in logs at all?
+**Status:** RESOLVED by D-019 — owner-approved 2026-09-06, implemented
+(`03ae504`, privacy cleanup `a7b5894`), owner-accepted validation basis
+(live subset + unit/structural). The question and findings below are preserved
+as the record of what was asked; the answer lives in D-019.
 Found while diagnosing U-012 on 2026-08-31, and it is the reason that diagnosis
 took three drills instead of one.
 
