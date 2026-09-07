@@ -321,6 +321,50 @@ func TestCreateChatMessage_SecondSendWithinTheWindowIsThrottled(t *testing.T) {
 	}
 }
 
+func TestCreateChatMessage_BlockedWordIsRejectedBeforeTheWrite(t *testing.T) {
+	repo := &fakeRepo{}
+	_, h := chatServer(repo, NewMemoryRateLimiter(), nil)
+
+	rec := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages",
+		`{"message":"dasar tolol!"}`, testSecret, "u-1"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, mau 400: %s", rec.Code, rec.Body.String())
+	}
+	if repo.insertedBody != "" {
+		t.Fatal("pesan kasar tetap tersimpan")
+	}
+	// Penolakan bentuk tidak menghabiskan kuota: kiriman bersih langsung
+	// sesudahnya harus lolos.
+	good := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages",
+		`{"message":"halo semua"}`, testSecret, "u-1"))
+	if good.Code != http.StatusCreated {
+		t.Fatalf("kiriman bersih setelahnya: status = %d, mau 201", good.Code)
+	}
+}
+
+func TestCreateChatMessage_DuplicateBodyWithinWindowIsRejected(t *testing.T) {
+	repo := &fakeRepo{lastChat: &store.ChatMessage{
+		Body:      "butuh bantuan",
+		CreatedAt: time.Now(),
+	}}
+	_, h := chatServer(repo, NewMemoryRateLimiter(), nil)
+
+	rec := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages",
+		`{"message":"butuh bantuan"}`, testSecret, "u-1"))
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, mau 429: %s", rec.Code, rec.Body.String())
+	}
+	if repo.insertedBody != "" {
+		t.Fatal("duplikat tetap tersimpan")
+	}
+
+	fresh := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages",
+		`{"message":"butuh air bersih"}`, testSecret, "u-2"))
+	if fresh.Code != http.StatusCreated {
+		t.Fatalf("pesan beda: status = %d, mau 201", fresh.Code)
+	}
+}
+
 func TestCreateChatMessage_MalformedRequestDoesNotSpendTheSendQuota(t *testing.T) {
 	repo := &fakeRepo{}
 	_, h := chatServer(repo, NewMemoryRateLimiter(), nil)

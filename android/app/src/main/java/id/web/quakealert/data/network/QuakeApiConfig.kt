@@ -7,9 +7,10 @@ import id.web.quakealert.BuildConfig
  *
  * [BASE_URL] comes from `BuildConfig` so the dev and production transports cannot
  * be confused at runtime: the debug build points at the emulator loopback
- * (`http://10.0.2.2:8080/`, cleartext-allowed only for that host by
+ * (`http://10.0.2.2:8080/`, cleartext-allowed only for that host by the debug
  * res/xml/network_security_config.xml) while release points at
- * `https://api.quakealert.id/` per ADR-0003.
+ * `https://api.quakealert.web.id/` per ADR-0003 (the canonical production host;
+ * verified live).
  *
  * All REST paths sit under [API_PREFIX]; the WebSocket deliberately does not —
  * it is registered at the server root (`GET /ws` in server/internal/api/router.go).

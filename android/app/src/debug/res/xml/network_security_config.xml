@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG-ONLY overlay of the main network security config.
+
+  Same base (cleartext OFF) plus the development loopback exceptions, so
+  `adb reverse` and the emulator keep working. This file never ships: the
+  release build uses src/main/res/xml/network_security_config.xml, which
+  permits cleartext only to the sensor SoftAP (192.168.4.1).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Emulator alias for the host loopback interface. -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Direct loopback, e.g. `adb reverse tcp:8080 tcp:8080` on a device. -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <!-- Sensor node's SoftAP gateway during Add-a-Sensor provisioning. -->
+        <domain includeSubdomains="false">192.168.4.1</domain>
+    </domain-config>
+</network-security-config>

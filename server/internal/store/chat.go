@@ -229,6 +229,30 @@ func (s *Store) ListChatMessages(
 	return messages, nil
 }
 
+// LastChatMessageBySender membaca pesan terbaru satu pengirim lintas kanal,
+// atau (nil, nil) bila belum pernah mengirim. Hanya SELECT — dipakai rem
+// duplikat spam di tepi HTTP, bukan untuk logika bisnis lain.
+func (s *Store) LastChatMessageBySender(ctx context.Context, senderID string) (*ChatMessage, error) {
+	const q = `
+		SELECT message_id, channel_id, COALESCE(sender_id::text, ''), sender_pseudonym,
+		       COALESCE(sender_location_tag, ''), message, COALESCE(is_admin, FALSE), created_at
+		FROM chat_messages
+		WHERE sender_id = $1
+		ORDER BY created_at DESC, message_id DESC LIMIT 1`
+	var m ChatMessage
+	err := s.pool.QueryRow(ctx, q, senderID).Scan(
+		&m.MessageID, &m.ChannelID, &m.SenderID, &m.SenderPseudonym,
+		&m.LocationTag, &m.Body, &m.IsAdmin, &m.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query last chat message: %w", err)
+	}
+	return &m, nil
+}
+
 // InsertChatMessage menyimpan satu pesan dan mengembalikan baris yang tersimpan.
 //
 // Idempoten terhadap clientMessageID: klien mengirim ulang setelah timeout tanpa

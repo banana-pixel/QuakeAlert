@@ -710,21 +710,33 @@ private fun CredentialsBody(
     }
 }
 
-/** The design's small "Choose" / "Copy" micro-button. */
+/** The design's small "Choose" / "Copy" micro-button.
+ *
+ * Selection is carried by colour, not by label alone: a chosen chip uses the
+ * confirming green also used by [QuakeModalActionButton] confirm actions, so
+ * "Chosen" never looks identical to "Choose". */
 @Composable
-private fun ChipButton(label: String, onClick: () -> Unit) {
+private fun ChipButton(label: String, onClick: () -> Unit, selected: Boolean = false) {
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
     Box(
         modifier = Modifier
             .width(Dimens.WizardChipWidth)
             .height(Dimens.WizardChipHeight)
             .clip(shape)
-            .background(WizardBadgeFill, shape)
-            .border(Dimens.BorderMedium, WizardPanelStroke, shape)
+            .background(if (selected) WizardConfirmActionFill else WizardBadgeFill, shape)
+            .border(
+                Dimens.BorderMedium,
+                if (selected) SuccessGreen else WizardPanelStroke,
+                shape
+            )
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = label, style = MetricValue)
+        Text(
+            text = label,
+            style = MetricValue,
+            color = if (selected) TextPrimary else TextSecondary
+        )
     }
 }
 
@@ -793,7 +805,7 @@ private fun SsidRow(ssid: String, selected: Boolean, onSelected: () -> Unit) {
             maxLines = 1,
             modifier = Modifier.weight(1f)
         )
-        ChipButton(label = if (selected) "Chosen" else "Choose", onClick = onSelected)
+        ChipButton(label = if (selected) "Chosen" else "Choose", onClick = onSelected, selected = selected)
     }
 }
 

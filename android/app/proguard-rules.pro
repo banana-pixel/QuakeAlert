@@ -99,3 +99,13 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# --- Log stripping ------------------------------------------------------------
+# Log.d/v never ship: they are diagnostics, and logcat on user devices is not
+# a support channel. Log.i/w/e stay — the alert raise path (D-019) deliberately
+# logs event_id + outcome at info in release builds, and stripping those would
+# re-create the undiagnosable-alert defect (U-013).
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+}

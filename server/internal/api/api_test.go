@@ -94,6 +94,8 @@ type fakeRepo struct {
 	chatMsgLimit  int
 	chatMsgBefore *time.Time
 	chatMsgChan   string
+	lastChat      *store.ChatMessage
+	lastChatErr   error
 	inserted      *store.ChatMessage
 	insertErr     error
 	insertedBody  string
@@ -177,6 +179,14 @@ func (f *fakeRepo) ListChatMessages(
 ) ([]store.ChatMessage, error) {
 	f.chatMsgChan, f.chatMsgLimit, f.chatMsgBefore = channelID, limit, before
 	return f.chatMessages, f.chatMsgErr
+}
+func (f *fakeRepo) LastChatMessageBySender(
+	_ context.Context, senderID string,
+) (*store.ChatMessage, error) {
+	if f.lastChatErr != nil {
+		return nil, f.lastChatErr
+	}
+	return f.lastChat, nil
 }
 func (f *fakeRepo) InsertChatMessage(
 	_ context.Context, channelID, senderID, pseudonym, locationTag, body, clientMessageID string,

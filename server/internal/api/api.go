@@ -158,6 +158,7 @@ type Repo interface {
 	ListChatChannels(ctx context.Context, userID string) ([]store.ChatChannel, error)
 	EnsureChatChannel(ctx context.Context, channelID, kind, displayName string) (string, error)
 	ListChatMessages(ctx context.Context, channelID string, limit int, before *time.Time) ([]store.ChatMessage, error)
+	LastChatMessageBySender(ctx context.Context, senderID string) (*store.ChatMessage, error)
 	InsertChatMessage(ctx context.Context, channelID, senderID, pseudonym, locationTag, body, clientMessageID string) (*store.ChatMessage, error)
 	InsertBroadcast(ctx context.Context, title, body, regionCode string) (*store.Broadcast, error)
 	ListBroadcastsForUser(ctx context.Context, userID string, limit int) ([]store.Broadcast, error)

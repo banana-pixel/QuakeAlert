@@ -235,6 +235,12 @@ func (s *Server) HandleCreateChatMessage(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "message maksimal 500 karakter")
 		return
 	}
+	// Filter kata kasar di sini (sebelum kuota): pesan yang ditolak bentuknya
+	// tidak boleh menghabiskan jatah kirim user.
+	if containsBlockedWord(body) {
+		writeError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "message mengandung kata yang tidak diizinkan")
+		return
+	}
 
 	channelID := strings.TrimSpace(req.ChannelID)
 	if channelID == "" {
@@ -264,6 +270,20 @@ func (s *Server) HandleCreateChatMessage(w http.ResponseWriter, r *http.Request)
 	}
 	if !allowed {
 		writeError(w, http.StatusTooManyRequests, "RATE_LIMITED", "tunggu sebentar sebelum mengirim lagi")
+		return
+	}
+
+	// Rem duplikat: pesan yang sama persis dalam chatDuplicateWindow ditolak.
+	// Satu SELECT, setelah rate limit (spam hammering sudah tertahan di sana)
+	// dan sebelum INSERT (tidak ada baris sampah yang perlu dibersihkan).
+	last, err := s.repo.LastChatMessageBySender(r.Context(), userID)
+	if err != nil {
+		s.log.Error("gagal membaca pesan terakhir chat", "err", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL", "gagal memeriksa pesan")
+		return
+	}
+	if last != nil && isDuplicateSpam(body, last.Body, last.CreatedAt, time.Now()) {
+		writeError(w, http.StatusTooManyRequests, "RATE_LIMITED", "pesan yang sama baru saja dikirim")
 		return
 	}
 
