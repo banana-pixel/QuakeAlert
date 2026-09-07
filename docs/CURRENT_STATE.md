@@ -1,6 +1,6 @@
 # CURRENT_STATE.md
 
-**Baseline commit:** `1ad1777` (`feat(event): Phase 3.x global-spatial hardening + observability`)
+**Baseline commit:** `211f3cd` (`fix(android): audible emergency channel for unlocked heads-up + record 2026-09-01 U-012 validation`)
 
 This is the authoritative record of what actually exists. It supersedes
 `docs/GAP_ANALYSIS.md`, which is a historical snapshot of an older commit.
@@ -39,6 +39,11 @@ IMPLEMENTED only.
 VPS**. That is a single-operator deployment serving a single-node network. It is
 **not** a public production service, and nothing here should be read as public
 production readiness.
+
+**Release target (owner-approved 2026-09-07):** limited public release on the
+one-node fleet, gate unchanged (PGA ≥16.6 gal + ≥3 nodes + ≥2 cells/5 km), so
+CONFIRMED stays unreachable by density (S2) and no real alert is promised.
+Migration `000009` is approved for deployment to production (D-012).
 
 ---
 

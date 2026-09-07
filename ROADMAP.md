@@ -7,7 +7,12 @@
 > Nothing outside them is in scope, and no threshold, quorum, radius, contract,
 > event semantic, or notification policy changes under this phase.
 
-Baseline commit: `1ad1777`. Authority: see `PROJECT_RULES.md` §5.
+Baseline commit: `211f3cd`. Authority: see `PROJECT_RULES.md` §5.
+
+> NOTE (pending owner-gate G1): P4-M1′…P4-M6′ evidence is complete (6/6 owner-approved
+> SATISFIED/`VALIDATED` per § Phase 4). Status stays `IN_PROGRESS` until the owner
+> signs the Phase 4 closeout — the implementing agent does not grant `VALIDATED`
+> (`PROJECT_RULES.md` §8/§9).
 
 ---
 
