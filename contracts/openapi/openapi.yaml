@@ -1242,7 +1242,9 @@ components:
             INVALID_ARGUMENT, UNAUTHENTICATED, STATION_ALREADY_EXISTS,
             RATE_LIMITED, INTERNAL, dan — khusus /api/v1/nodes/revoke —
             SECRET_MISMATCH, NODE_NOT_FOUND, NODE_VERIFIED — serta, khusus
-            endpoint admin tracker saat tracker nonaktif, TRACKER_DISABLED.
+            endpoint admin tracker saat tracker nonaktif, TRACKER_DISABLED;
+            khusus chat, PERMISSION_DENIED; khusus drill saat dependensi
+            belum siap, UNAVAILABLE.
           enum:
             - INVALID_ARGUMENT
             - UNAUTHENTICATED
@@ -1253,6 +1255,8 @@ components:
             - NODE_NOT_FOUND
             - NODE_VERIFIED
             - TRACKER_DISABLED
+            - PERMISSION_DENIED
+            - UNAVAILABLE
           example: INVALID_ARGUMENT
         message:
           type: string

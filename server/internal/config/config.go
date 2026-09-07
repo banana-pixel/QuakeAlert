@@ -165,6 +165,7 @@ const minAdminKeyLen = 32
 
 // Load membaca & memvalidasi konfigurasi dari environment.
 func Load() (*Config, error) {
+	parseWarnings = nil
 	cfg := &Config{
 		DatabaseURL:      getEnv("DATABASE_URL", "postgres://quakealert:devpassword@localhost:5432/quakealert?sslmode=disable"),
 		MQTTBroker:       getEnv("MQTT_BROKER", "tcp://localhost:1883"),
@@ -205,6 +206,8 @@ func Load() (*Config, error) {
 	}
 
 	cfg.CorrelationWindow, cfg.Warnings = loadCorrelationWindow()
+	cfg.Warnings = append(cfg.Warnings, parseWarnings...)
+	parseWarnings = nil
 
 	if origins := os.Getenv("WS_ALLOWED_ORIGINS"); origins != "" {
 		for _, o := range strings.Split(origins, ",") {
@@ -273,6 +276,8 @@ func loadCorrelationWindow() (time.Duration, []string) {
 		if n, err := strconv.Atoi(v); err == nil {
 			return time.Duration(n) * time.Millisecond, nil
 		}
+		parseWarnings = append(parseWarnings, fmt.Sprintf(
+			"CORRELATION_WINDOW_MS=%q tidak terurai, jatuh ke rantai fallback (nama lama lalu default) — periksa typo di environment", v))
 	}
 	if v := os.Getenv("CONSENSUS_WINDOW_MS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -373,6 +378,17 @@ func decodeKey(hexStr string) ([32]byte, error) {
 	return out, nil
 }
 
+// parseWarnings menampung nama env yang terisi tetapi tidak terurai, agar
+// Load() dapat melaporkannya lewat Config.Warnings alih-alih memakai default
+// secara diam-diam. Di-reset di awal setiap Load; Load hanya dipanggil sekali
+// saat boot, jadi tidak ada state lintas-panggil yang perlu dijaga.
+var parseWarnings []string
+
+func warnUnparsable(key, raw string, def any) {
+	parseWarnings = append(parseWarnings, fmt.Sprintf(
+		"%s=%q tidak terurai, memakai default %v — periksa typo di environment", key, raw, def))
+}
+
 func getEnv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -385,6 +401,7 @@ func getEnvInt(key string, def int) int {
 		if n, err := strconv.Atoi(v); err == nil {
 			return n
 		}
+		warnUnparsable(key, v, def)
 	}
 	return def
 }
@@ -394,6 +411,7 @@ func getEnvFloat(key string, def float64) float64 {
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
 			return f
 		}
+		warnUnparsable(key, v, def)
 	}
 	return def
 }
@@ -403,6 +421,7 @@ func getEnvBool(key string, def bool) bool {
 		if b, err := strconv.ParseBool(v); err == nil {
 			return b
 		}
+		warnUnparsable(key, v, def)
 	}
 	return def
 }

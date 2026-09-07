@@ -52,6 +52,10 @@ services:
       - caddy_logs:/var/log/caddy
     depends_on:
       server:
+        # service_started, bukan healthy: image server distroless tanpa shell
+        # sehingga tidak ada exec healthcheck yang mungkin. Kesiapan dibaca
+        # Caddy lewat health_uri /healthz (lihat Caddyfile) + lb_try_* agar
+        # 502 saat boot/migrasi dicoba ulang, bukan dikembalikan ke klien.
         condition: service_started
 
   # --- Server aplikasi -------------------------------------------------------
@@ -103,6 +107,22 @@ services:
       CONSENSUS_WINDOW_MS: ${CONSENSUS_WINDOW_MS:-8000}
       COOLDOWN_MS: ${COOLDOWN_MS:-90000}
       IO_TIMEOUT_MS: ${IO_TIMEOUT_MS:-2000}
+
+      # Tracker Fase 3 (event): semuanya di-wire eksplisit agar .env.prod adalah
+      # konfigurasi yang sebenarnya, bukan default kode yang tak terlihat.
+      # CORRELATION_WINDOW_MS menang atas nama lama CONSENSUS_WINDOW_MS
+      # (fallback satu-rilis di config.go); mengisinya eksplisit = tanpa warning.
+      EVENT_TRACKER_ENABLED: ${EVENT_TRACKER_ENABLED:-false}
+      CORRELATION_WINDOW_MS: ${CORRELATION_WINDOW_MS:-20000}
+      ATTACH_RADIUS_KM: ${ATTACH_RADIUS_KM:-50}
+      INDEPENDENCE_CELL_KM: ${INDEPENDENCE_CELL_KM:-5}
+      MIN_INDEPENDENT_CELLS: ${MIN_INDEPENDENT_CELLS:-2}
+      MAX_EVENT_DIAMETER_KM: ${MAX_EVENT_DIAMETER_KM:-120}
+      EVENT_RESOLVE_AFTER_MS: ${EVENT_RESOLVE_AFTER_MS:-90000}
+      EVENT_SWEEP_INTERVAL_MS: ${EVENT_SWEEP_INTERVAL_MS:-5000}
+      EVENT_TRACKER_MAX_OPEN: ${EVENT_TRACKER_MAX_OPEN:-256}
+      EVENT_TRACKER_MAX_TOMBSTONES: ${EVENT_TRACKER_MAX_TOMBSTONES:-512}
+      TERMINAL_RETENTION_MS: ${TERMINAL_RETENTION_MS:-900000}
     volumes:
       # Service account FCM, read-only. Path di dalam container harus sama dengan
       # FCM_CREDENTIALS_FILE di .env.prod.
@@ -115,7 +135,11 @@ services:
       redis:
         condition: service_healthy
       mosquitto:
-        condition: service_started
+        # service_healthy: broker punya healthcheck TLS (di bawah). Trigger
+        # pertama sebelum broker siap adalah drop yang tak terlihat, jadi
+        # server menunggu broker sehat. Reconnect otomatis tetap ada sebagai
+        # jaring pengaman saat broker restart di tengah jalan.
+        condition: service_healthy
 
   # --- PostGIS ---------------------------------------------------------------
   postgis:

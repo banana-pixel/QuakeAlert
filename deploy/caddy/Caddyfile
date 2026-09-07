@@ -43,6 +43,12 @@
 		health_interval 15s
 		health_timeout 3s
 
+		# Coba ulang saat backend belum siap (boot/migrasi): tanpa ini Caddy
+		# mengembalikan 502 instan di detik-detik pertama, dan 502 untuk
+		# jalur life-safety adalah peringatan yang hilang.
+		lb_try_duration 30s
+		lb_try_interval 250ms
+
 		# Batas ini yang membuat Aturan Server #3 (IO <= 2s) terlihat dari luar:
 		# permintaan yang menggantung lebih lama adalah bug, bukan trafik lambat.
 		transport http {

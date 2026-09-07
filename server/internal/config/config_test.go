@@ -146,6 +146,33 @@ func TestLoadEventTrackerRejectsBadValues(t *testing.T) {
 	}
 }
 
+// Env yang terisi tetapi tidak terurai wajib TERLIHAT (peringatan), bukan
+// memakai default secara diam-diam — typo di environment produksi adalah cara
+// termudah menjalankan life-safety dengan konfigurasi yang salah.
+func TestLoadInvalidNumericWarnsAndKeepsDefault(t *testing.T) {
+	setMinimalEnv(t)
+	t.Setenv("COOLDOWN_MS", "abc")
+	t.Setenv("ATTACH_RADIUS_KM", "lima-puluh")
+	t.Setenv("EVENT_TRACKER_ENABLED", "mungkin")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.CooldownDuration != 90*time.Second {
+		t.Fatalf("CooldownDuration = %s, mau 90s (default)", cfg.CooldownDuration)
+	}
+	if cfg.AttachRadiusKm != 50 {
+		t.Fatalf("AttachRadiusKm = %g, mau 50 (default)", cfg.AttachRadiusKm)
+	}
+	if cfg.EventTrackerEnabled {
+		t.Fatal("EVENT_TRACKER_ENABLED tidak terurai harus jatuh ke default false")
+	}
+	if len(cfg.Warnings) != 3 {
+		t.Fatalf("harus ada tepat 3 peringatan parse, dapat %v", cfg.Warnings)
+	}
+}
+
 // Batas bawah D28 harus DITERIMA persis pada nilainya, bukan hanya di atasnya.
 func TestLoadTerminalRetentionAcceptsExactTriggerAge(t *testing.T) {
 	setMinimalEnv(t)

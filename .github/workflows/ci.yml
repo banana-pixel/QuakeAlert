@@ -6,6 +6,10 @@
 # contracts/ must run all of them, since ADR-0004 makes the OpenAPI document the
 # source every side is meant to agree with.
 #
+# A fifth, `release-checks`, locks what the others assume: contracts match code,
+# the prod image builds, prod compose interpolates, and migrations go up, down
+# one, and up again cleanly. Fast and dependency-free by design.
+#
 # The fourth, `simulation`, runs the two end-to-end simulation harnesses and
 # archives their JSON evidence (P4-M5', D-014). Nothing depends on it: its
 # evidence is SOFTWARE evidence, and a red simulation must be readable next to a
@@ -138,6 +142,68 @@ jobs:
             android/app/build/reports/
             android/app/build/test-results/
           if-no-files-found: ignore
+
+  release-checks:
+    # Kunci rilis: kontrak vs kode tidak boleh menyimpang diam-diam (D-001),
+    # image prod harus bisa dibangun, compose prod harus valid, dan migrasi
+    # harus naik-turun-naik bersih. Ringan dan tanpa dependensi antar-job.
+    name: Release checks (contracts, image, migrations)
+    runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: quakealert
+          POSTGRES_PASSWORD: check
+          POSTGRES_DB: quakealert
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U quakealert -d quakealert"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Contract parse and drift
+        run: |
+          python3 -c "import yaml" 2>/dev/null || pip install -q pyyaml
+          bash server/scripts/check_contracts.sh
+
+      - name: Shellcheck deploy and server scripts
+        run: |
+          command -v shellcheck >/dev/null || sudo apt-get install -y -q shellcheck
+          shellcheck deploy/scripts/*.sh server/scripts/*.sh
+
+      - name: Docker build server image
+        run: docker build -f server/Dockerfile -t quakealert-server:ci server/
+
+      - name: Prod compose config
+        working-directory: deploy
+        env:
+          API_DOMAIN: ci.example.test
+          MQTT_DOMAIN: broker.ci.example.test
+          ACME_EMAIL: ci@example.test
+          POSTGRES_PASSWORD: check
+          MASTER_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+          JWT_SECRET: "0123456789abcdef0123456789abcdef"
+          MQTT_SERVER_PASSWORD: check
+          MQTT_MONITOR_PASSWORD: check
+        run: docker compose -f docker-compose.prod.yml config -q
+
+      - name: Migrations up, down one, up
+        env:
+          DSN: "postgres://quakealert:check@localhost:5432/quakealert?sslmode=disable"
+        run: |
+          run_migrate() {
+            docker run --rm --network host \
+              -v "$PWD/contracts/db/migrations:/migrations:ro" \
+              migrate/migrate:v4.17.0 -path=/migrations -database "$DSN" "$@"
+          }
+          run_migrate up
+          run_migrate version
+          run_migrate down 1
+          run_migrate up
+          run_migrate version
 
   simulation:
     # P4-M5' — the two end-to-end simulation harnesses, run in CI, with their
