@@ -11,10 +11,10 @@ Baseline: branch `phase-1-observation-ledger`, HEAD `9752c5e`.
 
 ## Scope warnings (read before executing anything)
 
-- **`ROADMAP.md` ACTIVE PHASE is `Phase 4 — PLANNED`, and no phase is
-  `IN_PROGRESS`.** Phase 4 work must not begin until the owner marks it
-  `IN_PROGRESS`. Checkpoints 3 and 4 below are therefore **not executable yet**;
-  they are written down so the sequence is known, not so it can be started.
+- **`ROADMAP.md` ACTIVE PHASE is `Phase 4 — IN_PROGRESS`** as of 2026-09-01,
+  scoped by **D-011** to acceptance criteria P4-M1′ … P4-M6′. Phase 4 work is
+  bounded to those six; checkpoints 3 and 4 below are **not** that scope and
+  remain non-executable as written.
 - **Phase F (field validation) is `BLOCKED`** on the owner deploying more nodes.
   Not clearable by code.
 - Checkpoint 1 items are Android-client defect fixes against contracts that
@@ -176,6 +176,47 @@ alarm is therefore unknown, not assumed.
 
 If the alarm does not appear, the remedy (declaring a category, or an in-app
 permission prompt) is **not** part of this checkpoint. Record and report.
+
+#### 2.1b — Manual observation 2026-09-01 (production drill, POCO F1 API 36) — **VALIDATION**
+
+Drill source: `POST /api/v1/admin/test-alert --pga 300` → FCM `test_alerts` (prod). No harness, no `SYSTEM_ALERT_WINDOW`/overlay/forced `startActivity`. `heads_up_notifications_enabled=1` unchanged, DND OFF, `POST_NOTIFICATIONS granted=true`.
+
+**Test A — UNLOCKED** (`mAwake=true`, launcher `NexusLauncherActivity` foreground, `svc power stayon true`):
+- [x] `test-b567b7f3-f7ec-44f8-8f10-62e710a17078` 10:30:36 WIB → `mCurrentFocus` stayed `NexusLauncherActivity` (FSI correctly not launched while interactive).
+- [x] `NotificationRecord 4301` `importance=4 HIGH`, `category=alarm`, `flags=ONGOING|HIGH_PRIORITY`, `mSound=content://settings/.../notification_sound`, `isNoisy=true`, `mIsInterruptive=true`, `mSuppressedVisualEffects=0`, `requestedImportance=4`. Channel `quakealert_emergency_alerts` `mSound` audible, `mVibrationEnabled=true`. `currentAirtimeStartElapsedMs` set → system treated as interruptive.
+- **Manual:** heads-up banner — **PASS** (visibly appeared over launcher, several seconds, duration not measured). Notification sound — **PASS** (one short chime, `USAGE_NOTIFICATION`). Vibration — **PASS** (one buzz). Full-screen `WarningActivity` — did not launch, as expected for unlocked.
+
+**Test B — LOCKED** (`svc power stayon false`, `input keyevent 26` → `mAwake=false mDreamingLockscreen=true`):
+- [x] `test-36ae1aa3-f0bf-4573-888d-0c9234476aaf` 10:31:55 WIB → `mCurrentFocus= WarningActivity`, `mAwake false→true` (device woke, `Displayed WarningActivity +313ms`), `Task #1019 WarningActivity topResumed`.
+- [x] Same `NotificationRecord 4301` shape as A (`mSound` audible, `mVibrationEnabled=true` via channel, `mIsInterruptive=true`, `isNoisy=true`).
+- **Manual:** device woke — **PASS**. Full-screen red alert — **PASS**. Siren (`AlertSiren` `USAGE_ALARM`, 90 s) — **PASS**. Siren stopped ~20 s at all-clear — **PASS** (`push stand-down …: null` at 10:32:15, server 20 s timer; `NotificationRecord 4301` removed from active `dumpsys` list after, `WarningActivity` remained until BACK as designed).
+- **Vibration LOCKED:** observed `little/no vibration` — **UNVERIFIED** (see §Vibration note below). **Not classified as PASS/FAIL.**
+  - *Observed:* little/no vibration felt.
+  - *Intended (from code + Android docs):* locked FSI path has **no `AlertVibrator`** — `WarningActivity` owns only `AlertSiren` + `TorchController` (grep: `AlertVibrator` appears only in `AlertVibrator.kt` + `TestAlertPlayback.kt`). Vibration is **channel-only** (`enableVibration(true)`, `mVibration=null`) → OS default short buzz at post time, not a repeating pulse. `haptic_feedback_enabled=0` on this device further weakens feel. So `little/no vibration` is consistent with intended, but observer may have missed the short buzz beside the siren. Verdict left open pending a hand-held re-test.
+  - *ADB verified:* `dumpsys notification` channel `mVibrationEnabled=true`, `isNoisy=true` — vibration was enabled and the notification was interruptive, but no sustained vibrator is designed for the FSI path.
+
+**Cleanup:** `input BACK` → `WarningActivity` dismissed → `NotificationShade` → `HOME` + `svc power stayon true` + `wm dismiss-keyguard` → `mAwake=true`, launcher. `heads_up=1`, DND OFF, channel still audible HIGH, no active `4301` record (archive entry remains).
+
+#### 2.1c — Final UNLOCKED heads-up duration 2026-09-01 (read-only, no impl change) — **VALIDATION**
+
+Pre-conditions verified read-only: `heads_up_notifications_enabled=1` (unchanged), `mZenMode=ZEN_MODE_OFF`, emergency channel `mImportance=4 HIGH` + `mSound=content://settings/system/notification_sound` + `mVibrationEnabled=true`, `POST_NOTIFICATIONS granted=true`, `mCurrentFocus=NexusLauncherActivity`, `mAwake=true`. No source/config/channel/device-setting/documentation modification before or during test. Production drill path only (`POST /api/v1/admin/test-alert --pga 300` → FCM `test_alerts`).
+
+**Drill 1 — 10:46:55 WIB `test-57598b67-d8e3-4c3e-a3b3-6922cff4fc09` (VII):**
+- Technical (does **not** prove visible duration): `when=1788234421142`, `mVisibleSinceMs=1788234422005`, `mInterruptionTimeMs=1788234422005`, `isNoisy=true`, `mSound` audible, `mVibration=350/250/350`, `mIsInterruptive=true`, `mSuppressedVisualEffects=0`, `requestedImportance=4`, `currentAirtimeStartElapsedMs=254229192`, `mCurrentFocus` stayed `NexusLauncherActivity` (FSI correctly not launched). Captured at 10:47:08 WIB (T+13s) — notification still active as `NotificationRecord 4301`.
+- At 10:47:41 WIB (T+46s, after `push stand-down …: null` at 10:47:20): active `NotificationRecord 4301` gone (0 active records), `StatusBarNotification 4301` remains only in archive — correctly cleared by RESOLVED. Channel still HIGH audible, `heads_up=1`, DND OFF unchanged.
+- **Manual observation (observer = owner):** heads-up banner visible duration **~18 s** (approx, not millisecond-precise). Sound was not reported for this exact trigger (observer noted forgetting to track sound, hence second drill).
+
+**Drill 2 — 10:48:43 WIB `test-912b546b-798c-4248-99fb-77ac10f02677` (VII) — re-trigger solely to verify sound:**
+- Pre-checks identical (launcher, `heads_up=1`, DND OFF, channel HIGH audible). Technical T+10s: `when=1788234524126`, `mVisibleSinceMs=1788234524928`, `mInterruptionTimeMs` same, `isNoisy=true`, `mSound` audible, `currentAirtimeStartElapsedMs=254332115`, same `4301` active record.
+- At 10:49:48 WIB (after `push stand-down` at 10:49:04): active `NotificationRecord 4301` gone again, correctly cleared.
+- **Manual observation:** notification sound — **PASS** (short chime heard) and short vibration heard (`"Yeah I hear short notification with short vibration"`). Heads-up visible duration not re-measured (already observed).
+
+**Recorded verdict for this final UNLOCKED test (per instruction — observer is source of truth, no inference from `airtimeMs`):**
+- HUN visible: **PASS** — based on owner observation (banner visibly appeared; ~18 s on first drill).
+- Approximate HUN duration: **~18 s** — owner observation; internal timestamps (`mVisibleSinceMs`, `currentAirtime*`) are ranking/airtime bookkeeping and were **not** used to infer visible duration. Treat as approximate, not precise.
+- Notification sound: **PASS** — owner confirmed short notification sound on second drill (covers the same code path; first drill's sound was UNVERIFIED due to forgotten observation, not a FAIL).
+- Notification remains until RESOLVED: **PASS** — active `4301` present at T+13s / T+10s, gone only after `push stand-down …: null` (10:47:20 and 10:49:04, server 20 s timer), per `dumpsys` active-list checks.
+- Uncertainty: none remaining for this scenario; locked-vibration UNVERIFIED from §2.1b remains the only open item.
 
 ### 2.2 — Notification permission and background paths — **VALIDATION**
 

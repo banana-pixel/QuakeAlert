@@ -73,9 +73,11 @@ object WarningNotifier {
             description = "Life-safety warnings for earthquakes near you."
             enableVibration(true)
             enableLights(true)
-            // The siren plays through AlertSiren on the alarm stream instead, so the
-            // channel stays silent — two tones at once is noise, not urgency.
-            setSound(null, null)
+            // Audible HIGH channel: makes a sound and appears as a heads-up
+            // notification when unlocked. The sustained 90s siren is handled
+            // separately by AlertSiren (USAGE_ALARM) in WarningActivity for the
+            // locked FSI path; the notification sound is the short HUN chime
+            // that makes the unlocked heads-up visible.
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
         }
         manager.createNotificationChannel(channel)

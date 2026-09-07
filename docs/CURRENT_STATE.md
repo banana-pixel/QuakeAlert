@@ -33,7 +33,7 @@ IMPLEMENTED only.
 | WebSocket delivery | yes | partial | yes, private VPS | Advisory frames observed; alert frames not observed in production. |
 | Push delivery | yes | no | yes, private VPS | Never triggered in production; one device vendor only in testing. |
 | Firmware detection | yes | partial | one node | One board, one location, one firmware build. |
-| Android client | yes | partial — drill-validated on one device | sideloaded, not published | Advisory-never-wakes enforced in three independent places. Locked-screen alarm, Doze wake, cross-channel dedup and all-clear teardown demonstrated on hardware 2026-08-31 (drill path). Delivery to an **unlocked, in-use** device shows nothing — **U-012**. |
+| Android client | yes | partial — drill-validated on one device | sideloaded, not published | Advisory-never-wakes enforced in three independent places. Locked-screen alarm, Doze wake, cross-channel dedup and all-clear teardown demonstrated on hardware 2026-08-31 (drill path). Unlocked-device delivery demonstrated 2026-09-01 after the emergency channel was made audible — heads-up observed by the owner (drill path, one device, debug build). Policy for an in-use device remains **U-012**. |
 
 **Production status, stated precisely:** Phase 3 is activated on a **private
 VPS**. That is a single-operator deployment serving a single-node network. It is
@@ -146,6 +146,23 @@ de-duplication — **not** at-least-once (D-008).
   4301. These used `POST /api/v1/admin/test-alert`, which writes no
   `earthquake_events` row and carries no `event_state` — so they say nothing about
   History, about CANCELLED wording, or about a release build.
+- **Delivery to an unlocked, in-use device — drill path, one device, debug build**
+  (same POCO F1, 2026-09-01). The emergency channel had been created silent
+  (`setSound(null, null)`), which contradicts `IMPORTANCE_HIGH`; with an audible
+  channel sound the owner observed a heads-up banner over the launcher, one short
+  notification sound, and a short vibration, and confirmed the notification stayed
+  posted after the banner slid away and disappeared on the all-clear. `dumpsys`
+  for the same drills recorded `mSound=content://settings/system/notification_sound`,
+  `isNoisy=true`, `mIsInterruptive=true`, `mSuppressedVisualEffects=0`, and
+  `mCurrentFocus` remaining on the launcher — i.e. no full-screen intent while
+  interactive, which is the documented Android behaviour and not a failure. The
+  approximate visible duration (~18 s) is **the owner's observation**, not a
+  measurement: `mVisibleSinceMs` and the airtime counters are ranking bookkeeping
+  and were not used to derive it. **Locked-device vibration remains UNVERIFIED** —
+  faint or unfelt beside the siren, and the locked path deliberately runs no
+  sustained vibrator (`WarningActivity` owns `AlertSiren` and `TorchController`
+  only; `AlertVibrator` is wired to the onboarding preview, not to the alert), so
+  the observation is consistent with intent but was not confirmed either way.
 - **Near-confirmation durability across a real process restart — P4-M2′, isolated
   PostgreSQL, 2026-09-03.** Owner-approved SATISFIED. Migration `000009` applied to
   a throwaway PostGIS container reached only over loopback; 14 integration tests
@@ -451,16 +468,20 @@ only presence in *Demonstrated* is** (`PROJECT_RULES.md` §8).
 - **No measured lead time.** No end-to-end warning has preceded shaking for any
   real user. Do not claim EEW lead time.
 - **Push delivery not verified across device vendors.** One vendor, in testing.
-- **Delivery to an unlocked, in-use device does not happen on the one device
-  tested.** Observed failing on hardware 2026-08-31 in both process states. Root
-  cause is a **device setting**, not an app defect:
-  `settings get global heads_up_notifications_enabled` returns `0`, which makes
-  AOSP's `PeekDisabledSuppressor` suppress heads-up for every app on the phone;
-  `couldHeadsUp=false` then drives `FullScreenIntentDecisionProvider` to
-  `NO_FSI_NO_HUN_OR_KEYGUARD`. The keyguard is why the locked path works.
-  Whether QuakeAlert would heads-up with that setting enabled is **not yet
-  tested**, so how much of this gap is device-specific is unknown. Policy choice
-  is **U-012**.
+- **Delivery to an unlocked, in-use device was broken until 2026-09-01, and the
+  fix is demonstrated only on one device.** Observed failing on hardware
+  2026-08-31 in both process states, with two contributing causes now separated:
+  the test phone had `heads_up_notifications_enabled=0`, which makes AOSP's
+  `PeekDisabledSuppressor` suppress heads-up for **every** app, and the app's own
+  emergency channel was created silent, which contradicts `IMPORTANCE_HIGH`. With
+  the setting at `1` and the channel audible, a heads-up was observed on
+  2026-09-01 (see *Demonstrated*). What is still **not** demonstrated: the same
+  behaviour on a release build, on any second device or vendor, or with the
+  device-wide setting off — so how much of the original gap is device-specific
+  remains unknown. Policy for an in-use device is **U-012**.
+- **Locked-device vibration is UNVERIFIED.** Faint or unfelt beside the siren; the
+  channel enables vibration but the locked path runs no sustained vibrator by
+  design. Neither PASS nor FAIL was recorded.
 - **Alert delivery to a force-stopped app is impossible, by platform design.** Not
   a project gap: Android withholds broadcasts from a stopped app until the user
   launches it again.
@@ -486,17 +507,18 @@ only presence in *Demonstrated* is** (`PROJECT_RULES.md` §8).
 `ROADMAP.md` ACTIVE PHASE is **Phase 4 — Self-Measurement & Forensics**, status
 `IN_PROGRESS` as of 2026-09-01, scoped by **D-011** to acceptance criteria
 P4-M1′ … P4-M6′. Phase 4 is instrumentation and read-only forensics on a
-**one-node** fleet: it changes no threshold, quorum, radius, event semantic, or
-notification policy — the single contract change it carries is the additive,
-operator-only one the owner authorized in **D-012**, behind `X-Admin-Key`.
-**P4-M3′** (server-side stage latency reported) is owner-approved SATISFIED as of
-2026-09-01. **P4-M2′** (near-confirmation log queryable and surviving a restart) is
-owner-approved SATISFIED / `VALIDATED` as of 2026-09-03, on the real-PostgreSQL
-evidence in *Demonstrated*; committed, **not deployed**. **P4-M4′** (deterministic
-replay) is owner-approved SATISFIED / `VALIDATED` as of 2026-09-03, authorized by
-**D-013**, on the isolated-PostgreSQL evidence in *Demonstrated*; committed, **not
-deployed**, and read-only — it adds no migration and no contract change, so D-012
-remains the phase's only authorized contract exception. **P4-M5′** (simulated
+**one-node** fleet: it changes no threshold, quorum, radius, contract, event
+semantic, or notification policy — with one exception the owner authorized
+explicitly in **D-012**, an additive change to the operator-only admin contract
+behind `X-Admin-Key`. **P4-M3′** (server-side stage latency reported) is
+owner-approved SATISFIED as of 2026-09-01. **P4-M2′** (near-confirmation log
+queryable and surviving a restart) is owner-approved SATISFIED / `VALIDATED` as of
+2026-09-03, on the real-PostgreSQL evidence in *Demonstrated*; committed, **not
+deployed**. **P4-M4′** (deterministic replay) is owner-approved SATISFIED /
+`VALIDATED` as of 2026-09-03, authorized by **D-013**, on the isolated-PostgreSQL
+evidence in *Demonstrated*; committed, **not deployed**, and read-only — it adds
+no migration and no contract change, so D-012 remains the phase's only authorized
+contract exception. **P4-M5′** (simulated
 multi-node runs in CI) is owner-approved SATISFIED / `VALIDATED` as of
 2026-09-03 under **D-014**, on the archived GitHub Actions **CI #22** evidence in
 *Demonstrated*; committed, **not deployed**. That `VALIDATED` covers exactly what

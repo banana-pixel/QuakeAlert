@@ -463,13 +463,16 @@ These are open questions, not scheduled work. They are tracked in
 - Whether the alert-raising path logs at all (**U-013**). Success and a silently
   gated-out alert are currently indistinguishable in logcat.
 
-Notes on U-012: root cause is a **device setting**, not an app defect —
-`heads_up_notifications_enabled=0` on the test phone makes AOSP's
-`PeekDisabledSuppressor` suppress heads-up for every app, and `couldHeadsUp=false`
-then forces `NO_FSI_NO_HUN_OR_KEYGUARD`. **Retracted:** the earlier claim that the
-silent notification channel was the confirmed cause — asserted from a filter's name
-without reading its body. Not yet tested: whether QuakeAlert heads-ups with the
-setting enabled. That one experiment decides whether any app change is warranted.
+Notes on U-012: two causes were separated, not one. The test phone had
+`heads_up_notifications_enabled=0`, which makes AOSP's `PeekDisabledSuppressor`
+suppress heads-up for every app on the device (`couldHeadsUp=false` then forces
+`NO_FSI_NO_HUN_OR_KEYGUARD`); the app's own emergency channel was also created
+silent, contradicting `IMPORTANCE_HIGH`. **Retracted:** the earlier claim that the
+silent channel was the confirmed cause — asserted from a filter's name without
+reading its body. The outstanding experiment named here has since been run: with
+the setting at `1` and an audible channel, a heads-up was observed on the device
+2026-09-01 (`docs/CURRENT_STATE.md` § Demonstrated). What an in-use device *should*
+receive remains the open question.
 
 ---
 
