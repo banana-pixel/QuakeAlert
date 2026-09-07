@@ -913,6 +913,19 @@ are untouched.
 
 ---
 
+### D-020 — Concurrent alerts coexist capped; the latest sounds
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-06 · **See:** `docs/DECISIONS.md`
+§ U-011, `PROJECT_RULES.md` §8/§9
+Up to 3 concurrent CONFIRMED events are co-represented (per-event notification
+IDs on the single emergency channel, bounded active-event map replacing the
+single-slot state); the newest sounds, earlier ones persist silently, each is
+stood down by its own event_id, and mute stays per-event. Beyond 3, oldest
+collapses into a count, never silently discarded without representation. No
+contract, threshold, or server change; D-018 validity and D-019 logging apply
+per event_id.
+
+---
+
 ## Unresolved questions
 
 **Do not resolve any of these by implementation.** Each requires an explicit
