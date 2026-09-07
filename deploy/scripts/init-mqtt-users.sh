@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090
+# (ENV_FILE di bawah sengaja dinamis — flag deploy --env-file memilihnya — jadi
+# lint tidak boleh mengikutinya. Direktif HARUS di baris ini: quirk 0.11,
+# disable setelah `set`/assignment yang di-trace tidak dipatuhi. Kebenaran isi
+# file dijaga oleh :? di bawah, bukan oleh lint.)
 # =============================================================================
 # Membuat deploy/mosquitto/passwd dari kredensial di .env.prod.
 #
@@ -19,7 +24,6 @@ cd "$(dirname "$0")/.."
 ENV_FILE=${ENV_FILE:-.env.prod}
 [ -f "$ENV_FILE" ] || { echo "$ENV_FILE tidak ada — copy dari .env.prod.example dulu" >&2; exit 1; }
 
-# shellcheck disable=SC1090
 set -a; . "./$ENV_FILE"; set +a
 
 : "${MQTT_SERVER_USER:=quakealert-server}"

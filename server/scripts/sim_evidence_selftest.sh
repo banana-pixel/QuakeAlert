@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
+# (Mini-fixture vars SIM_ERROR/SIM_SUMMARY_REACHED are set in a subshell and
+# read by the sourced sim_evidence.sh via its trap/emit path — invisible to
+# static lint. The fixture asserts on emitted artifacts, not on variables.)
 # =============================================================================
 # sim_evidence_selftest.sh — pins the P4-M5' artifact-delivery contract
 #

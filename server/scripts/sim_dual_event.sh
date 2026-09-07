@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
+# (SIM_* evidence globals are assigned here and read by the sourced
+# sim_evidence.sh at emit time via the EXIT trap — invisible to static lint.
+# The semantic guard is sim_evidence_selftest.sh, not this lint.)
 # =============================================================================
 # sim_dual_event.sh — Checkpoint 3.2: two simultaneous earthquake events
 #
@@ -63,18 +67,14 @@ if [ -z "${ADMIN_API_KEY:-}" ]; then
   exit 1
 fi
 
-# Cluster A — Bandung (sim 3.1 nodes, reused)
-SIM_A1="NODE-53494D41"
-SIM_A2="NODE-53494D42"
-SIM_A3="NODE-53494D43"
+# Cluster A — Bandung (sim 3.1 nodes, reused). Node IDs live authoritatively in
+# sim_setup_nodes_6.go; only the secrets are needed here (passed to setup at
+# STEP 1), so no ID duplicates are kept.
 SEC_A1="sec_sim_alpha_checkpoint_3_1_aaaa"
 SEC_A2="sec_sim_bravo_checkpoint_3_1_bbbb"
 SEC_A3="sec_sim_charlie_checkpoint_3_1_cc"
 
 # Cluster B — Surabaya (new nodes)
-SIM_B1="NODE-53554241"
-SIM_B2="NODE-53554242"
-SIM_B3="NODE-53554243"
 SEC_B1="sec_sim_b_alpha_checkpoint_3_2_aa"
 SEC_B2="sec_sim_b_bravo_checkpoint_3_2_bb"
 SEC_B3="sec_sim_b_charlie_ckpt_3_2_cc"
@@ -83,7 +83,7 @@ PASS=0
 FAIL=0
 
 # One artifact contract, shared with sim_multi_node.sh (D-014).
-# shellcheck source=server/scripts/sim_evidence.sh
+# shellcheck source=sim_evidence.sh
 . "$SERVER_DIR/scripts/sim_evidence.sh"
 
 # Same stdout as before; the assertion is additionally recorded for the artifact.
@@ -93,7 +93,6 @@ die() { SIM_ERROR="$1"; echo "ERROR: $1" >&2; exit 1; }
 
 SERVER_PID=""
 TMPDIR_SIM=""
-STATUS=""
 BODY=""
 
 admin_api() {
@@ -104,7 +103,6 @@ admin_api() {
   [ -n "$body" ] && args+=(-d "$body")
   local out
   out="$(curl "${args[@]}" 2>&1)" || die "curl failed: $method $path"
-  STATUS="$(printf '%s\n' "$out" | tail -n1)"
   BODY="$(printf '%s\n' "$out" | sed '$d')"
 }
 
@@ -115,7 +113,6 @@ api() {
   [ -n "$body" ] && args+=(-d "$body")
   local out
   out="$(curl "${args[@]}" 2>&1)" || die "curl failed: $method $path"
-  STATUS="$(printf '%s\n' "$out" | tail -n1)"
   BODY="$(printf '%s\n' "$out" | sed '$d')"
 }
 

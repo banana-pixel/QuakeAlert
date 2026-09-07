@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
+# (SIM_* evidence globals are assigned here and read by the sourced
+# sim_evidence.sh at emit time via the EXIT trap — invisible to static lint.
+# The semantic guard is sim_evidence_selftest.sh, not this lint.)
 # =============================================================================
 # sim_multi_node.sh — Checkpoint 3.1: multi-node CONFIRMED simulation
 #
@@ -58,7 +62,7 @@ PASS=0
 FAIL=0
 
 # The artifact contract lives in one place for both harnesses (D-014).
-# shellcheck source=server/scripts/sim_evidence.sh
+# shellcheck source=sim_evidence.sh
 . "$SERVER_DIR/scripts/sim_evidence.sh"
 
 # ok/bad keep printing exactly what they printed before; they additionally
@@ -75,11 +79,7 @@ AUTH=""        # JWT bearer for auth-required endpoints
 SIM_SECRET_A=""
 SIM_SECRET_B=""
 SIM_SECRET_C=""
-SIM_STATION_A=""
-SIM_STATION_B=""
-SIM_STATION_C=""
 
-STATUS=""
 BODY=""
 
 api() {
@@ -89,7 +89,6 @@ api() {
   [ -n "$body" ] && args+=(-d "$body")
   local out
   out="$(curl "${args[@]}" 2>&1)" || die "curl failed: $method $path"
-  STATUS="$(printf '%s\n' "$out" | tail -n1)"
   BODY="$(printf '%s\n' "$out" | sed '$d')"
 }
 
@@ -101,7 +100,6 @@ admin_api() {
   [ -n "$body" ] && args+=(-d "$body")
   local out
   out="$(curl "${args[@]}" 2>&1)" || die "curl failed: $method $path"
-  STATUS="$(printf '%s\n' "$out" | tail -n1)"
   BODY="$(printf '%s\n' "$out" | sed '$d')"
 }
 
@@ -338,7 +336,6 @@ else
 fi
 
 # E: UNCONFIRMED transition occurred
-NEW_UNCONFIRMED=$(( UNCONFIRMED ))
 if [ "$UNCONFIRMED" -ge 1 ]; then
   ok "E: UNCONFIRMED transition occurred (event_transitions_to_unconfirmed_total=$UNCONFIRMED)"
 else

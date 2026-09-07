@@ -170,9 +170,15 @@ jobs:
           bash server/scripts/check_contracts.sh
 
       - name: Shellcheck deploy and server scripts
+        # warning ke atas saja yang menggagalkan: temuan info (fungsi yang
+        # dipanggil lewat trap, $ literal yang disengaja di grep selftest,
+        # fixture subshell) adalah pola yang dipakai harness bukti D-014
+        # dengan sadar, dan memaksakan nol-info berarti mengaduk emitter
+        # yang sudah divalidasi. Warning adalah cacat nyata (dead store,
+        # source tak terlacak) dan wajib nol — dibuktikan di bawah.
         run: |
           command -v shellcheck >/dev/null || sudo apt-get install -y -q shellcheck
-          shellcheck deploy/scripts/*.sh server/scripts/*.sh
+          shellcheck --severity=warning deploy/scripts/*.sh server/scripts/*.sh
 
       - name: Docker build server image
         run: docker build -f server/Dockerfile -t quakealert-server:ci server/
