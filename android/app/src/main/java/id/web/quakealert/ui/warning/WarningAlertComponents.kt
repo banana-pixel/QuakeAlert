@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import id.web.quakealert.R
 import id.web.quakealert.ui.theme.CardBorder
+import id.web.quakealert.ui.theme.ChipLabel
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.EmergencyAlertGradient
 import id.web.quakealert.ui.theme.EmergencyAlertIconBadgeFill
@@ -96,6 +97,17 @@ fun ActiveAlertCard(
             intensityValue = state.intensityValue,
             proximityLabel = state.proximityLabel
         )
+
+        // Coexistence count (D-020, U-011): other live events persist silently
+        // while this one shows. One line, no interaction — tapping through to a
+        // second full alarm screen is out of scope for the cap policy.
+        if (state.extraActiveCount > 0) {
+            Text(
+                text = "+${state.extraActiveCount} more active",
+                style = ChipLabel,
+                color = TextPrimary
+            )
+        }
 
         SuggestedActionsBox()
 

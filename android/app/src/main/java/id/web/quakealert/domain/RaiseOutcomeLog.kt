@@ -42,4 +42,28 @@ object RaiseOutcomeLog {
     fun expired(eventId: String, validityDeclared: Boolean): String =
         if (validityDeclared) "raise $eventId expired sender-validity; not raising"
         else "raise $eventId outside recent window; not raising"
+
+    /**
+     * A newer event took focus while these older ids stay live (D-020,
+     * U-011). All ids traverse; the newest keeps the siren, the rest persist
+     * silently. No position, no count arithmetic beyond the ids themselves.
+     */
+    fun superseded(newId: String, stillLiveIds: List<String>): String =
+        "raise $newId sounding; still live silent: ${stillLiveIds.joinToString(",")}"
+
+    /**
+     * A live event lost its full representation to the cap (D-020). Its
+     * identity is retained for stand-down matching and the "+N more" count —
+     * this line is the proof it was counted, not dropped.
+     */
+    fun collapsedIntoCount(evictedId: String): String =
+        "event $evictedId collapsed into count; identity retained for stand-down"
+
+    /**
+     * A stand-down promoted another live event to selected (D-020). Rendered
+     * silently by contract — this line exists so the promotion is observable
+     * without ever starting a siren for it.
+     */
+    fun promotedSilent(promotedId: String): String =
+        "event $promotedId promoted to selected (silent; no siren)"
 }

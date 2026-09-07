@@ -15,6 +15,7 @@ import id.web.quakealert.device.AlertSiren
 import id.web.quakealert.device.DeviceCountry
 import id.web.quakealert.device.TorchController
 import id.web.quakealert.device.canPostNotifications
+import id.web.quakealert.domain.ActiveAlertBoard
 import id.web.quakealert.domain.AlertGate
 import id.web.quakealert.domain.AlertType
 import id.web.quakealert.domain.EarthquakeEvent
@@ -130,6 +131,14 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      * recompose the screen for a value nothing is showing.
      */
     private var activeAlertDetails: QuakeHistoryItem? = null
+
+    /**
+     * Rendered cards for live coexistence entries (D-020), keyed by event_id
+     * and pruned to board membership on every mutation. The board owns policy
+     * (cap, selection, mute); this map owns presentation built from the frame
+     * that raised each event.
+     */
+    private val liveCards = LinkedHashMap<String, WarningUiState.ActiveAlert>()
 
     /**
      * Last device position seen by either load path.
@@ -468,38 +477,95 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         // siren starting over the first, or an old alert becoming audible again.
         val alreadyRaised = !network.alertDedup.markIfNew(message)
 
+        // Coexistence (D-020, U-011): register on the shared board before
+        // rendering. A newer event takes focus (and the siren, unless this exact
+        // event was already acted on); older live events persist silently and are
+        // counted on the card rather than overwritten without a trace.
+        val board = network.activeAlerts
+        val slot = board.upsert(message.eventId, sounded = !alreadyRaised)
+        liveCards[message.eventId] = message.toActiveAlert(userLocation)
+        if (slot.collapsedId != null) {
+            Log.i(TAG, RaiseOutcomeLog.collapsedIntoCount(slot.collapsedId))
+        }
+        if (slot.supersededIds.isNotEmpty()) {
+            Log.i(TAG, RaiseOutcomeLog.superseded(message.eventId, slot.supersededIds))
+        }
+
         // ActiveAlert.proximityLabel already renders "Distance unknown" when the gate
         // failed open on a missing position, so nothing extra is needed for that case.
-        raise(message.toActiveAlert(userLocation), startSiren = !alreadyRaised)
+        renderSelected(board)
+        if (!alreadyRaised) {
+            raiseSound(board)
+        }
+    }
+
+    /**
+     * Renders the board's selected event. Mute comes from the shared per-event
+     * map (D-020), so muting here, in the Activity, or across a recreation of
+     * this ViewModel never disagrees about one event. Torch state stays local
+     * to this screen: it describes hardware, not the quake.
+     */
+    private fun renderSelected(board: ActiveAlertBoard) {
+        val selectedId = board.selectedId() ?: return
+        if (!liveCards.containsKey(selectedId)) return
+        val current = _uiState.value as? WarningUiState.ActiveAlert
+        _uiState.update { state ->
+            liveCards.getValue(selectedId).copy(
+                isMuted = board.isMuted(selectedId),
+                isSosLightOn = current?.isSosLightOn ?: torch.isOn,
+                isSosLightUnavailable = current?.isSosLightUnavailable ?: false,
+                extraActiveCount = board.extraActiveCount(),
+                unitSystem = state.unitSystem
+            )
+        }
+    }
+
+    /**
+     * Starts the siren for the selected event unless its per-event mute says
+     * otherwise, and logs the outcome (D-019): event_id and outcome only.
+     */
+    private fun raiseSound(board: ActiveAlertBoard) {
+        val selectedId = board.selectedId() ?: return
+        // Idempotent, and a no-op while a carried-over mute is in effect.
+        val sirenStarted = !board.isMuted(selectedId)
+        Log.i(TAG, RaiseOutcomeLog.shown(selectedId, sirenStarted))
+        if (sirenStarted) {
+            siren.start()
+        }
     }
 
     /**
      * Switches the screen to [WarningUiState.ActiveAlert] and starts the siren.
      *
-     * Re-raising the *same* event (a socket reconnect replaying its last frame, or
-     * an FCM copy of a frame already delivered) preserves the user's mute and torch
-     * choices — silencing a siren must not be undone by a duplicate of the alert
-     * that was silenced. A genuinely new `event_id` starts audible again, because
-     * the previous quake's mute says nothing about this one.
+     * Cold-start entry point (an unresolved quake found in the history feed on
+     * launch). Like the live path it registers on the shared board first, so a
+     * cold-started emergency and a socket-raised one coexist under one policy
+     * instead of each believing it is the only quake.
+     *
+     * Re-raising the *same* event preserves the user's mute choice — silencing
+     * a siren must not be undone by a duplicate of the alert that was silenced.
+     * A genuinely new `event_id` starts audible again, because the previous
+     * quake's mute says nothing about this one.
      */
     private fun raise(alert: WarningUiState.ActiveAlert, startSiren: Boolean = true) {
-        _uiState.update { state ->
-            val carried = (state as? WarningUiState.ActiveAlert)
-                ?.takeIf { it.eventId.isNotBlank() && it.eventId == alert.eventId }
-
-            alert.copy(
-                isMuted = carried?.isMuted ?: false,
-                isSosLightOn = carried?.isSosLightOn ?: torch.isOn,
-                isSosLightUnavailable = carried?.isSosLightUnavailable ?: false,
-                unitSystem = state.unitSystem
-            )
+        if (alert.eventId.isBlank()) return
+        val board = network.activeAlerts
+        val slot = board.upsert(alert.eventId, sounded = startSiren)
+        liveCards[alert.eventId] = alert
+        if (slot.collapsedId != null) {
+            Log.i(TAG, RaiseOutcomeLog.collapsedIntoCount(slot.collapsedId))
         }
-
-        // Idempotent, and a no-op while a carried-over mute is in effect.
+        if (slot.supersededIds.isNotEmpty()) {
+            Log.i(TAG, RaiseOutcomeLog.superseded(alert.eventId, slot.supersededIds))
+        }
+        // Mute carries per event (D-020): a stored mute survives re-raise of the
+        // same event, while a new event starts audible.
+        val muted = board.isMuted(alert.eventId)
+        renderSelected(board)
         // Logged so a raised alarm and a silently gated-out one are never
         // indistinguishable in logcat again (D-019, U-013): event_id and outcome
         // only, never position.
-        val sirenStarted = startSiren && (_uiState.value as? WarningUiState.ActiveAlert)?.isMuted != true
+        val sirenStarted = startSiren && !muted
         Log.i(TAG, RaiseOutcomeLog.shown(alert.eventId, sirenStarted))
         if (sirenStarted) {
             siren.start()
@@ -507,43 +573,41 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Returns the screen to its idle state on an all-clear, and takes both hardware
-     * effects down with it.
-     *
-     * The torch is switched off rather than left burning: its only control lives on
-     * the emergency card, so a torch that survived the stand-down would be one the
-     * user has no way left to turn off.
+     * Stands down one event (D-020): routes once through [WarningNotifier.clear],
+     * which owns board mutation and notification cancellation, then renders what
+     * remains. A promoted event renders SILENTLY — never auto-sounded (approved
+     * D-020 edge). Siren and torch stop only when something actually ended; an
+     * unknown id while others live changes nothing.
      */
     private fun standDown(eventId: String = "", eventState: EventState? = null) {
-        // Event-scoped guard: if both sides are non-blank and disagree, this stand-down
-        // belongs to a different event — leave the active alert on screen.
-        val currentId = (_uiState.value as? WarningUiState.ActiveAlert)?.eventId ?: ""
-        if (eventId.isNotBlank() && currentId.isNotBlank() && eventId != currentId) {
-            Log.d(TAG, "stand-down for $eventId ignored; active alert is for $currentId")
-            return
-        }
+        val board = network.activeAlerts
+        val result = WarningNotifier.clear(getApplication(), eventId)
+        if (!result.removedAny) return
+        liveCards.keys.retainAll(board.fullEntries().map { it.eventId }.toSet())
         siren.release()
         torch.stop()
-        // Also takes down the ongoing push notification, which is deliberately
-        // non-dismissible: the all-clear is the thing that removes it.
-        WarningNotifier.clear(getApplication(), eventId)
-        activeAlertDetails = null
-        val snapshot = restingSnapshot(recentActivity)
-        // A withdrawn report is not an ended earthquake, and the banner is the one
-        // surface that can say which happened. A build that does not recognise the
-        // state falls back to all-clear wording, exactly as before.
-        val copy = standDownCopyFor(eventState)
-        _uiState.update { state ->
-            WarningUiState.Idle(
-                banner = SeismicActivityBanner(
-                    title = copy.title,
-                    activityLabel = copy.detail
-                ),
-                sectionTitle = snapshot.sectionTitle,
-                tips = snapshot.tips,
-                unitSystem = state.unitSystem
-            )
+        if (board.selectedId() == null) {
+            activeAlertDetails = null
+            val snapshot = restingSnapshot(recentActivity)
+            // A withdrawn report is not an ended earthquake, and the banner is the one
+            // surface that can say which happened. A build that does not recognise the
+            // state falls back to all-clear wording, exactly as before.
+            val copy = standDownCopyFor(eventState)
+            _uiState.update { state ->
+                WarningUiState.Idle(
+                    banner = SeismicActivityBanner(
+                        title = copy.title,
+                        activityLabel = copy.detail
+                    ),
+                    sectionTitle = snapshot.sectionTitle,
+                    tips = snapshot.tips,
+                    unitSystem = state.unitSystem
+                )
+            }
+            return
         }
+        // Still live: the promoted entry renders without sound by contract.
+        renderSelected(board)
     }
 
     /**
@@ -555,7 +619,10 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      */
     fun onMuteClick() {
         val current = _uiState.value as? WarningUiState.ActiveAlert ?: return
-        val muted = !current.isMuted
+        // Per-event mute (D-020) on the shared board: muting here agrees with
+        // the Activity and survives this ViewModel's recreation.
+        val muted = !network.activeAlerts.isMuted(current.eventId)
+        network.activeAlerts.setMuted(current.eventId, muted)
         if (muted) siren.mute() else siren.unmute()
         _uiState.update { state ->
             if (state is WarningUiState.ActiveAlert) state.copy(isMuted = muted) else state

@@ -7,6 +7,7 @@ import id.web.quakealert.data.users.UserLocationRepository
 import id.web.quakealert.data.local.SessionStore
 import id.web.quakealert.data.push.PushRegistrar
 import id.web.quakealert.domain.AlertDedup
+import id.web.quakealert.domain.ActiveAlertBoard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -147,6 +148,15 @@ class QuakeNetwork private constructor(context: Context) {
      * frame and its FCM copy describe one earthquake and must raise one alert.
      */
     val alertDedup: AlertDedup = AlertDedup()
+
+    /**
+     * Bounded coexistence of concurrent alert events (D-020, U-011), shared by
+     * every delivery surface for the same reason as [alertDedup]: the push
+     * service, the foreground socket ViewModel, the background bridge, the
+     * notifier and the Activity observer must agree on which events are live.
+     * Process-lifetime like dedup, with the same documented limitation.
+     */
+    val activeAlerts: ActiveAlertBoard = ActiveAlertBoard()
 
     /** FCM token registration + topic subscription, a no-op without Firebase. */
     val pushRegistrar: PushRegistrar by lazy {

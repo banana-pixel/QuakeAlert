@@ -14,7 +14,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import id.web.quakealert.R
 import id.web.quakealert.data.AppSettingsRepository
+import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.intensityValueLabel
+import id.web.quakealert.domain.ActiveAlertBoard
 import id.web.quakealert.domain.AlertDecision
 import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
@@ -36,30 +38,25 @@ import kotlin.math.roundToInt
 object WarningNotifier {
 
     const val CHANNEL_ID = "quakealert_emergency_alerts"
-    private const val NOTIFICATION_ID = 4301
     private const val TAG = "WarningNotifier"
 
     /**
-     * The event_id of the notification currently posted, or blank when nothing is shown.
-     *
-     * Used by [clear] to guard against a stand-down for Event B clearing the notification
-     * that was posted for Event A. Volatile so writes from any thread are immediately
-     * visible to callers on other threads (same guarantee as AlertDedup's revision field).
-     *
-     * Blank is the correct sentinel: the server guarantees event_id is a non-blank UUID
-     * for every Phase-3 frame, and pre-Phase-3 frames that carry no id arrive as blank
-     * strings — the legacy behaviour (unconditional clear) is preserved when either side
-     * is blank.
+     * Per-event live state lives on the shared coexistence board
+     * ([QuakeNetwork.activeAlerts]), not here: one object-level event_id cannot
+     * represent concurrent quakes. This object stays a stateless poster —
+     * notification ids are allocated from the board's deterministic pool.
      */
-    @Volatile
-    private var activeEventId: String = ""
 
     /**
-     * Returns the event_id of the notification currently posted by this object.
-     * Blank when no notification is active. Used by tests and by [WarningActivity]'s
-     * stand-down observer to compare without exposing the mutable field.
+     * The event_id selected for display, or blank when nothing is live.
+     *
+     * Backed by the shared coexistence board ([QuakeNetwork.activeAlerts]):
+     * with several events live this is the newest sounding one, not the only
+     * one. Used by tests and stand-down observers that only need to know
+     * *whether* something is displayed without enumerating the board.
      */
-    fun activeNotificationEventId(): String = activeEventId
+    fun activeNotificationEventId(context: Context): String =
+        QuakeNetwork.from(context).activeAlerts.selectedId() ?: ""
 
     /** Registers the emergency channel. Safe to call repeatedly. */
     fun ensureChannel(context: Context) {
@@ -106,17 +103,35 @@ object WarningNotifier {
             return false
         }
 
+        val board = QuakeNetwork.from(context).activeAlerts
+        // Coexistence (D-020): register first so the slot exists even if the
+        // post below throws; a posted-then-unknown id would be un-clearable.
+        val slot = board.upsert(message.eventId, sounded = false)
+        for (evictedId in slot.cancelNotificationIds) {
+            NotificationManagerCompat.from(context).cancel(evictedId)
+        }
+        if (slot.collapsedId != null) {
+            android.util.Log.i(TAG, RaiseOutcomeLog.collapsedIntoCount(slot.collapsedId))
+        }
+        if (slot.supersededIds.isNotEmpty()) {
+            android.util.Log.i(
+                TAG,
+                RaiseOutcomeLog.superseded(message.eventId, slot.supersededIds)
+            )
+        }
+
         val distanceKm = decision.distanceKm?.roundToInt()
         val fullScreen = PendingIntent.getActivity(
             context,
-            NOTIFICATION_ID,
+            slot.notificationId,
             WarningActivity.intent(
                 context = context,
                 eventId = message.eventId,
                 intensityValue = message.intensityValueLabel(),
                 locationName = message.locationName,
                 distanceKm = distanceKm,
-                isTest = message.isTest
+                isTest = message.isTest,
+                activeCount = board.extraActiveCount()
             ),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -143,13 +158,10 @@ object WarningNotifier {
             Log.w(TAG, "full-screen intents not permitted; falling back to heads-up")
         }
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        NotificationManagerCompat.from(context).notify(slot.notificationId, builder.build())
         // Success posts a line too (D-019, U-013): the failure branch below is
         // not the only observable outcome. event_id and outcome only.
         android.util.Log.i(TAG, RaiseOutcomeLog.notificationPosted(message.eventId))
-        // Track which event_id is currently displayed so clear() can guard against
-        // a stand-down for a different event removing this notification.
-        activeEventId = message.eventId
         // Remember what was shown, for the status notification's "Last alert" line. Here
         // and not on arrival: the claim it feeds is that the app has alerted this user,
         // and an alert filtered out by the distance gate or dropped by the OS never did.
@@ -161,27 +173,57 @@ object WarningNotifier {
     }
 
     /**
-     * Clears the emergency notification on `EVENT_RESOLVED`, but only when the
-     * stand-down belongs to the event currently displayed.
+     * Clears the emergency notification(s) on `EVENT_RESOLVED`, strictly by
+     * event identity (D-020): the resolved event's own notification id is
+     * cancelled and its board slot released, so one event's all-clear can
+     * never remove another's.
+     *
+     * Returns what was removed, so renderers (the ViewModel screen, the
+     * Activity) can promote survivors without re-sounding them. Callers that
+     * only fire and forget (push service, bridge) ignore the result.
      *
      * @param standDownEventId the event_id carried by the resolved/cancelled frame.
-     *   Blank (pre-Phase-3 frames, or callers that do not have an id) always clears
-     *   unconditionally, preserving the original behaviour.
+     *   Blank (pre-Phase-3 frames, or callers that do not have an id) clears
+     *   only when exactly one event is live; with zero or several live it is
+     *   ignored and logged, since an unscoped clear cannot know what to remove.
      */
-    fun clear(context: Context, standDownEventId: String = "") {
-        // Guard: if both sides are non-blank and they disagree, the stand-down is for
-        // a different event. Do nothing — the active notification stays.
-        if (standDownEventId.isNotBlank() && activeEventId.isNotBlank()
-            && standDownEventId != activeEventId
-        ) {
-            Log.d(
-                TAG,
-                "stand-down for $standDownEventId ignored; active notification is for $activeEventId"
-            )
-            return
+    fun clear(
+        context: Context,
+        standDownEventId: String = ""
+    ): ActiveAlertBoard.StandDownResult {
+        val board = QuakeNetwork.from(context).activeAlerts
+        if (standDownEventId.isBlank()) {
+            return when (val single = board.standDownBlank()) {
+                is ActiveAlertBoard.BlankStandDown.NoneActive ->
+                    ActiveAlertBoard.StandDownResult(emptyList(), board.selectedId(), false)
+                is ActiveAlertBoard.BlankStandDown.ClearedSingle -> {
+                    single.notificationId?.let {
+                        NotificationManagerCompat.from(context).cancel(it)
+                    }
+                    ActiveAlertBoard.StandDownResult(
+                        listOfNotNull(single.notificationId),
+                        board.selectedId(),
+                        removedAny = true
+                    )
+                }
+                is ActiveAlertBoard.BlankStandDown.IgnoredAmbiguous -> {
+                    Log.d(TAG, "blank stand-down ignored; several events live")
+                    ActiveAlertBoard.StandDownResult(
+                        emptyList(),
+                        board.selectedId(),
+                        removedAny = false
+                    )
+                }
+            }
         }
-        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
-        activeEventId = ""
+        val result = board.standDown(standDownEventId)
+        for (nid in result.cancelledNotificationIds) {
+            NotificationManagerCompat.from(context).cancel(nid)
+        }
+        if (result.promotedId != null && result.removedAny) {
+            Log.i(TAG, RaiseOutcomeLog.promotedSilent(result.promotedId))
+        }
+        return result
     }
 
     /**

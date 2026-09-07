@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import id.web.quakealert.device.AlertSiren
 import id.web.quakealert.device.TorchController
+import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.domain.AlertType
 import id.web.quakealert.ui.theme.Dimens
@@ -88,36 +89,69 @@ class WarningActivity : ComponentActivity() {
     /**
      * A second alert while this screen is up (`launchMode="singleTop"`).
      *
-     * A duplicate of the *same* event keeps the user's mute — silencing a siren must
-     * not be undone by a redelivery of the alert that was silenced. A different
-     * event id is a new quake and starts audible again.
+     * Coexistence (D-020, U-011): the new event registers on the shared board
+     * and takes focus with its count; older live events are untouched. Mute
+     * stays per event on the shared map, so a duplicate of the *same* event
+     * keeps the user's mute — silencing a siren must not be undone by a
+     * redelivery of the alert that was silenced — while a different event id
+     * is a new quake and starts audible again. No second Activity is created.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val board = QuakeNetwork.from(applicationContext).activeAlerts
         val next = intent.toActiveAlert()
+        if (next.eventId.isNotBlank()) {
+            val slot = board.upsert(next.eventId, sounded = true)
+            if (slot.collapsedId != null) {
+                android.util.Log.i(TAG, RaiseOutcomeLog.collapsedIntoCount(slot.collapsedId))
+            }
+            if (slot.supersededIds.isNotEmpty()) {
+                android.util.Log.i(TAG, RaiseOutcomeLog.superseded(next.eventId, slot.supersededIds))
+            }
+        }
         val sameEvent = next.eventId.isNotBlank() && next.eventId == state.eventId
         state = next.copy(
-            isMuted = if (sameEvent) state.isMuted else false,
+            // Mute is per event on the shared map: a mute set on the in-app
+            // card and a duplicate arriving here never disagree. A new quake
+            // reads the map (false unless muted elsewhere first).
+            isMuted = if (sameEvent) state.isMuted || board.isMuted(next.eventId)
+                else board.isMuted(next.eventId),
             isSosLightOn = state.isSosLightOn,
-            isSosLightUnavailable = state.isSosLightUnavailable
+            isSosLightUnavailable = state.isSosLightUnavailable,
+            extraActiveCount = board.extraActiveCount()
         )
         if (!state.isMuted) siren.start()
     }
 
     /**
-     * Closes the screen when the server sends the all-clear for this event.
+     * Closes the screen when the server sends the all-clear for the event it
+     * shows — and only then (D-020).
      *
      * Collecting the socket here also connects it, which is the point: a device woken
      * by push has no live connection, and without one the red screen would have no
      * way to ever learn the shaking is over except the user dismissing it.
+     *
+     * Event scoping: a resolve for another live event must not close this
+     * screen, and a blank-id legacy resolve closes it only when it is the
+     * single live event — otherwise an unscoped all-clear could take down the
+     * wrong quake's alarm.
      */
     private fun observeStandDown() {
         lifecycleScope.launch {
             QuakeNetwork.from(applicationContext).webSocketClient.alerts.collect { message ->
-                val resolvesThis = message.type == AlertType.EVENT_RESOLVED &&
-                    (message.eventId.isBlank() || message.eventId == state.eventId)
-                if (resolvesThis) finish()
+                if (message.type != AlertType.EVENT_RESOLVED) return@collect
+                val board = QuakeNetwork.from(applicationContext).activeAlerts
+                val resolvesThis = message.eventId.isNotBlank() && message.eventId == state.eventId
+                val resolvesSingle = message.eventId.isBlank() && board.totalActive() <= 1 &&
+                    (board.selectedId() == null || board.selectedId() == state.eventId)
+                if (resolvesThis || resolvesSingle) finish()
+                else if (message.eventId.isBlank()) {
+                    android.util.Log.d(
+                        TAG,
+                        "blank stand-down ignored; several events live"
+                    )
+                }
             }
         }
     }
@@ -125,6 +159,9 @@ class WarningActivity : ComponentActivity() {
     private fun onMuteClick() {
         val muted = !state.isMuted
         if (muted) siren.mute() else siren.unmute()
+        if (state.eventId.isNotBlank()) {
+            QuakeNetwork.from(applicationContext).activeAlerts.setMuted(state.eventId, muted)
+        }
         state = state.copy(isMuted = muted)
     }
 
@@ -172,15 +209,20 @@ class WarningActivity : ComponentActivity() {
         // Defaults to false, so an intent built before this extra existed — or one
         // forged by anything else on the device — raises an ordinary alert rather
         // than a screen that tells the user to ignore it.
-        isTest = getBooleanExtra(EXTRA_IS_TEST, false)
+        isTest = getBooleanExtra(EXTRA_IS_TEST, false),
+        // Coexisting live events beyond the one shown (D-020); 0 preserves the
+        // single-event card exactly.
+        extraActiveCount = getIntExtra(EXTRA_ACTIVE_COUNT, 0).coerceAtLeast(0)
     )
 
     companion object {
+        private const val TAG = "WarningActivity"
         private const val EXTRA_EVENT_ID = "event_id"
         private const val EXTRA_INTENSITY = "intensity_value"
         private const val EXTRA_DISTANCE_KM = "distance_km"
         private const val EXTRA_LOCATION_NAME = "location_name"
         private const val EXTRA_IS_TEST = "is_test"
+        private const val EXTRA_ACTIVE_COUNT = "active_count"
         private const val UNKNOWN_DISTANCE = -1
 
         /**
@@ -199,7 +241,8 @@ class WarningActivity : ComponentActivity() {
             intensityValue: String,
             locationName: String,
             distanceKm: Int?,
-            isTest: Boolean = false
+            isTest: Boolean = false,
+            activeCount: Int = 0
         ): Intent = Intent(context, WarningActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra(EXTRA_EVENT_ID, eventId)
@@ -207,6 +250,7 @@ class WarningActivity : ComponentActivity() {
             putExtra(EXTRA_LOCATION_NAME, locationName)
             putExtra(EXTRA_DISTANCE_KM, distanceKm ?: UNKNOWN_DISTANCE)
             putExtra(EXTRA_IS_TEST, isTest)
+            putExtra(EXTRA_ACTIVE_COUNT, activeCount.coerceAtLeast(0))
         }
     }
 }

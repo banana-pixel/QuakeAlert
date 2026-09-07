@@ -397,6 +397,12 @@ sealed interface WarningUiState {
         val isMuted: Boolean = false,
         val isSosLightOn: Boolean = false,
         val isSosLightUnavailable: Boolean = false,
+        /**
+         * Live events beyond the one shown, if any (D-020, U-011): other full
+         * entries plus collapsed identities. Rendered as "+N more active";
+         * 0 keeps the card byte-identical to its single-event shape.
+         */
+        val extraActiveCount: Int = 0,
         override val unitSystem: UnitSystem = UnitSystem.METRIC
     ) : WarningUiState {
 
