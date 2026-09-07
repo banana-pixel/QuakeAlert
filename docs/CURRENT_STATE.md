@@ -573,12 +573,10 @@ not a Phase 4 failure.
 - `docs/CHAT_DESIGN.md` versus `docs/GAP_ANALYSIS.md` disagree on whether chat
   is in scope (**U-005**).
 - The 503 body of both admin tracker endpoints returns `code: TRACKER_DISABLED`
-  (`server/internal/api/admin.go:297,309`), a value absent from the `Error.code`
-  enum in `contracts/openapi/openapi.yaml`. **Pre-existing and unrelated to Phase
-  4:** introduced by `1ad1777` with the Phase 3.x stats endpoint, found during
-  P4-M2′ validation on 2026-09-03, deliberately left unfixed because it lies
-  outside D-012's scope. Either the enum gains the value or the handler uses an
-  existing one; that is a Phase 3.x decision, not a Phase 4 one.
+  (`server/internal/api/admin.go:349,366`), now present in the `Error.code`
+  enum in `contracts/openapi/openapi.yaml` — **closed 2026-09-07 (release
+  hardening, owner-approved best-practice: additive enum, backward-compatible).**
+  Previously pre-existing Phase 3.x gap found during P4-M2′ validation.
 - The `internal/store` and `internal/event` test packages share one database and
   run concurrently by default, so `TestMigration000006DownRestoresSchema` and
   `TestMigration000009DownRestoresSchema` (which drop tables) race

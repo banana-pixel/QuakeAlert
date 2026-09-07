@@ -94,6 +94,17 @@
       "minimum": 1,
       "description": "Jumlah sel geografis independen yang menyumbang bukti. Menjawab MENGAPA sebuah event terkonfirmasi atau tidak: tiga sensor di satu meja bukan tiga bukti, jadi CONFIRMED menuntut lebih dari satu sel.",
       "examples": [3]
+    },
+    "is_test": {
+      "type": "string",
+      "enum": ["true"],
+      "description": "Hanya hadir dan bernilai \"true\" pada pesan latihan (drill). TIDAK pernah hadir pada peringatan sungguhan — ketiadaan berarti real. Disamakan dengan contracts/fcm/alert_payload.json agar satu model parse berlaku semua kanal."
+    },
+    "validity_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Masa berlaku frame yang dinyatakan PENGIRIM (D-018, U-010) sebagai durasi milidetik. Klien TIDAK BOLEH membunyikan frame yang umurnya melebihi durasi ini. OPSIONAL dan aditif: ketiadaan berarti jendela legacy klien, TIDAK PERNAH dibaca sebagai kedaluwarsa. Disamakan dengan contracts/fcm/alert_payload.json (di sana string desimal karena batasan FCM; di sini integer).",
+      "examples": [90000]
     }
   },
   "examples": [
