@@ -926,6 +926,12 @@ per event_id.
 
 ---
 
+### Governance correction G1 (owner-approved 2026-09-07; nothing above is rewritten)
+Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read as
+"U-001 … U-009 remain unresolved; U-010 … U-013 see D-017 … D-020": U-010 answered
+by D-018, U-011 by D-020, U-012 presentation by D-017, U-013 RESOLVED by D-019.
+U-001 … U-009 stay open and must not be resolved by implementation.
+
 ## Unresolved questions
 
 **Do not resolve any of these by implementation.** Each requires an explicit

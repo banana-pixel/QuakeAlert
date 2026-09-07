@@ -1,18 +1,11 @@
 # ROADMAP.md
 
-> ## ACTIVE PHASE: **Phase 4 — Self-Measurement & Forensics** — status `IN_PROGRESS`
-> Scope approved by the owner 2026-09-01 as acceptance criteria **P4-M1′ … P4-M6′**
-> (see § Phase 4 below, and D-011 in `docs/DECISIONS.md`). Work is bounded to those
-> six criteria: instrumentation and read-only forensics on a **one-node** fleet.
-> Nothing outside them is in scope, and no threshold, quorum, radius, contract,
-> event semantic, or notification policy changes under this phase.
+> ## ACTIVE PHASE: **none — Phase 4 closed `VALIDATED`, next phase pending owner scope**
+> Phase 4 scope was P4-M1′ … P4-M6′ (D-011). All six are owner-approved
+> SATISFIED/`VALIDATED`; closeout signed by the owner 2026-09-07 (gate G1).
+> No phase is `IN_PROGRESS` until the owner scopes the release-hardening phase.
 
 Baseline commit: `211f3cd`. Authority: see `PROJECT_RULES.md` §5.
-
-> NOTE (pending owner-gate G1): P4-M1′…P4-M6′ evidence is complete (6/6 owner-approved
-> SATISFIED/`VALIDATED` per § Phase 4). Status stays `IN_PROGRESS` until the owner
-> signs the Phase 4 closeout — the implementing agent does not grant `VALIDATED`
-> (`PROJECT_RULES.md` §8/§9).
 
 ---
 
@@ -53,7 +46,7 @@ evidence, no feature), `RELEASE` (produces a verified deployed state),
 | 2 — Consensus engine | ENGINEERING | `SUPERSEDED` by Phase 3 | 1 | met, superseded |
 | 3 — Event architecture | ENGINEERING | `IMPLEMENTED` (`9752c5e`) | 1, 2 | see below |
 | 3.x — Global spatial hardening + observability | ENGINEERING | `IMPLEMENTED` (`1ad1777`) | 3 | see below |
-| 4 — Self-measurement & forensics | VALIDATION | `IN_PROGRESS` | 3.x | P4-M1′…P4-M6′, see below |
+| 4 — Self-measurement & forensics | VALIDATION | `VALIDATED` (owner closeout 2026-09-07, gate G1) | 3.x | P4-M1′…P4-M6′, see below |
 | F — Field validation | VALIDATION | `BLOCKED` | 3.x | see below |
 
 ### Phase 1 — Observation ledger & ingest — `RELEASED`
