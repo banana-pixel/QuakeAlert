@@ -1,0 +1,8 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+{"entries":[],"coverage":{"process_started_at_ms":1788810371067,"as_of_ms":1788810472751,"durable_read_attempted":true,"durable_read_ok":true,"durable_read_at_ms":1788810371071,"durable_rows_loaded":0,"entries_recorded_in_process":0,"entries_loaded_from_durable":0,"algo_ver":"phase3-1.1/ic=5","min_independent_cells":2}}
+
+706799a feat(deploy): verify-000009.sh cek baca-saja pre/post migrasi D-012
+total 88
+-rw-r--r--. 1 opc opc 88467 Sep  7 19:44 backup-pre000009-20260907T194429Z.sql

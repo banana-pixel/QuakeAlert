@@ -1,0 +1,20 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+9
+---TABLE---
+0
+---OBS---
+53
+---BOOT---
+{"time":"2026-09-07T19:46:11.094940796Z","level":"INFO","msg":"event tracker aktif (Fase 3)","correlation_window":20000000000,"attach_radius_km":50,"independence_cell_km":5,"min_independent_cells":2,"resolve_after":90000000000,"sweep_interval":5000000000}
+{"time":"2026-09-07T19:46:11.17014138Z","level":"INFO","msg":"terhubung ke broker mqtt","broker":"tls://broker.quakealert.web.id:8883"}
+{"time":"2026-09-07T19:46:11.176456636Z","level":"INFO","msg":"http server listen","addr":":8080"}
+---CONTAINERS---
+quakealert-server Up About a minute
+quakealert-caddy Up 13 days
+quakealert-mosquitto Up 13 days (healthy)
+quakealert-postgis Up 13 days (healthy)
+quakealert-redis Up 13 days (healthy)
+---MIGRATE_EXIT---
+0

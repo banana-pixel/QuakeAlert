@@ -1,0 +1,30 @@
+# G4 — Deploy 000009 ke produksi (2026-09-07)
+
+Target: rilis terbatas 1-node, gate unchanged (owner-approved 2026-09-07).
+Eksekutor: agen via SSH opc@100.91.154.117 atas otorisasi owner eksplisit.
+
+Urut yang dijalankan di VPS (/opt/quakealert):
+1. Backup: ~/backups/backup-pre000009-20260907T194429Z.sql (88.467 byte).
+   Pre: schema_migrations = [8], event_near_confirmed ABSENT,
+   sensor_observations = 53.
+2. Checkout ca8262b (detached, +1 baris lokal compose) -> 706799a.
+   Mod lokal 1 baris terserap versi baru (patch cadangan di VPS
+   /tmp/compose-local-1line.patch). .env.prod tak tersentuh git (ignored).
+   File stray (canary_main.go, decrypttmp.go) dibiarkan; image hanya
+   membangun ./cmd/quakealert sehingga tak berpengaruh.
+3. .env.prod: backup .env.prod.bak-20260907-pre000009, tambah
+   CORRELATION_WINDOW_MS=20000 (EVENT_TRACKER_ENABLED=true sudah ada).
+   Mengakhiri jebakan fallback 8s via CONSENSUS_WINDOW_MS.
+4. `compose config -q` OK lalu `up -d --build`. migrate exit 0.
+5. Post: schema_migrations = [9], tabel ada + 8 kolom D-012 OK, 0 baris
+   (kosong = valid di 1 node, S2). Boot log: tracker aktif
+   correlation_window=20000000000 (20ms*1e6 = 20s, eksplisit, tanpa warning),
+   MQTT TLS terhubung, HTTP listen. `warn` di boot log: 0 baris.
+6. Live: GET /admin/tracker/near-confirmed -> entries=[] + coverage
+   durable_read_ok=true, durable_rows_loaded=0 — honest-empty P4-M2′ kini
+   berlaku di produksi (lihat vps_post_checks2.txt).
+7. Publik: /healthz ok, /api/v1/events 6 baris (tidak berubah).
+
+Batasan: backup SQL tetap di VPS (tidak masuk repo); yang diarsipkan di sini
+hanya output baca-saja. Tidak ada secret di bundle ini (ADMIN_API_KEY hanya
+dipakai di dalam perintah VPS, tak pernah dicetak).
