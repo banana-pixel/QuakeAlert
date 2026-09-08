@@ -68,7 +68,6 @@ fun UpdatesModalDialog(
         )
     }
 }
-}
 
 /**
  * Stateless Updates card: the shared [QuakeModalHeader] over one of the three

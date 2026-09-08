@@ -47,7 +47,9 @@ data class AddSensorStrings(
     val discard: String,
     val keepGoing: String,
     val findingLocation: String,
-    val tapSyncHint: String
+    val tapSyncHint: String,
+    val syncingLocation: String,
+    val syncLocationNow: String
 )
 
 private fun addSensorStringsEn(): AddSensorStrings = AddSensorStrings(
@@ -101,7 +103,9 @@ private fun addSensorStringsEn(): AddSensorStrings = AddSensorStrings(
     discard = "Discard",
     keepGoing = "Keep going",
     findingLocation = "Finding your location...",
-    tapSyncHint = "Tap sync to put your location on the map."
+    tapSyncHint = "Tap sync to put your location on the map.",
+    syncingLocation = "Syncing location",
+    syncLocationNow = "Sync location now"
 )
 
 private fun addSensorStringsId(): AddSensorStrings = AddSensorStrings(
@@ -155,7 +159,9 @@ private fun addSensorStringsId(): AddSensorStrings = AddSensorStrings(
     discard = "Buang",
     keepGoing = "Lanjutkan",
     findingLocation = "Mencari lokasi Anda...",
-    tapSyncHint = "Ketuk sinkron untuk menaruh lokasi Anda di peta."
+    tapSyncHint = "Ketuk sinkron untuk menaruh lokasi Anda di peta.",
+    syncingLocation = "Menyinkronkan lokasi",
+    syncLocationNow = "Sinkronkan lokasi sekarang"
 )
 
 internal fun addSensorStrings(lang: DisplayLanguage): AddSensorStrings =

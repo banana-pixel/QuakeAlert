@@ -1,5 +1,7 @@
 package id.web.quakealert.domain
 
+import id.web.quakealert.data.network.mapper.QuakeFormat
+import java.time.Instant
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -21,8 +23,21 @@ class DisplayLanguageTest {
     }
 
     @Test
-    fun `unknown tag falls back to English, never mixed`() {
-        assertEquals(DisplayLanguage.EN, resolveDisplayLanguage("xx", Locale("in")))
+    fun `unknown tag defers to system, English only as last resort`() {
+        assertEquals(DisplayLanguage.EN, resolveDisplayLanguage("xx", Locale.US))
+        assertEquals(DisplayLanguage.ID, resolveDisplayLanguage("xx", Locale("in")))
         assertNull(DisplayLanguage.fromTagOrNull("xx"))
+    }
+
+    @Test
+    fun `both Indonesian ISO codes are recognised`() {
+        // Android reports `in` (legacy); the JDK normalizes Locale("in") to `id`.
+        // Either spelling must resolve Indonesian — comparing one spelling only
+        // silently breaks on the other platform.
+        assertEquals(DisplayLanguage.ID, resolveDisplayLanguage(null, Locale("in")))
+        assertEquals(DisplayLanguage.ID, resolveDisplayLanguage(null, Locale("id")))
+        assertEquals("baru saja", QuakeFormat.relativeTime(
+            Instant.EPOCH, Instant.EPOCH, Locale("id")
+        ))
     }
 }

@@ -111,6 +111,7 @@ fun TestAlertSoundDialog(
             onStart = playback::start,
             onStop = playback::stop,
             onDismiss = onDismissRequest,
+            lang = lang,
             modifier = modifier.padding(Dimens.ScreenHorizontalPadding)
         )
     }
@@ -135,6 +136,7 @@ fun TestAlertSoundCard(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
     remainingSeconds: Int = 0,
+    lang: DisplayLanguage = DisplayLanguage.EN,
     onDismiss: (() -> Unit)? = null
 ) {
     Column(

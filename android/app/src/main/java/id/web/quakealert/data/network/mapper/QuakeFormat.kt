@@ -1,5 +1,6 @@
 package id.web.quakealert.data.network.mapper
 
+import id.web.quakealert.domain.isIndonesian
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -164,7 +165,7 @@ internal object QuakeFormat {
         return "$amount $unitEn$plural ago"
     }
 
-    private fun isIndonesian(locale: Locale): Boolean = locale.language == "in"
+    private fun isIndonesian(locale: Locale): Boolean = locale.isIndonesian()
 
     private const val MINUTE = 60L
     private const val HOUR = 60 * MINUTE

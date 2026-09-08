@@ -237,6 +237,7 @@ fun OnboardingScreen(
                     onRequestBattery = requestBattery,
                     onTestAlert = fireTestAlert,
                     onTestAlertSound = { showTestAlertSound = true },
+                    strings = strings,
                     modifier = pageContentModifier
                 )
             }
@@ -322,7 +323,8 @@ fun OnboardingPageItem(
     onRequestBattery: () -> Unit,
     onTestAlert: () -> Unit,
     onTestAlertSound: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strings: OnboardingStrings = onboardingStrings(DisplayLanguage.EN)
 ) {
     Column(
         modifier = modifier.fillMaxSize(),

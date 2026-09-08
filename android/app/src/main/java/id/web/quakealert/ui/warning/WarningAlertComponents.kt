@@ -286,7 +286,7 @@ private fun SuggestedActionsBox(strings: WarningStrings, modifier: Modifier = Mo
 
         Row(
             modifier = Modifier
-                .widthIn(max = Dimens.SuggestedActionRowMaxWidth)
+                .widthIn(max = Dimens.SuggestedActionsRowMaxWidth)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.SuggestedActionCardGap)
         ) {
@@ -362,24 +362,6 @@ private fun EmergencyControls(
             sosOnLabel = sosOnLabel,
             sosLightLabel = sosLightLabel,
             noLightLabel = noLightLabel,
-            onClick = onSosLightClick
-        )
-    }
-}
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.EmergencyControlsGap),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        MuteControl(
-            isMuted = isMuted,
-            onClick = onMuteClick,
-            modifier = Modifier.weight(1f)
-        )
-
-        SosLightControl(
-            isOn = isSosLightOn,
-            isUnavailable = isSosLightUnavailable,
             onClick = onSosLightClick
         )
     }

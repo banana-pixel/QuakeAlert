@@ -125,7 +125,6 @@ fun AboutModalDialog(
         )
     }
 }
-}
 
 /**
  * Stateless About modal card (Figma node 4:668): a dark rounded surface filled

@@ -4,6 +4,7 @@ import id.web.quakealert.data.network.model.BroadcastDto
 import id.web.quakealert.data.network.model.BroadcastsResponseDto
 import id.web.quakealert.data.network.model.WsBroadcastMessageDto
 import id.web.quakealert.domain.OperatorUpdate
+import id.web.quakealert.domain.isIndonesian
 import id.web.quakealert.ui.updates.OperatorUpdateItem
 import java.time.Instant
 import java.util.Locale
@@ -95,7 +96,7 @@ fun OperatorUpdate.toUpdateItem(
     now: Instant = Instant.now(),
     locale: Locale = Locale.US
 ): OperatorUpdateItem {
-    val indonesian = locale.language == "in"
+    val indonesian = locale.isIndonesian()
     return OperatorUpdateItem(
         id = id,
         title = title.ifBlank { if (indonesian) "Pembaruan QuakeAlert" else "QuakeAlert update" },

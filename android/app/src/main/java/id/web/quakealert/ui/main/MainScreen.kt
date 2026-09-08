@@ -198,7 +198,8 @@ fun MainScreen(
         bottomBar = {
             QuakeBottomNavigation(
                 selected = selected,
-                onSelect = { selected = it }
+                onSelect = { selected = it },
+                lang = lang
             )
         }
     ) { innerPadding ->
@@ -301,7 +302,8 @@ fun MainScreen(
 fun QuakeBottomNavigation(
     selected: MainDestination,
     onSelect: (MainDestination) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Row(
         modifier = modifier

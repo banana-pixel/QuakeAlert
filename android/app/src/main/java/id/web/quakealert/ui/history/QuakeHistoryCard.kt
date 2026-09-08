@@ -100,6 +100,7 @@ fun QuakeHistoryCard(
             item = item,
             unitSystem = unitSystem,
             onShareClicked = onShareClicked,
+            lang = lang,
             modifier = Modifier.weight(1f)
         )
 
@@ -157,7 +158,8 @@ private fun DetailsColumn(
     item: QuakeHistoryItem,
     unitSystem: UnitSystem,
     onShareClicked: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Column(
         modifier = modifier.fillMaxHeight(),

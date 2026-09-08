@@ -61,11 +61,6 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         .map { resolveDisplayLanguage(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
 
-    /** Language user strings render in; screens collect this for components. */
-    val displayLang: StateFlow<DisplayLanguage> = repository.language
-        .map { resolveDisplayLanguage(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
-
     /**
      * When the refresh indicator was last raised, on the elapsed-realtime clock.
      * Read in [load]'s `finally` to work out whether it has been visible long enough

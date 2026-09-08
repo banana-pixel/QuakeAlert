@@ -7,6 +7,7 @@ import id.web.quakealert.data.network.model.WsChatMessageDto
 import id.web.quakealert.domain.ChatChannel
 import id.web.quakealert.domain.ChatChannelKind
 import id.web.quakealert.domain.ChatMessageEntry
+import id.web.quakealert.domain.isIndonesian
 import id.web.quakealert.ui.chat.ChatAuthor
 import id.web.quakealert.ui.chat.ChatDateSeparator
 import id.web.quakealert.ui.chat.ChatListItem
@@ -150,9 +151,9 @@ private fun ChatMessageEntry.toUiMessage(
     id = messageId,
     author = if (isOwn) ChatAuthor.ME else ChatAuthor.OTHER,
     senderName = if (isOwn) {
-        if (locale.language == "in") "Anda" else "You"
+        if (locale.isIndonesian()) "Anda" else "You"
     } else {
-        senderPseudonym.ifBlank { if (locale.language == "in") "Anonim" else "Anonymous" }
+        senderPseudonym.ifBlank { if (locale.isIndonesian()) "Anonim" else "Anonymous" }
     },
     body = body,
     time = QuakeFormat.chatTime(createdAt, zone),
@@ -169,7 +170,7 @@ private fun dayLabel(
     zone: ZoneId,
     locale: Locale = Locale.US
 ): String = when (day) {
-    today -> if (locale.language == "in") "Hari ini" else "Today"
-    today.minusDays(1) -> if (locale.language == "in") "Kemarin" else "Yesterday"
+    today -> if (locale.isIndonesian()) "Hari ini" else "Today"
+    today.minusDays(1) -> if (locale.isIndonesian()) "Kemarin" else "Yesterday"
     else -> QuakeFormat.date(day.atStartOfDay(zone).toInstant(), zone, locale)
 }

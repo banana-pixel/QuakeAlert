@@ -512,6 +512,7 @@ private fun LocationBody(
             editedName = state.locationName,
             latitude = latitude,
             longitude = longitude,
+            strings = strings,
             onNameChanged = onLocationNameChanged
         )
     }
@@ -585,6 +586,7 @@ private fun PlaceAndCoordinatesPanel(
     editedName: String,
     latitude: Double?,
     longitude: Double?,
+    strings: AddSensorStrings,
     onNameChanged: (String) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }

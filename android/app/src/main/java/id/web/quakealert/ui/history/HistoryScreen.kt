@@ -45,6 +45,7 @@ import id.web.quakealert.ui.common.QuakeFilterViewModel
 import id.web.quakealert.ui.common.QuakeNoDataState
 import id.web.quakealert.ui.common.QuakeNoPositionState
 import id.web.quakealert.ui.common.QuakeSkeletonList
+import id.web.quakealert.ui.common.StateStrings
 import id.web.quakealert.ui.common.fadingEdges
 import id.web.quakealert.ui.common.filterStrings
 import id.web.quakealert.ui.common.stateStrings

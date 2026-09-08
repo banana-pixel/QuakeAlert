@@ -39,4 +39,12 @@ enum class DisplayLanguage(val tag: String) {
  */
 fun resolveDisplayLanguage(overrideTag: String?, system: Locale = Locale.getDefault()): DisplayLanguage =
     DisplayLanguage.fromTagOrNull(overrideTag)
-        ?: if (system.language == DisplayLanguage.ID.tag) DisplayLanguage.ID else DisplayLanguage.EN
+        ?: if (system.isIndonesian()) DisplayLanguage.ID else DisplayLanguage.EN
+
+/**
+ * Whether this locale is Indonesian. Both ISO codes are accepted: Android
+ * reports `in` (legacy) on most devices while the JDK normalizes
+ * `Locale("in").language` to `id` — comparing against one spelling silently
+ * breaks on the other platform.
+ */
+fun Locale.isIndonesian(): Boolean = language == "in" || language == "id"
