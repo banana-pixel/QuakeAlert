@@ -58,6 +58,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.app.ServerHealthViewModel
 import androidx.compose.runtime.CompositionLocalProvider
 import id.web.quakealert.ui.chat.ChatRoute
@@ -93,7 +94,19 @@ enum class MainDestination(
     SENSORS(R.drawable.ic_nav_sensors, "Sensors"),
     WARNING(R.drawable.ic_nav_warning, "Warning"),
     CHAT(R.drawable.ic_nav_chat, "Chat"),
-    SETTINGS(R.drawable.ic_nav_settings, "Settings")
+    SETTINGS(R.drawable.ic_nav_settings, "Settings");
+
+    /** Bottom-navigation label in [lang]. Indonesian branch (B2). */
+    fun label(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) labelId() else label
+
+    private fun labelId(): String = when (this) {
+        HISTORY -> "Riwayat"
+        SENSORS -> "Sensor"
+        WARNING -> "Peringatan"
+        CHAT -> "Obrolan"
+        SETTINGS -> "Pengaturan"
+    }
 }
 
 /**
@@ -143,7 +156,8 @@ private val MainDestinationSaver: Saver<MainDestination, String> = Saver(
 fun MainScreen(
     modifier: Modifier = Modifier,
     onAddSensor: () -> Unit = {},
-    serverHealthViewModel: ServerHealthViewModel = viewModel()
+    serverHealthViewModel: ServerHealthViewModel = viewModel(),
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     var selected by rememberSaveable(stateSaver = MainDestinationSaver) {
         mutableStateOf(MainDestination.HISTORY)
@@ -312,6 +326,7 @@ fun QuakeBottomNavigation(
             NavItem(
                 destination = destination,
                 selected = destination == selected,
+                label = destination.label(lang),
                 onClick = { onSelect(destination) }
             )
         }
@@ -334,7 +349,8 @@ private fun NavItem(
     destination: MainDestination,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String = destination.label
 ) {
     // Captured under a distinct name: inside the semantics lambda a bare
     // `selected` would resolve to SemanticsPropertyReceiver.selected (whose getter
@@ -362,7 +378,7 @@ private fun NavItem(
         )
 
         Text(
-            text = destination.label,
+            text = label,
             style = MaterialTheme.typography.labelSmall,
             color = contentColor
         )

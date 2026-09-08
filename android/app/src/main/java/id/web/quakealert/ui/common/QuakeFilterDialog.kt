@@ -30,6 +30,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.data.network.QuakeApiClient
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.CardSubtitle
@@ -82,7 +83,8 @@ fun QuakeFilterDialog(
     onDismiss: () -> Unit,
     onApply: (QuakeFilterState) -> Unit,
     onReset: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -93,6 +95,7 @@ fun QuakeFilterDialog(
         // sections are conditional, and a per-criterion draft would need a branch
         // for every combination to assemble the result.
         var draft by remember(filter) { mutableStateOf(filter) }
+        val strings = remember(lang) { filterStrings(lang) }
 
         Column(
             modifier = modifier
@@ -105,13 +108,13 @@ fun QuakeFilterDialog(
                 .padding(Dimens.ModalPadding),
             verticalArrangement = Arrangement.spacedBy(Dimens.EventDetailSectionGap)
         ) {
-            QuakeModalHeader(onDismiss = onDismiss, title = "Filter")
+            QuakeModalHeader(onDismiss = onDismiss, title = strings.title)
 
-            if (FilterSection.INTENSITY in sections) FilterGroup(title = "Shaking Intensity") {
+            if (FilterSection.INTENSITY in sections) FilterGroup(title = strings.intensityGroup) {
                 QuakeIntensity.entries.forEach { option ->
                     FilterOptionRow(
-                        label = option.label,
-                        description = option.description,
+                        label = option.label(lang),
+                        description = option.description(lang),
                         selected = option == draft.intensity,
                         onClick = { draft = draft.copy(intensity = option) }
                     )
@@ -119,11 +122,10 @@ fun QuakeFilterDialog(
             }
 
             if (FilterSection.DISTANCE in sections) FilterGroup(
-                title = "Search Radius",
+                title = strings.radiusGroup,
                 // Said plainly and permanently, because the two radii are easy to
                 // conflate and only one of them is a safety guarantee.
-                note = "Applies to the \"Near\" pill only. Emergency alerts always use " +
-                    "a fixed ${SafetyPolicy.ALERT_RADIUS_KM} km radius and cannot be changed."
+                note = strings.radiusNote(SafetyPolicy.ALERT_RADIUS_KM)
             ) {
                 OptionPillRow(
                     labels = QuakeSearchRadius.entries.map { it.label(unitSystem) },
@@ -135,30 +137,30 @@ fun QuakeFilterDialog(
                     // above 500 km, so the Sensors tab would otherwise answer a
                     // different question than the one on screen.
                     Text(
-                        text = "Sensors are listed within " +
-                            "${unitSystem.formatDistance(QuakeApiClient.MAX_SENSOR_RANGE_KM)}. " +
-                            "That is the furthest that tab can search.",
+                        text = strings.sensorsWithin(
+                            unitSystem.formatDistance(QuakeApiClient.MAX_SENSOR_RANGE_KM)
+                        ),
                         style = CardSubtitle.copy(color = MmiOrange)
                     )
                 }
             }
 
-            if (FilterSection.TIME in sections) FilterGroup(title = "Time Range") {
+            if (FilterSection.TIME in sections) FilterGroup(title = strings.timeGroup) {
                 OptionPillRow(
-                    labels = QuakeTimeWindow.entries.map { it.label },
+                    labels = QuakeTimeWindow.entries.map { it.label(lang) },
                     selectedIndex = QuakeTimeWindow.entries.indexOf(draft.timeWindow),
                     onSelect = { draft = draft.copy(timeWindow = QuakeTimeWindow.entries[it]) }
                 )
             }
 
             if (FilterSection.STATION_STATUS in sections) FilterGroup(
-                title = "Station Status",
+                title = strings.stationGroup,
                 // An offline station is not noise to be hidden by default: it is a
                 // gap in the very coverage this tab reports, and the roll says so.
-                note = "Offline stations stay in the list unless you narrow it here."
+                note = strings.stationNote
             ) {
                 OptionPillRow(
-                    labels = QuakeStationStatus.entries.map { it.label },
+                    labels = QuakeStationStatus.entries.map { it.label(lang) },
                     selectedIndex = QuakeStationStatus.entries.indexOf(draft.stationStatus),
                     onSelect = {
                         draft = draft.copy(stationStatus = QuakeStationStatus.entries[it])
@@ -171,12 +173,12 @@ fun QuakeFilterDialog(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.FilterRowGap)
             ) {
                 FilterDialogAction(
-                    label = "Reset",
+                    label = strings.reset,
                     onClick = onReset,
                     modifier = Modifier.weight(1f)
                 )
                 FilterDialogAction(
-                    label = "Apply",
+                    label = strings.apply,
                     onClick = { onApply(draft) },
                     modifier = Modifier.weight(1f)
                 )

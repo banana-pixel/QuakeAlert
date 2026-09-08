@@ -2,6 +2,7 @@ package id.web.quakealert.ui.common
 
 import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.data.network.QuakeApiClient
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.SafetyPolicy
 import java.time.Duration
 import java.time.Instant
@@ -65,6 +66,25 @@ enum class QuakeStationStatus(val label: String, val emptyRollSubtitle: String) 
         ONLINE -> isOnline
         OFFLINE -> !isOnline
     }
+
+    /** Sheet copy in [lang]; Indonesian branches land in B2. */
+    fun label(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) labelId() else label
+
+    fun emptyRollSubtitle(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) emptyRollSubtitleId() else emptyRollSubtitle
+
+    private fun labelId(): String = when (this) {
+        ALL -> "Semua stasiun"
+        ONLINE -> "Hanya daring"
+        OFFLINE -> "Hanya luring"
+    }
+
+    private fun emptyRollSubtitleId(): String = when (this) {
+        ALL -> ""
+        ONLINE -> "Setiap stasiun di daerah ini sedang luring."
+        OFFLINE -> "Setiap stasiun di daerah ini sedang melapor."
+    }
 }
 
 /**
@@ -92,6 +112,27 @@ enum class QuakeIntensity(
     FELT("Felt (MMI IV+)", "Light shaking, noticed by most people indoors.", 4, "IV"),
     MODERATE("Moderate (MMI VI+)", "Enough to crack plaster and swing hanging objects.", 6, "VI"),
     SEVERE("Severe (MMI VII+)", "Damaging shaking; matches the alert override threshold.", 7, "VII");
+
+    /** Sheet copy in [lang]; Indonesian branches land in B2. */
+    fun label(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) labelId() else label
+
+    fun description(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) descriptionId() else description
+
+    private fun labelId(): String = when (this) {
+        ALL -> "Semua Intensitas"
+        FELT -> "Terasa (MMI IV+)"
+        MODERATE -> "Sedang (MMI VI+)"
+        SEVERE -> "Parah (MMI VII+)"
+    }
+
+    private fun descriptionId(): String = when (this) {
+        ALL -> "Semua yang direkam jaringan sensor."
+        FELT -> "Guncangan ringan, dirasakan kebanyakan orang di dalam ruangan."
+        MODERATE -> "Cukup untuk meretakkan plester dan mengayunkan benda gantung."
+        SEVERE -> "Guncangan merusak; sama dengan ambang ganti peringatan."
+    }
 
     /**
      * PGA floor in gal, or null when nothing should be filtered. Derived from
@@ -137,6 +178,17 @@ enum class QuakeTimeWindow(val label: String, val days: Int?) {
     /** Lower bound to send as `since`, or null when the archive is unbounded. */
     fun since(now: Instant = Instant.now()): Instant? =
         days?.let { now.minus(Duration.ofDays(it.toLong())) }
+
+    /** Sheet copy in [lang]; Indonesian branch lands in B2. */
+    fun label(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) labelId() else label
+
+    private fun labelId(): String = when (this) {
+        ALL -> "Kapan saja"
+        DAY -> "24 jam terakhir"
+        WEEK -> "7 hari terakhir"
+        MONTH -> "30 hari terakhir"
+    }
 }
 
 /**
@@ -237,22 +289,33 @@ data class QuakeFilterState(
      *
      * Returns null when nothing the screen applies is narrowing the query.
      */
-    fun summary(unitSystem: UnitSystem, sections: Set<FilterSection>): String? {
+    fun summary(
+        unitSystem: UnitSystem,
+        sections: Set<FilterSection>,
+        lang: DisplayLanguage = DisplayLanguage.EN
+    ): String? {
         if (!isNarrowed(sections)) return null
+        val indonesian = lang == DisplayLanguage.ID
         val parts = buildList {
             if (FilterSection.INTENSITY in sections && intensity != QuakeIntensity.ALL) {
-                add("at MMI ${intensity.roman}+")
+                add(if (indonesian) "pada MMI ${intensity.roman}+" else "at MMI ${intensity.roman}+")
             }
             if (FilterSection.DISTANCE in sections && mode == QuakeFilter.NEAR) {
-                add("within ${radius.label(unitSystem)}")
+                add(if (indonesian) "dalam ${radius.label(unitSystem)}" else "within ${radius.label(unitSystem)}")
             }
             if (FilterSection.TIME in sections && timeWindow != QuakeTimeWindow.ALL) {
-                add("in the ${timeWindow.label.lowercase()}")
+                add(
+                    if (indonesian) "dalam ${timeWindow.label(lang).lowercase()}"
+                    else "in the ${timeWindow.label.lowercase()}"
+                )
             }
             if (FilterSection.STATION_STATUS in sections &&
                 stationStatus != QuakeStationStatus.ALL
             ) {
-                add(stationStatus.label.lowercase())
+                add(
+                    if (indonesian) stationStatus.label(lang).lowercase()
+                    else stationStatus.label.lowercase()
+                )
             }
         }
         return parts.joinToString(" ")

@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -319,7 +320,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
                 )
             )
         }
-        return LoadOutcome.Emergency(latest.toActiveAlert(userLocation))
+        return LoadOutcome.Emergency(latest.toActiveAlert(userLocation, locale))
     }
 
     /**
@@ -376,10 +377,10 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
             // printing the page size as the count would understate a busy month.
             isCountCapped = events.size >= ACTIVITY_PAGE_LIMIT,
             mostRecent = newest?.let {
-                "${it.intensityValueLabel()}, ${QuakeFormat.relativeTime(it.createdAt, now, locale)}"
+                "${it.intensityValueLabel(locale)}, ${QuakeFormat.relativeTime(it.createdAt, now, locale)}"
             },
             strongest = strongest?.let {
-                "${it.intensityValueLabel()}, ${QuakeFormat.pga(it.pgaGal)}"
+                "${it.intensityValueLabel(locale)}, ${QuakeFormat.pga(it.pgaGal)}"
             },
             latitude = center.latitude,
             longitude = center.longitude
@@ -512,7 +513,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         // counted on the card rather than overwritten without a trace.
         val board = network.activeAlerts
         val slot = board.upsert(message.eventId, sounded = !alreadyRaised)
-        liveCards[message.eventId] = message.toActiveAlert(userLocation)
+        liveCards[message.eventId] = message.toActiveAlert(userLocation, locale)
         if (slot.collapsedId != null) {
             Log.i(TAG, RaiseOutcomeLog.collapsedIntoCount(slot.collapsedId))
         }
@@ -850,9 +851,9 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
             if (lang == DisplayLanguage.ID) sectionRestingId() else "Stay prepared for an earthquake"
 
         // Indonesian branches land in B2.
-        private fun titleActiveId(): String = titleActive(DisplayLanguage.EN)
-        private fun sectionActiveId(): String = sectionActive(DisplayLanguage.EN)
-        private fun sectionRestingId(): String = sectionResting(DisplayLanguage.EN)
+        private fun titleActiveId(): String = "Peringatan Gempa Terkini"
+        private fun sectionActiveId(): String = "Tetap waspada terhadap gempa susulan"
+        private fun sectionRestingId(): String = "Tetap siap menghadapi gempa bumi"
 
         /**
          * How many events one activity query may return. A page rather than a true
@@ -927,7 +928,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
             )
 
         // Indonesian branch lands in B2.
-        private fun advisoryTitleId(): String = "Possible Tremor Detected"
+        private fun advisoryTitleId(): String = "Kemungkinan Getaran Terdeteksi"
 
         /** Unresolved and inside the same window the realtime path uses. */
         fun EarthquakeEvent.isOngoing(nowMs: Long = System.currentTimeMillis()): Boolean =
@@ -939,19 +940,25 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
          * position is unknown, rather than the 0 the History card falls back to: "0 km
          * away" on a full-screen alert reads as *at the epicentre*.
          */
-        fun EarthquakeEvent.toActiveAlert(userLocation: UserLocation?) =
+        fun EarthquakeEvent.toActiveAlert(
+            userLocation: UserLocation?,
+            locale: Locale = Locale.US
+        ) =
             WarningUiState.ActiveAlert(
                 eventId = eventId,
-                intensityValue = intensityValueLabel(),
+                intensityValue = intensityValueLabel(locale),
                 distanceKm = userLocation.distanceKmTo(latitude, longitude)?.roundToInt(),
                 locationName = locationName
             )
 
         /** Realtime frame → emergency screen state. See the stored-event twin above. */
-        fun WsAlertMessage.toActiveAlert(userLocation: UserLocation?) =
+        fun WsAlertMessage.toActiveAlert(
+            userLocation: UserLocation?,
+            locale: Locale = Locale.US
+        ) =
             WarningUiState.ActiveAlert(
                 eventId = eventId,
-                intensityValue = intensityValueLabel(),
+                intensityValue = intensityValueLabel(locale),
                 distanceKm = userLocation.distanceKmTo(centroidLat, centroidLon)?.roundToInt(),
                 locationName = locationName,
                 isTest = isTest

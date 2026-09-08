@@ -103,20 +103,40 @@ internal object QuakeFormat {
         fallbackWord: String,
         locale: Locale = Locale.US
     ): String =
-        "${if (isIndonesian(locale)) "Intensitas" else "Intensity"} : ${intensityValue(mmi, label, fallbackWord)}"
+        "${if (isIndonesian(locale)) "Intensitas" else "Intensity"} : ${intensityValue(mmi, label, fallbackWord, locale)}"
 
     /**
-     * The bare intensity read, e.g. "IV (moderate)", for the active alert card
-     * (Figma node 1:1067) — which renders "Estimated Intensity :" as its own label
-     * line above the value and so must not carry the prefix.
+     * The bare intensity read, e.g. "IV (moderate)" / "IV (sedang)", for the active
+     * alert card (Figma node 1:1067) — which renders "Estimated Intensity :" as its
+     * own label line above the value and so must not carry the prefix.
      *
      * [intensityBanner] delegates here so the two screens can never drift into
-     * spelling the same intensity differently.
+     * spelling the same intensity differently. Server labels and the local
+     * severity fallback share one fixed English vocabulary (light/moderate/strong),
+     * mapped here so both read alike in Indonesian.
      */
-    fun intensityValue(mmi: String, label: String, fallbackWord: String): String {
-        val word = label.takeIf { it.isNotBlank() } ?: fallbackWord
+    fun intensityValue(
+        mmi: String,
+        label: String,
+        fallbackWord: String,
+        locale: Locale = Locale.US
+    ): String {
+        val word = (label.takeIf { it.isNotBlank() } ?: fallbackWord)
+            .let { if (isIndonesian(locale)) severityWordId(it) else it }
         val roman = mmi.takeIf { it.isNotBlank() } ?: UNAVAILABLE
         return "$roman (${word.lowercase(Locale.US)})"
+    }
+
+    /**
+     * Fixed severity vocabulary (server labels and local bucket names) in
+     * Indonesian. Unknown words pass through untouched rather than blanking a
+     * reading the card needs.
+     */
+    private fun severityWordId(word: String): String = when (word.lowercase(Locale.US)) {
+        "light" -> "ringan"
+        "moderate" -> "sedang"
+        "strong" -> "kuat"
+        else -> word
     }
 
     /**

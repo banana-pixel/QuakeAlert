@@ -34,9 +34,9 @@ class SensorMapOverviewTest {
 
     @Test
     fun `the count is its own token, pluralised`() {
-        assertEquals("4 sensors", overview.countLabel)
-        assertEquals("1 sensor", overview.copy(sensorCount = 1).countLabel)
-        assertEquals("0 sensors", overview.copy(sensorCount = 0).countLabel)
+        assertEquals("4 sensors", overview.countLabel())
+        assertEquals("1 sensor", overview.copy(sensorCount = 1).countLabel())
+        assertEquals("0 sensors", overview.copy(sensorCount = 0).countLabel())
     }
 
     @Test

@@ -14,6 +14,7 @@ import id.web.quakealert.domain.WsAlertMessage
 import id.web.quakealert.domain.resolveDisplayLanguage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Background delivery path for earthquake alerts.
@@ -68,7 +69,12 @@ class QuakeMessagingService : FirebaseMessagingService() {
         // (server/internal/dispatch/broadcast.go).
         val update = remoteMessage.data.toOperatorUpdateOrNull()
         if (update != null) {
-            UpdatesNotifier.notify(applicationContext, update)
+            // onMessageReceived runs on an FCM background thread (never the main
+            // thread), so a bounded first() read for the stored language is safe.
+            val lang = resolveDisplayLanguage(
+                runCatching { runBlocking { settings.language.first() } }.getOrNull()
+            )
+            UpdatesNotifier.notify(applicationContext, update, lang)
             return
         }
 

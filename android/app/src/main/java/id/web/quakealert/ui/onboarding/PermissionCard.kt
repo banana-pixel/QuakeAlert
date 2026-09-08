@@ -45,21 +45,26 @@ fun PermissionCard(
     isGranted: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    grantedLabel: String = "Allowed"
+    grantedLabel: String = "Allowed",
+    tapToAllowLabel: String = "Tap to allow"
 ) {
     QuakeCard(
         title = title,
         modifier = modifier,
         onClick = if (isGranted) null else onClick,
-        detail = { StatusBadge(isGranted = isGranted, grantedLabel = grantedLabel) }
+        detail = { StatusBadge(isGranted = isGranted, grantedLabel = grantedLabel, tapToAllowLabel = tapToAllowLabel) }
     )
 }
 
 @Composable
-private fun StatusBadge(isGranted: Boolean, grantedLabel: String) {
+private fun StatusBadge(
+    isGranted: Boolean,
+    grantedLabel: String,
+    tapToAllowLabel: String = "Tap to allow"
+) {
     val backgroundColor = if (isGranted) SuccessGreenTranslucent else OverlayLight
     val borderColor = if (isGranted) BorderFaint else BorderLight
-    val label = if (isGranted) grantedLabel else "Tap to allow"
+    val label = if (isGranted) grantedLabel else tapToAllowLabel
 
     Row(
         modifier = Modifier

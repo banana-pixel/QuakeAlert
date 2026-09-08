@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.ui.addsensor.AddSensorViewModel
 import id.web.quakealert.ui.addsensor.AddSensorWizardDialog
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.ui.main.MainScreen
 import id.web.quakealert.ui.onboarding.OnboardingScreen
 import id.web.quakealert.ui.theme.BackgroundGradientBottom
@@ -72,13 +73,16 @@ fun AppRoot(
                         // underneath so the wizard's scrim dims the screen the user
                         // launched it from, exactly like every other overlay here.
                         var showAddSensor by remember { mutableStateOf(false) }
+                        val appLang by viewModel.displayLang.collectAsStateWithLifecycle()
                         MainScreen(
                             modifier = Modifier.fillMaxSize(),
+                            lang = appLang,
                             onAddSensor = { showAddSensor = true }
                         )
                         if (showAddSensor) {
                             val wizard: AddSensorViewModel = viewModel()
                             val wizardState by wizard.state.collectAsStateWithLifecycle()
+                            val wizardLang by wizard.displayLang.collectAsStateWithLifecycle()
                             val dismissWizard = {
                                 showAddSensor = false
                                 // Activity scoped, so without this the next open
@@ -87,6 +91,7 @@ fun AppRoot(
                             }
                             AddSensorWizardDialog(
                                 state = wizardState,
+                                lang = wizardLang,
                                 onDismiss = dismissWizard,
                                 onStartClicked = wizard::onStartClicked,
                                 onSyncLocationClick = wizard::onSyncLocationClicked,
@@ -109,6 +114,9 @@ fun AppRoot(
                     } else {
                         OnboardingScreen(
                             modifier = Modifier.fillMaxSize(),
+                            // No preference exists yet pre-onboarding: the system
+                            // locale decides (best practice for a global app).
+                            lang = resolveDisplayLanguage(null),
                             onFinish = viewModel::completeOnboarding
                         )
                     }

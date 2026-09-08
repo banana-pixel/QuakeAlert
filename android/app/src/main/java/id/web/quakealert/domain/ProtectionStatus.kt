@@ -48,8 +48,14 @@ data class ProtectionStatus(
     fun headline(lang: DisplayLanguage = DisplayLanguage.EN): String =
         if (lang == DisplayLanguage.ID) headlineId() else headlineEn()
 
-    // Indonesian branch lands in B2.
-    private fun headlineId(): String = headlineEn()
+    // Indonesian branch (B2). Acuan: string sistem Android ("Pengaturan").
+    private fun headlineId(): String = when {
+        !notificationsPermitted -> "Peringatan diblokir oleh pengaturan sistem"
+        !alertsEnabled -> "Proteksi gempa bumi nonaktif"
+        lastSyncLabel == null -> "Memantau, tetapi lokasi Anda belum diatur"
+        !batteryUnrestricted -> "Memantau, tetapi peringatan bisa terlambat"
+        else -> "Proteksi gempa bumi aktif"
+    }
 
     private fun headlineEn(): String = when {
         !notificationsPermitted -> "Alerts blocked by system settings"
@@ -75,8 +81,31 @@ data class ProtectionStatus(
     fun lines(lang: DisplayLanguage = DisplayLanguage.EN): List<String> =
         if (lang == DisplayLanguage.ID) linesId() else linesEn()
 
-    // Indonesian branch lands in B2.
-    private fun linesId(): List<String> = linesEn()
+    // Indonesian branch (B2).
+    private fun linesId(): List<String> = buildList {
+        if (!notificationsPermitted) {
+            add("Notifikasi diblokir di pengaturan sistem, sehingga peringatan tidak dapat tiba.")
+        }
+        if (!alertsEnabled) add("Peringatan gempa bumi dimatikan. Nyalakan lagi di Pengaturan.")
+        if (lastSyncLabel == null) {
+            add(
+                if (autoSyncEnabled) {
+                    "Lokasi Anda belum tersinkron, sehingga peringatan tidak dapat dibidik."
+                } else {
+                    "Lokasi Anda belum tersinkron dan sinkron otomatis mati."
+                }
+            )
+        } else if (!autoSyncEnabled) {
+            add("Sinkron otomatis mati. Lokasi Anda dari $lastSyncLabel.")
+        }
+        if (!batteryUnrestricted) {
+            add("Optimasi baterai menyala, sehingga peringatan bisa tertahan.")
+        }
+        if (deliverable && lastSyncLabel != null && batteryUnrestricted) {
+            add("Memantau dalam $radiusLabel dari Anda.")
+        }
+        add(lastAlertLabel?.let { "Peringatan terakhir: $it" } ?: "Belum ada peringatan sejak Anda memasang QuakeAlert.")
+    }
 
     private fun linesEn(): List<String> = buildList {
             if (!notificationsPermitted) {

@@ -116,8 +116,8 @@ fun EarthquakeEvent.intensityBannerLabel(locale: Locale = Locale.US): String =
  * [id.web.quakealert.data.network.mapper.intensityValueLabel] on the realtime frame,
  * so a quake seeded from REST and the same quake pushed over the socket read alike.
  */
-fun EarthquakeEvent.intensityValueLabel(): String =
-    QuakeFormat.intensityValue(mmi = mmi, label = intensityLabel, fallbackWord = severity().name)
+fun EarthquakeEvent.intensityValueLabel(locale: Locale = Locale.US): String =
+    QuakeFormat.intensityValue(mmi = mmi, label = intensityLabel, fallbackWord = severity().name, locale = locale)
 
 
 /**

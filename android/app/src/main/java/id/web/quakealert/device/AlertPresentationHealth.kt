@@ -137,5 +137,23 @@ fun Set<PresentationDegradation>.warningCopy(lang: DisplayLanguage = DisplayLang
         "The locked-screen alarm path is unaffected."
 }
 
-// Indonesian branch lands in B2.
-private fun Set<PresentationDegradation>.warningCopyId(): String? = warningCopy(DisplayLanguage.EN)
+// Indonesian branch (B2). Acuan string sistem: "Pengaturan" (Settings >
+// Notifikasi).
+private fun Set<PresentationDegradation>.warningCopyId(): String? {
+    if (isEmpty()) return null
+    val causes = map {
+        when (it) {
+            PresentationDegradation.HEADS_UP_DISABLED_GLOBALLY ->
+                "notifikasi heads-up dimatikan di seluruh perangkat pada pengaturan sistem"
+            PresentationDegradation.CHANNEL_IMPORTANCE_LOWERED ->
+                "prioritas kanal Peringatan Darurat Gempa Bumi diturunkan di bawah Tinggi"
+            PresentationDegradation.CHANNEL_SILENT ->
+                "suara kanal Peringatan Darurat Gempa Bumi dimatikan"
+        }
+    }
+    return "Peringatan saat dipakai mungkin tidak muncul: " + causes.joinToString("; ") + ". " +
+        "Saat tidak dikunci, peringatan gempa tampil sebagai banner heads-up dengan sirene - " +
+        "banner itu tidak dapat muncul dalam kondisi ini. " +
+        "Perbaiki di Pengaturan sistem (Notifikasi), lalu periksa lagi di sini. " +
+        "Jalur alarm layar terkunci tidak terpengaruh."
+}

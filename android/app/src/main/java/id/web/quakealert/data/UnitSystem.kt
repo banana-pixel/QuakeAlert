@@ -1,5 +1,6 @@
 package id.web.quakealert.data
 
+import id.web.quakealert.domain.DisplayLanguage
 import kotlin.math.roundToInt
 
 /**
@@ -17,6 +18,15 @@ import kotlin.math.roundToInt
 enum class UnitSystem(val label: String, val distanceUnit: String) {
     METRIC("Metric", "km"),
     IMPERIAL("Imperial", "mi");
+
+    /** Segmented-control label in [lang]; units themselves never translate. */
+    fun label(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) labelId() else label
+
+    private fun labelId(): String = when (this) {
+        METRIC -> "Metrik"
+        IMPERIAL -> "Imperial"
+    }
 
     /** Converts a distance expressed in kilometres into this system's unit. */
     fun convertFromKm(km: Int): Int = when (this) {

@@ -45,15 +45,15 @@ object TestAlertNotifier {
         manager.createNotificationChannel(channel)
     }
 
-    // Indonesian branches land in B2.
-    private fun channelNameId(): String = "Earthquake Test Alerts"
-    private fun channelDescId(): String = "Test notifications used to verify the alert service."
+    // Indonesian branch (B2).
+    private fun channelNameId(): String = "Uji Peringatan Gempa Bumi"
+    private fun channelDescId(): String = "Notifikasi uji untuk memastikan layanan peringatan bekerja."
     private fun testTitle(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) testTitleId() else "QuakeAlert Test"
     private fun testBody(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) testBodyId() else "This is a test alert. The notification service is working!"
-    private fun testTitleId(): String = "QuakeAlert Test"
-    private fun testBodyId(): String = "This is a test alert. The notification service is working!"
+    private fun testTitleId(): String = "Uji QuakeAlert"
+    private fun testBodyId(): String = "Ini peringatan uji. Layanan notifikasi bekerja!"
 
     /**
      * Displays the test notification. Returns false when the runtime

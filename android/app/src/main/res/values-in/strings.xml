@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Salinan Bahasa Indonesia untuk overlay Emergency Steps & Contacts.
+  Acuan: booklet BMKG-JICA ("Lindungi diri Anda!", "Lindungi Kepala") dan
+  Buku Saku BPBD (berlindung di bawah meja, lindungi kepala dengan bantal,
+  segera keluar setelah aman). Struktur key 1:1 dengan values/strings.xml —
+  Android memilih file ini otomatis saat locale perangkat Indonesia.
+-->
+<resources>
+    <string name="app_name">QuakeAlert</string>
+
+    <string name="emergency_title">Langkah Darurat &amp; Kontak</string>
+
+    <string name="emergency_during_title">Saat tanah berguncang</string>
+    <string name="emergency_step_drop_title">1. Berlindung</string>
+    <string name="emergency_step_drop_detail">Segera berlindung di tempat yang aman sebelum guncangan menjatuhkan Anda. Tetap di tempat. Kebanyakan cedera terjadi pada orang yang berpindah ruangan atau lari ke luar.</string>
+    <string name="emergency_step_cover_title">2. Lindungi Kepala</string>
+    <string name="emergency_step_cover_detail">Lindungi kepala dan leher dengan satu lengan. Berlindung di bawah meja yang kokoh bila terjangkau, atau di dekat dinding dalam yang jauh dari jendela, cermin, dan benda tinggi.</string>
+    <string name="emergency_step_hold_title">3. Berpegangan</string>
+    <string name="emergency_step_hold_detail">Berpeganglah pada tempat berlindung dan tetap di sana sampai guncangan berhenti. Jika Anda di tempat tidur, tetap di sana dan lindungi kepala dengan bantal.</string>
+
+    <string name="emergency_after_title">Setelah guncangan berhenti</string>
+    <string name="emergency_after_aftershocks">Waspadai gempa susulan. Gempa berikutnya bisa tiba dalam hitungan detik dan cukup kuat untuk merobohkan yang sudah rusak, jadi jauhi apa pun yang sudah rusak.</string>
+    <string name="emergency_after_gas">Periksa kerusakan gas, air, dan listrik. Jika mencium bau gas, tutup katup, buka jendela, dan jangan sentuh saklar lampu.</string>
+    <string name="emergency_after_exit">Keluar hanya bila sudah aman bergerak, lewat tangga dan jangan pernah lift. Periksa rute keluar sebelum Anda melewatinya.</string>
+    <string name="emergency_after_injuries">Tolong siapa pun di dekat Anda yang tidak bisa bergerak sendiri sebelum Anda meninggalkan gedung.</string>
+
+    <string name="emergency_contacts_title">Nomor darurat</string>
+    <string name="emergency_contacts_note">112 berfungsi di semua jaringan GSM, dengan atau tanpa kartu SIM, dan diteruskan ke layanan darurat setempat. Nomor di bawahnya adalah nomor untuk negara tempat ponsel ini terhubung.</string>
+    <string name="emergency_dial_action">Hubungi %1$s</string>
+
+    <string name="emergency_position_title">Posisi terakhir Anda yang diketahui</string>
+    <string name="emergency_position_note">Bacakan koordinat ini kepada petugas bila Anda tidak bisa menjelaskan di mana Anda berada.</string>
+    <string name="emergency_position_unknown">Belum ada posisi yang tersinkron, jadi tidak ada koordinat untuk dibacakan. Sebutkan tengaran atau nama jalan sebagai gantinya.</string>
+
+    <string name="emergency_offline_note">Semua di layar ini tersimpan di ponsel dan tidak butuh koneksi.</string>
+</resources>

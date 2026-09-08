@@ -160,7 +160,10 @@ fun SettingsRoute(
 
     var showTestAlertSound by remember { mutableStateOf(false) }
     if (showTestAlertSound) {
-        TestAlertSoundDialog(onDismissRequest = { showTestAlertSound = false })
+        TestAlertSoundDialog(
+            onDismissRequest = { showTestAlertSound = false },
+            lang = uiState.language.toDisplay()
+        )
     }
 
     // The Updates overlay is hosted by MainScreen now — its glyph lives in every
@@ -301,12 +304,13 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState()
 ) {
+    val strings = remember(uiState.language) { settingsStrings(uiState.language.toDisplay()) }
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
-        QuakeAppBar(title = "Settings", health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
 
         Column(
             modifier = Modifier
@@ -328,10 +332,10 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.SettingsSectionSpacing)
         ) {
             // --- Location & Coverage --------------------------------------
-            CenteredSectionBadge(title = "Location & Coverage")
+            CenteredSectionBadge(title = strings.sectionLocation)
 
             QuakeCard(
-                title = "Sync Location Now",
+                title = strings.syncNow,
                 detail = {
                     QuakePill(text = uiState.lastSyncPillLabel(uiState.language.toDisplay()))
                     // The map moved inside this card (plan item 9): what a sync
@@ -374,11 +378,13 @@ fun SettingsScreen(
                 // map above it the moment the user tapped.
                 SyncRefreshButton(
                     onClick = onSyncLocationNow,
-                    isSyncing = uiState.isSyncing
+                    isSyncing = uiState.isSyncing,
+                    syncingLabel = strings.syncingLocation,
+                    idleLabel = strings.syncLocationNow
                 )
             }
 
-            QuakeCard(title = "Auto Sync Location") {
+            QuakeCard(title = strings.autoSync) {
                 QuakeSwitch(
                     checked = uiState.autoSyncLocation,
                     onCheckedChange = onAutoSyncToggled
@@ -386,15 +392,15 @@ fun SettingsScreen(
             }
 
             // --- Alert & Notification -------------------------------------
-            CenteredSectionBadge(title = "Alert & Notification")
+            CenteredSectionBadge(title = strings.sectionAlert)
 
             QuakeCard(
-                title = "Earthquake Alerts",
+                title = strings.alerts,
                 detail = {
                     // Only shown when the two disagree: the user asked for
                     // alerts and the OS is dropping them.
                     if (uiState.notificationsEnabled && !uiState.notificationPermissionGranted) {
-                        QuakePill(text = "Blocked by system settings")
+                        QuakePill(text = strings.blockedPill)
                     }
                 }
             ) {
@@ -421,11 +427,11 @@ fun SettingsScreen(
             // grant can be revoked in system settings months after onboarding, and
             // this is where the user comes to check.
             QuakeCard(
-                title = "Test Notification",
+                title = strings.testNotification,
                 onClick = onTestNotification,
                 detail = {
                     Text(
-                        text = "Sends one now, to check alerts reach your screen",
+                        text = strings.testNotificationDetail,
                         style = CardSubtitle,
                         color = TextSecondary
                     )
@@ -433,11 +439,11 @@ fun SettingsScreen(
             )
 
             QuakeCard(
-                title = "Test Alert Sound",
+                title = strings.testSound,
                 onClick = onTestAlertSound,
                 detail = {
                     Text(
-                        text = "Plays the siren, to check it is loud enough to wake you",
+                        text = strings.testSoundDetail,
                         style = CardSubtitle,
                         color = TextSecondary
                     )
@@ -449,10 +455,10 @@ fun SettingsScreen(
             // the question it answers ("is this thing still watching?") is one the app
             // otherwise never gets asked out loud.
             QuakeCard(
-                title = "Show Status in Notification Shade",
+                title = strings.showStatus,
                 detail = {
                     Text(
-                        text = "A silent, ongoing summary of whether alerts can reach you",
+                        text = strings.showStatusDetail,
                         style = CardSubtitle,
                         color = TextSecondary
                     )
@@ -465,14 +471,13 @@ fun SettingsScreen(
             }
 
             QuakeCard(
-                title = "Delivery Checklist",
+                title = strings.deliveryChecklist,
                 detail = {
                     QuakePill(
                         text = if (uiState.allPermissionsReady) {
-                            "All set: alerts can reach you"
+                            strings.allSet
                         } else {
-                            "${uiState.permissionsReadyCount} of " +
-                                "${uiState.permissionsTotal} ready"
+                            strings.readyCount(uiState.permissionsReadyCount, uiState.permissionsTotal)
                         }
                     )
                     PermissionsHubCardBody(
@@ -482,34 +487,42 @@ fun SettingsScreen(
                         onFixNotifications = onFixNotifications,
                         onFixLocation = onFixLocation,
                         onFixBattery = onBatterySettings,
+                        notificationsTitle = strings.permNotifications,
+                        locationTitle = strings.permLocation,
+                        backgroundTitle = strings.permBackground,
+                        allowedLabel = strings.allowed,
+                        unrestrictedLabel = strings.unrestricted,
+                        tapToAllowLabel = strings.tapToAllow,
                         modifier = Modifier.padding(top = Dimens.SettingCardTitleGap)
                     )
                 }
             )
 
             // --- Account & Privacy ----------------------------------------
-            CenteredSectionBadge(title = "Account & Privacy")
+            CenteredSectionBadge(title = strings.sectionAccount)
 
             QuakeCard(
-                title = "Anonymous Profile",
+                title = strings.anonymousProfile,
                 detail = {
                     IdentityRow(
-                        label = "Pseudonym",
+                        label = strings.pseudonym,
                         value = uiState.pseudonym,
-                        onCopy = onCopyValue
+                        onCopy = onCopyValue,
+                        notSignedInLabel = strings.notSignedIn
                     )
                     IdentityRow(
-                        label = "User ID",
+                        label = strings.userId,
                         value = uiState.userId,
-                        onCopy = onCopyValue
+                        onCopy = onCopyValue,
+                        notSignedInLabel = strings.notSignedIn
                     )
                     SettingsActionButton(
-                        label = if (uiState.isRerolling) "Rerolling…" else "Reroll Pseudonym",
+                        label = if (uiState.isRerolling) strings.rerolling else strings.reroll,
                         onClick = onRerollPseudonym,
                         enabled = !uiState.isRerolling
                     )
                     SettingsActionButton(
-                        label = if (uiState.isResetting) "Resetting…" else "Reset Profile",
+                        label = if (uiState.isResetting) strings.resetting else strings.resetProfile,
                         onClick = onResetProfileRequested,
                         enabled = !uiState.isResetting,
                         destructive = true
@@ -518,14 +531,14 @@ fun SettingsScreen(
             )
 
             // --- Appearance & Look ----------------------------------------
-            CenteredSectionBadge(title = "Appearance & Look")
+            CenteredSectionBadge(title = strings.sectionAppearance)
 
             // Disabled while the app ships dark-theme only: the switch is
             // greyed out and the card carries a "Coming Soon" badge so the
             // control reads as deliberately unavailable rather than broken.
             QuakeCard(
-                title = "Light Mode (Beta)",
-                detail = { QuakePill(text = "Coming Soon") }
+                title = strings.lightMode,
+                detail = { QuakePill(text = strings.comingSoon) }
             ) {
                 QuakeSwitch(
                     checked = uiState.lightMode,
@@ -534,17 +547,17 @@ fun SettingsScreen(
                 )
             }
 
-            QuakeCard(title = "Units") {
+            QuakeCard(title = strings.units) {
                 QuakeSegmentedControl(
                     options = UnitSystem.entries,
                     selected = uiState.unitSystem,
-                    labelOf = { it.label },
+                    labelOf = { it.label(uiState.language.toDisplay()) },
                     onSelect = onUnitSelected
                 )
             }
 
             QuakeCard(
-                title = "Language"
+                title = strings.language
             ) {
                 QuakeSegmentedControl(
                     options = AppLanguage.entries,
@@ -555,12 +568,13 @@ fun SettingsScreen(
             }
 
             // --- About ----------------------------------------------------
-            CenteredSectionBadge(title = "About")
+            CenteredSectionBadge(title = strings.sectionAbout)
 
             AboutCard(
                 credit = uiState.appCredit,
                 version = uiState.appVersion,
-                onMoreAboutUs = onMoreAboutUs
+                onMoreAboutUs = onMoreAboutUs,
+                moreAboutUs = strings.moreAboutUs
             )
 
         }
@@ -573,12 +587,14 @@ fun SettingsScreen(
             onDismiss = onAboutDismissed,
             onGithubClick = onGithubClick,
             onEmailClick = onEmailClick,
-            onDonateClick = onDonateClick
+            onDonateClick = onDonateClick,
+            lang = uiState.language.toDisplay()
         )
     }
 
     if (uiState.showResetDialog) {
         ResetProfileDialog(
+            strings = strings,
             onConfirm = onResetProfileConfirmed,
             onDismiss = onResetProfileDismissed
         )
@@ -586,6 +602,7 @@ fun SettingsScreen(
 
     if (uiState.pendingNotificationsDisable) {
         NotificationsDisableDialog(
+            strings = strings,
             onConfirm = onNotificationsDisableConfirmed,
             onDismiss = onNotificationsDisableCancelled
         )
@@ -601,29 +618,29 @@ fun SettingsScreen(
  */
 @Composable
 private fun NotificationsDisableDialog(
+    strings: SettingsStrings,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardSurface,
-        title = { Text(text = "Turn off earthquake warnings?", style = CardTitle) },
+        title = { Text(text = strings.disableTitle, style = CardTitle) },
         text = {
             Text(
-                text = "You won't receive earthquake warnings while this setting " +
-                    "is turned off.",
+                text = strings.disableBody,
                 style = CardSubtitle,
                 color = TextSecondary
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(text = "Turn off", style = ChipLabel, color = MmiRed)
+                Text(text = strings.turnOff, style = ChipLabel, color = MmiRed)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel", style = ChipLabel, color = TextPrimary)
+                Text(text = strings.cancel, style = ChipLabel, color = TextPrimary)
             }
         }
     )
@@ -639,31 +656,29 @@ private fun NotificationsDisableDialog(
  */
 @Composable
 private fun ResetProfileDialog(
+    strings: SettingsStrings,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardSurface,
-        title = { Text(text = "Reset profile?", style = CardTitle) },
+        title = { Text(text = strings.resetTitle, style = CardTitle) },
         text = {
             Text(
-                text = "This creates a brand-new anonymous identity. Your current " +
-                    "pseudonym and user ID are discarded and cannot be restored. " +
-                    "Your location and alert registration are sent again under the " +
-                    "new identity.",
+                text = strings.resetBody,
                 style = CardSubtitle,
                 color = TextSecondary
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(text = "Reset", style = ChipLabel, color = MmiRed)
+                Text(text = strings.reset, style = ChipLabel, color = MmiRed)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel", style = ChipLabel, color = TextPrimary)
+                Text(text = strings.cancel, style = ChipLabel, color = TextPrimary)
             }
         }
     )

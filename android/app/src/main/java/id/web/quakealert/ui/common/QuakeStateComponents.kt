@@ -201,7 +201,9 @@ fun QuakeErrorState(
     copy: ErrorCopy,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    onResetFilters: (() -> Unit)? = null
+    onResetFilters: (() -> Unit)? = null,
+    retryLabel: String = "Retry",
+    resetFiltersLabel: String = "Reset Filters"
 ) {
     StateBlock(
         icon = R.drawable.ic_alert_triangle_state,
@@ -211,11 +213,11 @@ fun QuakeErrorState(
         modifier = modifier,
         action = when (copy.action) {
             ErrorAction.RETRY -> {
-                { StateAction(label = "Retry", onClick = onRetry) }
+                { StateAction(label = retryLabel, onClick = onRetry) }
             }
 
             ErrorAction.RESET_FILTERS -> onResetFilters?.let { reset ->
-                { StateAction(label = "Reset Filters", onClick = reset) }
+                { StateAction(label = resetFiltersLabel, onClick = reset) }
             }
 
             ErrorAction.NONE -> null
@@ -239,18 +241,23 @@ fun QuakeErrorState(
 fun QuakeNoDataState(
     filterSummary: String?,
     onResetFilters: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    noHistory: String = "No Earthquake History",
+    noHistorySub: String = "Events detected by the sensor network will appear here.",
+    noDataAvailable: String = "No Data Available",
+    noDataFiltered: (String) -> String = { summary -> "No events $summary. Try a wider filter." },
+    resetFiltersLabel: String = "Reset Filters"
 ) {
     QuakeEmptyState(
         icon = R.drawable.ic_nav_history,
-        message = if (filterSummary == null) "No Earthquake History" else "No Data Available",
+        message = if (filterSummary == null) noHistory else noDataAvailable,
         modifier = modifier,
         subtitle = if (filterSummary == null) {
-            "Events detected by the sensor network will appear here."
+            noHistorySub
         } else {
-            "No events $filterSummary. Try a wider filter."
+            noDataFiltered(filterSummary)
         },
-        actionLabel = "Reset Filters".takeIf { filterSummary != null },
+        actionLabel = resetFiltersLabel.takeIf { filterSummary != null },
         onAction = onResetFilters.takeIf { filterSummary != null }
     )
 }
@@ -270,16 +277,20 @@ fun QuakeNoDataState(
 fun QuakeNoCoverageState(
     onWidenRadius: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    onAddSensor: (() -> Unit)? = null
+    onAddSensor: (() -> Unit)? = null,
+    noCoverage: String = "No Sensors In This Area",
+    noCoverageSub: String = "QuakeAlert's sensor network does not cover this area yet.",
+    widenRadiusLabel: String = "Widen Search Radius",
+    orAddSensorLabel: String = "Or Add Your Own Sensor"
 ) {
     QuakeEmptyState(
         icon = R.drawable.ic_nav_sensors,
-        message = "No Sensors In This Area",
+        message = noCoverage,
         modifier = modifier,
-        subtitle = "QuakeAlert's sensor network does not cover this area yet.",
-        actionLabel = "Widen Search Radius".takeIf { onWidenRadius != null },
+        subtitle = noCoverageSub,
+        actionLabel = widenRadiusLabel.takeIf { onWidenRadius != null },
         onAction = onWidenRadius,
-        secondaryActionLabel = "Or Add Your Own Sensor".takeIf { onAddSensor != null },
+        secondaryActionLabel = orAddSensorLabel.takeIf { onAddSensor != null },
         onSecondaryAction = onAddSensor
     )
 }
@@ -301,16 +312,20 @@ fun QuakeNoCoverageState(
 fun QuakeNoPositionState(
     onSyncLocation: () -> Unit,
     modifier: Modifier = Modifier,
-    onAddSensor: (() -> Unit)? = null
+    onAddSensor: (() -> Unit)? = null,
+    noPosition: String = "Location Not Synced",
+    noPositionSub: String = "QuakeAlert needs your location before it can show what is near you.",
+    syncLocationLabel: String = "Sync Location",
+    orAddSensorLabel: String = "Or Add a Sensor"
 ) {
     QuakeEmptyState(
         icon = R.drawable.ic_nav_settings,
-        message = "Location Not Synced",
+        message = noPosition,
         modifier = modifier,
-        subtitle = "QuakeAlert needs your location before it can show what is near you.",
-        actionLabel = "Sync Location",
+        subtitle = noPositionSub,
+        actionLabel = syncLocationLabel,
         onAction = onSyncLocation,
-        secondaryActionLabel = "Or Add a Sensor".takeIf { onAddSensor != null },
+        secondaryActionLabel = orAddSensorLabel.takeIf { onAddSensor != null },
         onSecondaryAction = onAddSensor
     )
 }
@@ -332,14 +347,17 @@ fun QuakeNoPositionState(
 fun QuakeNoStationsMatchState(
     status: QuakeStationStatus,
     onResetFilters: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    noStationsMatch: String = "No Stations Match",
+    subtitle: String? = null,
+    resetFiltersLabel: String = "Reset Filters"
 ) {
     QuakeEmptyState(
         icon = R.drawable.ic_nav_sensors,
-        message = "No Stations Match",
+        message = noStationsMatch,
         modifier = modifier,
-        subtitle = status.emptyRollSubtitle,
-        actionLabel = "Reset Filters",
+        subtitle = subtitle ?: status.emptyRollSubtitle,
+        actionLabel = resetFiltersLabel,
         onAction = onResetFilters
     )
 }

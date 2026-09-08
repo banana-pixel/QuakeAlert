@@ -148,6 +148,6 @@ fun WsAlertMessage.intensityBannerLabel(locale: Locale = Locale.US): String =
  * 1:1067). Same inputs as [intensityBannerLabel], without the "Intensity :" prefix
  * the card renders as its own label line.
  */
-fun WsAlertMessage.intensityValueLabel(): String =
-    QuakeFormat.intensityValue(mmi = mmi, label = intensityLabel, fallbackWord = severity().name)
+fun WsAlertMessage.intensityValueLabel(locale: Locale = Locale.US): String =
+    QuakeFormat.intensityValue(mmi = mmi, label = intensityLabel, fallbackWord = severity().name, locale = locale)
 

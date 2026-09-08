@@ -195,8 +195,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * one thing this control exists to rule out.
      */
     fun onTestNotification() {
-        if (TestAlertNotifier.showTestAlert(getApplication())) return
-        post("Allow notifications in system settings to test alerts")
+        val lang = _uiState.value.language.toDisplay()
+        if (TestAlertNotifier.showTestAlert(getApplication(), lang)) return
+        post(
+            if (lang == DisplayLanguage.ID) {
+                "Izinkan notifikasi di pengaturan sistem untuk menguji peringatan"
+            } else {
+                "Allow notifications in system settings to test alerts"
+            }
+        )
     }
 
     /**
@@ -383,11 +390,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         is LocationSyncResult.Failed -> failureMessage("Could not update your location", cause, lang)
     }
 
-    // Indonesian branches land in B2.
-    private fun toMessageIdUpdated(): String = "Location updated"
-    private fun toMessageIdUnchanged(): String = "Location unchanged. You have not moved."
-    private fun toMessageIdPermission(): String = "Location permission is needed to sync"
-    private fun toMessageIdNoFix(): String = "Could not get a location fix. Try again outdoors."
+    // Indonesian branches (B2).
+    private fun toMessageIdUpdated(): String = "Lokasi diperbarui"
+    private fun toMessageIdUnchanged(): String = "Lokasi tidak berubah. Anda belum berpindah."
+    private fun toMessageIdPermission(): String = "Izin lokasi diperlukan untuk sinkron"
+    private fun toMessageIdNoFix(): String = "Tidak mendapat titik lokasi. Coba lagi di luar ruangan."
 
     private companion object {
         const val TAG = "SettingsViewModel"

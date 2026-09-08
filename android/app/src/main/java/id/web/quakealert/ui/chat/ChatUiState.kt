@@ -118,9 +118,9 @@ internal fun ChatChannel.toChannelInfo(
     kind = kind
 )
 
-// Indonesian branches land in B2.
-private fun channelGlobalId(): String = "Everyone using QuakeAlert"
-private fun channelRegionalId(): String = "People in your area"
+// Indonesian branches (B2).
+private fun channelGlobalId(): String = "Semua pengguna QuakeAlert"
+private fun channelRegionalId(): String = "Orang-orang di daerah Anda"
 
 /**
  * Immutable UI state for the Chat screen (Figma node 1:925). Hoisted into

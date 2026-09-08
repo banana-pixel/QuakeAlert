@@ -2,6 +2,7 @@ package id.web.quakealert.ui.sensors
 
 import androidx.compose.runtime.Immutable
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.ErrorCopy
 import id.web.quakealert.ui.common.MapFocus
 import id.web.quakealert.ui.common.MapMarker
@@ -103,12 +104,22 @@ data class SensorMapOverview(
      * mentions one says it the same way: the word "Range", a colon, a number and a
      * unit, and no number at all when there is nothing to report.
      */
-    fun rangeLabel(unitSystem: UnitSystem): String =
-        rangeKm?.let { "Range : ${unitSystem.formatDistance(it)}" } ?: ALL_AREAS_LABEL
+    fun rangeLabel(unitSystem: UnitSystem, lang: DisplayLanguage = DisplayLanguage.EN): String =
+        rangeKm?.let {
+            val range = if (lang == DisplayLanguage.ID) "Rentang" else "Range"
+            "$range : ${unitSystem.formatDistance(it)}"
+        } ?: if (lang == DisplayLanguage.ID) allAreasId() else ALL_AREAS_LABEL
 
-    /** The station-count half of the badge, pluralised. */
-    val countLabel: String
-        get() = if (sensorCount == 1) "1 sensor" else "$sensorCount sensors"
+    /** The station-count half of the badge, pluralised (Indonesian: no plural). */
+    fun countLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
+        if (lang == DisplayLanguage.ID) {
+            return if (sensorCount == 1) "1 sensor" else "$sensorCount sensor"
+        }
+        return countLabelEn()
+    }
+
+    private fun countLabelEn(): String =
+        if (sensorCount == 1) "1 sensor" else "$sensorCount sensors"
 
     /**
      * Both halves as the map badge renders them, e.g. "Range : 250 km · 4 sensors".
@@ -117,12 +128,15 @@ data class SensorMapOverview(
      * and the count answer different questions, and the comma that used to join them
      * read as though the count were scoped by nothing in particular.
      */
-    fun summaryLabel(unitSystem: UnitSystem): String =
-        "${rangeLabel(unitSystem)} · $countLabel"
+    fun summaryLabel(unitSystem: UnitSystem, lang: DisplayLanguage = DisplayLanguage.EN): String =
+        "${rangeLabel(unitSystem, lang)} · ${countLabel(lang)}"
 
     private companion object {
         /** Said instead of a radius when the query is not narrowed by one. */
         const val ALL_AREAS_LABEL = "All areas"
+
+        /** Indonesian branch (B2). */
+        fun allAreasId(): String = "Semua daerah"
     }
 }
 

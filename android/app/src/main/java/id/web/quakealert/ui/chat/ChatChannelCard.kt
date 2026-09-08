@@ -76,7 +76,9 @@ import id.web.quakealert.ui.theme.TextPrimary
 fun ChatChannelCard(
     channel: ChatChannelInfo,
     onSwitchChannel: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    switchToGlobalLabel: String = "Switch to the global channel",
+    switchToAreaLabel: String = "Switch to your area's channel"
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
     val regional = channel.kind == ChatChannelKind.REGIONAL
@@ -171,9 +173,9 @@ fun ChatChannelCard(
                     // Names the room the tap will move to, not the control's mechanism:
                     // a screen reader user gets the same information the colour gives.
                     contentDescription = if (regional) {
-                        "Switch to the global channel"
+                        switchToGlobalLabel
                     } else {
-                        "Switch to your area's channel"
+                        switchToAreaLabel
                     },
                     tint = TextPrimary,
                     modifier = Modifier

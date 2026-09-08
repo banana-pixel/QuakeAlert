@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.data.network.ServerHealth
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakeAppBar
 import id.web.quakealert.ui.common.GenericErrorCopy
 import id.web.quakealert.ui.common.QuakeErrorState
@@ -45,6 +46,8 @@ import id.web.quakealert.ui.common.QuakeNoDataState
 import id.web.quakealert.ui.common.QuakeNoPositionState
 import id.web.quakealert.ui.common.QuakeSkeletonList
 import id.web.quakealert.ui.common.fadingEdges
+import id.web.quakealert.ui.common.filterStrings
+import id.web.quakealert.ui.common.stateStrings
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.TextPrimary
 import id.web.quakealert.ui.theme.QuakeAlertTheme
@@ -69,6 +72,9 @@ fun HistoryRoute(
     filterViewModel: QuakeFilterViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lang by viewModel.displayLang.collectAsStateWithLifecycle()
+    val strings = remember(lang) { historyStrings(lang) }
+    val stateCopy = remember(lang) { stateStrings(lang) }
 
     // The filter is owned by an Activity-scoped ViewModel shared with the Sensors
     // tab, so both answer the same question; it is pushed *into* this tab rather
@@ -80,7 +86,7 @@ fun HistoryRoute(
     LaunchedEffect(filter) { viewModel.applyFilter(filter) }
 
     val context = LocalContext.current
-    val shareEvent: (QuakeHistoryItem) -> Unit = remember(context) {
+    val shareEvent: (QuakeHistoryItem) -> Unit = remember(context, lang) {
         { item ->
             // startActivity throws when no app on the device can receive the
             // intent. Swallow it so a missing target leaves the screen (and any
@@ -89,9 +95,9 @@ fun HistoryRoute(
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_SUBJECT, "QuakeAlert: ${item.location}")
-                    putExtra(Intent.EXTRA_TEXT, item.toShareText(uiState.unitSystem))
+                    putExtra(Intent.EXTRA_TEXT, item.toShareText(uiState.unitSystem, lang))
                 }
-                context.startActivity(Intent.createChooser(send, "Share earthquake details"))
+                context.startActivity(Intent.createChooser(send, strings.shareChooser))
             }
         }
     }
@@ -99,6 +105,9 @@ fun HistoryRoute(
     HistoryScreen(
         uiState = uiState,
         health = health,
+        lang = lang,
+        strings = strings,
+        stateCopy = stateCopy,
         onOpenUpdates = onOpenUpdates,
         onModeSelected = filterViewModel::onModeSelected,
         onFilterSheetClicked = filterViewModel::onSheetOpened,
@@ -119,6 +128,7 @@ fun HistoryRoute(
             filter = filter,
             sections = FilterSection.HISTORY,
             unitSystem = uiState.unitSystem,
+            lang = lang,
             onDismiss = filterViewModel::onSheetDismissed,
             onApply = filterViewModel::onCriteriaApplied,
             onReset = {
@@ -157,6 +167,9 @@ fun HistoryRoute(
 fun HistoryScreen(
     uiState: HistoryUiState,
     health: ServerHealth = ServerHealth.HEALTHY,
+    lang: DisplayLanguage = DisplayLanguage.EN,
+    strings: HistoryStrings = historyStrings(lang),
+    stateCopy: StateStrings = stateStrings(lang),
     onOpenUpdates: () -> Unit = {},
     onModeSelected: (QuakeFilter) -> Unit,
     onShareClicked: (QuakeHistoryItem) -> Unit,
@@ -177,12 +190,13 @@ fun HistoryScreen(
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
         // --- Static header ---------------------------------------------------
-        QuakeAppBar(title = "History", health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
 
         QuakeFilterRow(
             filter = uiState.filter,
             sections = FilterSection.HISTORY,
             unitSystem = uiState.unitSystem,
+            filterStrings = filterStrings(lang),
             onModeSelected = onModeSelected,
             onFilterSheetClicked = onFilterSheetClicked,
             modifier = Modifier.padding(top = Dimens.HeaderSectionGap)
@@ -233,7 +247,7 @@ fun HistoryScreen(
 
             when {
                 uiState.isLoading -> QuakeSkeletonList(
-                    loadingLabel = LOADING_MESSAGE,
+                    loadingLabel = strings.loading,
                     modifier = bodyModifier.padding(top = Dimens.CardListTopPadding)
                 )
 
@@ -244,7 +258,9 @@ fun HistoryScreen(
                     // Offered only for a rejected query, and only by the copy: a
                     // filter the server refused is the one failure the user can
                     // resolve themselves.
-                    onResetFilters = onFiltersReset
+                    onResetFilters = onFiltersReset,
+                    retryLabel = stateCopy.retry,
+                    resetFiltersLabel = stateCopy.resetFilters
                 )
 
                 // Checked before the empty branch: with no fix there was no query,
@@ -252,7 +268,11 @@ fun HistoryScreen(
                 // that was never asked.
                 uiState.needsPosition -> QuakeNoPositionState(
                     onSyncLocation = onSyncLocation,
-                    modifier = bodyModifier
+                    modifier = bodyModifier,
+                    noPosition = stateCopy.noPosition,
+                    noPositionSub = stateCopy.noPositionSub,
+                    syncLocationLabel = stateCopy.syncLocation,
+                    orAddSensorLabel = stateCopy.orAddSensor
                 )
 
                 // An empty feed under a filter is a different statement from an
@@ -261,10 +281,16 @@ fun HistoryScreen(
                 uiState.items.isEmpty() -> QuakeNoDataState(
                     filterSummary = uiState.filter.summary(
                         unitSystem = uiState.unitSystem,
-                        sections = FilterSection.HISTORY
+                        sections = FilterSection.HISTORY,
+                        lang = lang
                     ),
                     onResetFilters = onFiltersReset,
-                    modifier = bodyModifier
+                    modifier = bodyModifier,
+                    noHistory = stateCopy.noHistory,
+                    noHistorySub = stateCopy.noHistorySub,
+                    noDataAvailable = stateCopy.noDataAvailable,
+                    noDataFiltered = stateCopy.noDataFiltered,
+                    resetFiltersLabel = stateCopy.resetFilters
                 )
 
                 else -> LazyColumn(
@@ -285,7 +311,8 @@ fun HistoryScreen(
                             item = item,
                             unitSystem = uiState.unitSystem,
                             onShareClicked = { onShareClicked(item) },
-                            onSeeMoreClicked = { onSeeMoreClicked(item) }
+                            onSeeMoreClicked = { onSeeMoreClicked(item) },
+                            lang = lang
                         )
                     }
 
@@ -317,6 +344,7 @@ fun HistoryScreen(
         QuakeEventDetailModalDialog(
             event = event,
             unitSystem = uiState.unitSystem,
+            lang = lang,
             onDismiss = onDetailDismissed,
             onShare = { onShareClicked(event) }
         )
@@ -333,9 +361,8 @@ private const val LOAD_MORE_THRESHOLD = 3
 /**
  * What a screen reader announces while the skeleton is up. A skeleton conveys
  * "loading" visually and nothing at all otherwise, so the copy the spinner used to
- * show is spoken instead.
+ * show is spoken instead. Now owned by [HistoryStrings.loading].
  */
-private const val LOADING_MESSAGE = "Loading earthquake history..."
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable

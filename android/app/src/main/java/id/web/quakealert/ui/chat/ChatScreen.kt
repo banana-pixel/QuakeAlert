@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.R
 import id.web.quakealert.data.network.ServerHealth
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.GenericErrorCopy
 import id.web.quakealert.ui.common.QuakeAppBar
 import id.web.quakealert.ui.common.QuakeEmptyState
@@ -52,10 +53,12 @@ fun ChatRoute(
     viewModel: ChatViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lang by viewModel.displayLang.collectAsStateWithLifecycle()
 
     ChatScreen(
         uiState = uiState,
         health = health,
+        lang = lang,
         onOpenUpdates = onOpenUpdates,
         onDraftChanged = viewModel::onDraftChanged,
         onSendClicked = viewModel::onSendClicked,
@@ -85,6 +88,7 @@ fun ChatRoute(
 fun ChatScreen(
     uiState: ChatUiState,
     health: ServerHealth = ServerHealth.HEALTHY,
+    lang: DisplayLanguage = DisplayLanguage.EN,
     onOpenUpdates: () -> Unit = {},
     onDraftChanged: (String) -> Unit,
     onSendClicked: () -> Unit,
@@ -95,6 +99,7 @@ fun ChatScreen(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState()
 ) {
+    val strings = remember(lang) { chatStrings(lang) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -102,11 +107,13 @@ fun ChatScreen(
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
         // --- Static header: title + channel card -----------------------------
-        QuakeAppBar(title = "Chat", health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
 
         ChatChannelCard(
             channel = uiState.channel,
             onSwitchChannel = onSwitchChannelClicked,
+            switchToGlobalLabel = strings.switchGlobal,
+            switchToAreaLabel = strings.switchArea,
             modifier = Modifier.padding(top = Dimens.HeaderSectionGap)
         )
 
@@ -154,7 +161,7 @@ fun ChatScreen(
 
         when {
             uiState.isLoading && uiState.items.isEmpty() ->
-                QuakeLoadingState(modifier = bodyModifier, message = LOADING_MESSAGE)
+                QuakeLoadingState(modifier = bodyModifier, message = strings.loading)
 
             uiState.isError -> QuakeErrorState(
                 copy = uiState.errorCopy ?: GenericErrorCopy,
@@ -166,8 +173,8 @@ fun ChatScreen(
             // a quiet week really does leave nothing to show.
             uiState.isEmpty -> QuakeEmptyState(
                 icon = R.drawable.ic_nav_chat,
-                message = "No messages yet",
-                subtitle = "Be the first to say what it is like where you are.",
+                message = strings.emptyTitle,
+                subtitle = strings.emptySubtitle,
                 modifier = bodyModifier
             )
 
@@ -185,7 +192,7 @@ fun ChatScreen(
                 if (uiState.isLoadingOlder) {
                     item(key = "loading-older", contentType = "loading-older") {
                         Text(
-                            text = LOADING_OLDER_MESSAGE,
+                            text = strings.loadingOlder,
                             style = CardSubtitle,
                             color = TextSecondary,
                             textAlign = TextAlign.Center,
@@ -202,6 +209,8 @@ fun ChatScreen(
                     when (item) {
                         is ChatListItem.Message -> ChatBubble(
                             message = item.message,
+                            sendingLabel = strings.sending,
+                            notSentLabel = strings.notSentRetry,
                             onRetry = { onRetrySend(item.message.id) }
                         )
 
@@ -218,6 +227,8 @@ fun ChatScreen(
             onValueChange = onDraftChanged,
             onSend = onSendClicked,
             canSend = uiState.canSend,
+            placeholder = strings.inputPlaceholder,
+            sendDescription = strings.sendDescription,
             modifier = Modifier.padding(bottom = Dimens.ChatInputBottomPadding)
         )
     }
@@ -248,12 +259,6 @@ private fun ChatScreenPreview() {
         )
     }
 }
-
-/** Copy under the spinner while a room's first page is in flight. */
-private const val LOADING_MESSAGE = "Loading messages..."
-
-/** Copy shown above the oldest bubble while an upward page is in flight. */
-private const val LOADING_OLDER_MESSAGE = "Loading older messages..."
 
 /**
  * How close to the top of the list a scroll must come before the next older page is

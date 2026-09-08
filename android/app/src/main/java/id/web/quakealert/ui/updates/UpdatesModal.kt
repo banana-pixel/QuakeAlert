@@ -24,6 +24,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakeEmptyState
 import id.web.quakealert.ui.common.QuakeErrorState
 import id.web.quakealert.ui.common.QuakeLoadingState
@@ -53,6 +54,7 @@ fun UpdatesModalDialog(
     viewModel: UpdatesViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lang by viewModel.displayLang.collectAsStateWithLifecycle()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -60,11 +62,12 @@ fun UpdatesModalDialog(
     ) {
         UpdatesModal(
             uiState = uiState,
+            strings = updatesStrings(lang),
             onDismiss = onDismiss,
-            onRetry = viewModel::refresh,
-            modifier = Modifier.padding(Dimens.ScreenHorizontalPadding)
+            onRetry = viewModel::refresh
         )
     }
+}
 }
 
 /**
@@ -87,7 +90,8 @@ fun UpdatesModal(
     uiState: UpdatesUiState,
     onDismiss: () -> Unit,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strings: UpdatesStrings = updatesStrings(DisplayLanguage.EN)
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
 
@@ -100,21 +104,20 @@ fun UpdatesModal(
             .padding(Dimens.ModalPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.UpdatesModalSectionGap)
     ) {
-        QuakeModalHeader(onDismiss = onDismiss, title = "Updates")
+        QuakeModalHeader(onDismiss = onDismiss, title = strings.title)
 
         when {
             uiState.isLoading && uiState.updates.isEmpty() -> QuakeLoadingState(
                 modifier = Modifier.height(Dimens.UpdatesModalStateHeight),
-                message = "Loading updates..."
+                message = strings.loading
             )
 
             uiState.error != null -> QuakeErrorState(copy = uiState.error, onRetry = onRetry)
 
             uiState.isEmpty -> QuakeEmptyState(
                 icon = R.drawable.ic_info_circle,
-                message = "No Updates Yet",
-                subtitle = "Announcements from the QuakeAlert team will appear here. " +
-                    "Earthquake warnings are never sent this way."
+                message = strings.emptyTitle,
+                subtitle = strings.emptySubtitle
             )
 
             else -> LazyColumn(

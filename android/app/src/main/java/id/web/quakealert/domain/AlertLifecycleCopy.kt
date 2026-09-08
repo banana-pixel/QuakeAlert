@@ -58,9 +58,22 @@ private fun standDownCopyEn(state: EventState?): StandDownCopy = when (state) {
     )
 }
 
-// Indonesian branch lands in B2. Kept as a separate function so the two
-// languages are reviewed side by side rather than interleaved line by line.
-private fun standDownCopyId(state: EventState?): StandDownCopy = standDownCopyEn(state)
+// Indonesian branch (B2). Acuan: glosarium BMKG/BPBD — "Aman" untuk akhir
+// kejadian, "Laporan Ditarik" untuk laporan yang dicabut; bukan literal.
+private fun standDownCopyId(state: EventState?): StandDownCopy = when (state) {
+    EventState.CANCELLED -> StandDownCopy(
+        title = "Laporan Ditarik",
+        detail = "Laporan gempa bumi ini ditarik dan sudah tidak aktif."
+    )
+
+    EventState.UNCONFIRMED,
+    EventState.CONFIRMED,
+    EventState.RESOLVED,
+    null -> StandDownCopy(
+        title = "Aman",
+        detail = "Tidak ada guncangan susulan yang dilaporkan di dekat Anda."
+    )
+}
 
 /**
  * Idle-banner read-out while an UNCONFIRMED tremor is being evaluated: "1 station is
@@ -83,7 +96,12 @@ fun unconfirmedActivityLabel(nodeCount: Int, lang: DisplayLanguage = DisplayLang
     return "$subject reporting shaking - not yet confirmed by separated stations"
 }
 
-// Indonesian branch lands in B2. Indonesian has no plural inflection, so the
-// three English subject shapes collapse to one.
-private fun unconfirmedActivityLabelId(nodeCount: Int): String =
-    unconfirmedActivityLabel(nodeCount, DisplayLanguage.EN)
+// Indonesian branch (B2). Bahasa Indonesia tidak mengenal plural, sehingga
+// tiga bentuk subjek Inggris menyatu menjadi satu.
+private fun unconfirmedActivityLabelId(nodeCount: Int): String {
+    val subject = when {
+        nodeCount <= 0 -> "Satu stasiun"
+        else -> "$nodeCount stasiun"
+    }
+    return "$subject melaporkan guncangan - belum dikonfirmasi oleh stasiun yang terpisah"
+}

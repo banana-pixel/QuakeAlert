@@ -173,6 +173,7 @@ fun WarningScreen(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState()
 ) {
+    val strings = remember(lang) { warningStrings(lang) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -180,13 +181,13 @@ fun WarningScreen(
     ) {
         // Rendered once, outside the branch: the header is the one part of the screen
         // the emergency state keeps, unchanged from the resting screen.
-        QuakeAppBar(title = "Warning", health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
 
         when (uiState) {
             is WarningUiState.Idle -> IdleBody(
                 uiState = uiState,
                 health = health,
-                lang = lang,
+                strings = strings,
                 onSeeDetails = onSeeDetails,
                 onEmergency = onEmergency,
                 onRetry = onRetry,
@@ -220,7 +221,7 @@ fun WarningScreen(
             lang = lang,
             onDismiss = onDetailDismissed,
             onShare = { onShareClicked(event) },
-            title = "Recent Earthquake"
+            title = strings.detailTitle
         )
     }
 
@@ -243,6 +244,7 @@ fun WarningScreen(
             radiusLabel = uiState.alertRadiusLabel,
             alertsEnabled = protectionFacts.alertsEnabled,
             notificationsPermitted = protectionFacts.notificationsPermitted,
+            strings = strings,
             onDismiss = onProtectionStatusDismissed
         )
     }
@@ -272,7 +274,7 @@ fun WarningScreen(
 private fun ColumnScope.IdleBody(
     uiState: WarningUiState.Idle,
     health: ServerHealth,
-    lang: DisplayLanguage = DisplayLanguage.EN,
+    strings: WarningStrings,
     onSeeDetails: () -> Unit,
     onEmergency: () -> Unit,
     onRetry: () -> Unit,
@@ -290,19 +292,21 @@ private fun ColumnScope.IdleBody(
         // "we are asking" and a notice would only pre-announce a failure.
         uiState.isLoading -> null
         uiState.isError -> (uiState.errorCopy ?: GenericErrorCopy).message
-        health == ServerHealth.OFFLINE -> OFFLINE_MESSAGE
+        health == ServerHealth.OFFLINE -> strings.offlineMessage
         else -> null
     }
     if (notice != null) {
         WarningOfflineNotice(
             message = notice,
             onRetry = onRetry,
+            retryLabel = strings.retryButton,
             modifier = Modifier.padding(top = Dimens.WarningHeaderGap)
         )
     }
 
     AlertBanner(
         banner = uiState.banner,
+        strings = strings,
         onSeeDetails = onSeeDetails,
         onProtectionStatus = onProtectionStatus,
         // The header gap belongs to whichever element is first: with the notice above
@@ -321,7 +325,7 @@ private fun ColumnScope.IdleBody(
     when {
         uiState.isLoading -> QuakeLoadingState(
             modifier = bodyModifier,
-            message = "Checking the alert network..."
+            message = strings.checkingNetwork
         )
 
         // Tips outrank the error card deliberately, and this is the whole point of
@@ -359,19 +363,22 @@ private fun ColumnScope.IdleBody(
         uiState.isError -> QuakeErrorState(
             copy = uiState.errorCopy ?: GenericErrorCopy,
             onRetry = onRetry,
-            modifier = bodyModifier
+            modifier = bodyModifier,
+            retryLabel = strings.retryButton,
+            resetFiltersLabel = strings.resetFilters
         )
 
         else -> QuakeEmptyState(
             icon = R.drawable.ic_nav_warning,
-            message = "No Guidance Available",
-            subtitle = "Preparedness guidance for your area will appear here.",
+            message = strings.noGuidance,
+            subtitle = strings.noGuidanceSub,
             modifier = bodyModifier
         )
     }
 
     EmergencyCta(
         onClick = onEmergency,
+        label = strings.emergencyCta,
         modifier = Modifier.padding(bottom = Dimens.WarningListBottomPadding)
     )
 }
@@ -380,9 +387,8 @@ private fun ColumnScope.IdleBody(
  * Shown while the backend link is down but nothing has failed outright. Names what
  * still works rather than only what does not: the guidance below this notice is held
  * locally, and a user reading it during a quake needs to know it is trustworthy.
+ * Owned by [WarningStrings.offlineMessage].
  */
-private const val OFFLINE_MESSAGE =
-    "Offline: alerts are paused. The guidance below works without a connection."
 
 @Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable

@@ -56,7 +56,9 @@ fun ChatInputBar(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     canSend: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholder: String = "Message the mesh...",
+    sendDescription: String = "Send message"
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -83,13 +85,13 @@ fun ChatInputBar(
             keyboardActions = KeyboardActions(onSend = { if (canSend) onSend() }),
             decorationBox = { innerTextField ->
                 if (value.isEmpty()) {
-                    Text(text = "Message the mesh...", style = CardTitle, color = TextSecondary)
+                    Text(text = placeholder, style = CardTitle, color = TextSecondary)
                 }
                 innerTextField()
             }
         )
 
-        SendButton(onSend = onSend, canSend = canSend)
+        SendButton(onSend = onSend, canSend = canSend, description = sendDescription)
     }
 }
 
@@ -102,7 +104,8 @@ fun ChatInputBar(
 private fun SendButton(
     onSend: () -> Unit,
     canSend: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    description: String = "Send message"
 ) {
     val shape = RoundedCornerShape(Dimens.ChatSendButtonRadius)
 
@@ -121,7 +124,7 @@ private fun SendButton(
     ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_send),
-            contentDescription = "Send message",
+            contentDescription = description,
             tint = TextPrimary,
             modifier = Modifier.size(Dimens.ChatSendIconSize)
         )

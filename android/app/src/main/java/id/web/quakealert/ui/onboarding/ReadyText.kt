@@ -39,7 +39,7 @@ private const val GITHUB_PROFILE_URL = "https://github.com/banana-pixel"
  * the platform URI handler automatically.
  */
 @Composable
-fun ReadyText(modifier: Modifier = Modifier) {
+fun ReadyText(strings: OnboardingStrings, modifier: Modifier = Modifier) {
     // Matches the description style used on every other onboarding page
     // (Nunito Regular 14/24) so the copy reads consistently across the flow.
     val bodyStyle = SpanStyle(
@@ -64,10 +64,7 @@ fun ReadyText(modifier: Modifier = Modifier) {
     ) {
         // Paragraph 1 — body copy.
         Text(
-            text = "You will receive earthquake warning depends on sensor " +
-                "availability in your area. If theres no sensors ready in your " +
-                "area, this app wont be working. You can check for sensors " +
-                "availibility on Sensors page.",
+            text = strings.readyPara1,
             color = TextSecondary,
             fontFamily = NunitoFontFamily,
             fontWeight = FontWeight.Normal,
@@ -79,11 +76,11 @@ fun ReadyText(modifier: Modifier = Modifier) {
         // Paragraph 2 — bug report with scoped "GitHub" link.
         Text(
             text = buildAnnotatedString {
-                withStyle(bodyStyle) { append("Report bugs here ") }
+                withStyle(bodyStyle) { append(strings.readyReport) }
                 withLink(LinkAnnotation.Url(url = GITHUB_REPO_URL, styles = linkStyle)) {
-                    append("GitHub")
+                    append(strings.readyHere)
                 }
-                withStyle(bodyStyle) { append(" if you find one!") }
+                withStyle(bodyStyle) { append(strings.readySuffix) }
             },
             lineHeight = 24.sp,
             modifier = Modifier.fillMaxWidth()
@@ -92,7 +89,7 @@ fun ReadyText(modifier: Modifier = Modifier) {
         // Paragraph 3 — author credit link on its own line.
         Text(
             text = buildAnnotatedString {
-                withStyle(bodyStyle) { append("by ") }
+                withStyle(bodyStyle) { append(strings.readyBy) }
                 withLink(LinkAnnotation.Url(url = GITHUB_PROFILE_URL, styles = linkStyle)) {
                     append("@banana-pixel")
                 }

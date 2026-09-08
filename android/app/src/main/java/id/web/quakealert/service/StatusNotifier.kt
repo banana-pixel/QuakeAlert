@@ -84,15 +84,15 @@ object StatusNotifier {
         manager.createNotificationChannel(channel)
     }
 
-    // Indonesian branches land in B2.
-    private fun channelNameId(): String = "QuakeAlert Status"
-    private fun channelDescId(): String = "A quiet, ongoing summary of whether alerts can reach you."
+    // Indonesian branches (B2). Acuan string sistem: "Pengaturan".
+    private fun channelNameId(): String = "Status QuakeAlert"
+    private fun channelDescId(): String = "Ringkasan tenang tentang apakah peringatan dapat mencapai Anda."
     private fun openAppLabel(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) openAppLabelId() else "Open QuakeAlert"
     private fun fixInSettingsLabel(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) fixInSettingsLabelId() else "Fix in settings"
-    private fun openAppLabelId(): String = "Open QuakeAlert"
-    private fun fixInSettingsLabelId(): String = "Fix in settings"
+    private fun openAppLabelId(): String = "Buka QuakeAlert"
+    private fun fixInSettingsLabelId(): String = "Perbaiki di pengaturan"
 
     /**
      * Posts (or updates in place) the status notification.

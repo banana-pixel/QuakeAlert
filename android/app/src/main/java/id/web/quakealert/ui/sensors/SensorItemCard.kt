@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import id.web.quakealert.R
 
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakePill
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.CardSubtitle
@@ -77,7 +78,8 @@ fun SensorItemCard(
     item: SensorStationItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSelected: Boolean = false
+    isSelected: Boolean = false,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val cardShape = remember { RoundedCornerShape(Dimens.RadiusCard) }
     val fill by animateColorAsState(
@@ -113,7 +115,7 @@ fun SensorItemCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ChipColumn(label = item.chipLabel)
-        DetailsColumn(item = item, modifier = Modifier.weight(1f))
+        DetailsColumn(item = item, lang = lang, modifier = Modifier.weight(1f))
     }
 }
 
@@ -160,9 +162,22 @@ private fun ChipColumn(label: String, modifier: Modifier = Modifier) {
     }
 }
 
+// Status pill + header words in the card language (B2). Acuan: "daring/luring".
+private fun stationPrefixId(): String = "Stasiun "
+private fun statusOnline(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) "Daring" else "Online"
+private fun statusPending(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) "Menunggu" else "Pending"
+private fun statusOffline(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) "Luring" else "Offline"
+
 /** Station header, location and telemetry rows (Figma node 1:1118). */
 @Composable
-private fun DetailsColumn(item: SensorStationItem, modifier: Modifier = Modifier) {
+private fun DetailsColumn(
+    item: SensorStationItem,
+    lang: DisplayLanguage = DisplayLanguage.EN,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Dimens.SensorDetailsGap)
@@ -171,7 +186,7 @@ private fun DetailsColumn(item: SensorStationItem, modifier: Modifier = Modifier
         // shared CardTitle so its base size/weight matches the History card's
         // location title exactly; only the NODE id span recolours.
         val stationText = buildAnnotatedString {
-            append("Station ")
+            append(if (lang == DisplayLanguage.ID) stationPrefixId() else "Station ")
             withStyle(SpanStyle(color = SensorNodeIdText)) {
                 append(item.stationId)
             }
@@ -195,12 +210,12 @@ private fun DetailsColumn(item: SensorStationItem, modifier: Modifier = Modifier
         // Row 1: status pill + Last Ping, horizontally aligned.
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SensorChipRowGap)) {
             val (label, fill, dot) = when (item.status) {
-                SensorStatus.ONLINE -> Triple("Online", StatusOnlineFill, StatusOnlineDot)
+                SensorStatus.ONLINE -> Triple(statusOnline(lang), StatusOnlineFill, StatusOnlineDot)
                 // Pending is trust, not health: the neutral pill (same fill as the
                 // telemetry pills) says "not yet vouched for" without borrowing the
                 // alarm of Offline red for a node that may be perfectly healthy.
-                SensorStatus.PENDING -> Triple("Pending", PillFill, TextSecondary)
-                SensorStatus.OFFLINE -> Triple("Offline", StatusOfflineFill, StatusOfflineDot)
+                SensorStatus.PENDING -> Triple(statusPending(lang), PillFill, TextSecondary)
+                SensorStatus.OFFLINE -> Triple(statusOffline(lang), StatusOfflineFill, StatusOfflineDot)
             }
             QuakePill(text = label, fill = fill, dotColor = dot)
             QuakePill(text = item.telemetry.lastPing)

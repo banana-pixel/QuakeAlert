@@ -26,8 +26,16 @@ import id.web.quakealert.ui.common.ErrorCopy
 internal fun AddSensorWizardStep.headline(lang: DisplayLanguage = DisplayLanguage.EN): String =
     if (lang == DisplayLanguage.ID) headlineId() else headlineEn()
 
-// Indonesian branch lands in B2.
-internal fun AddSensorWizardStep.headlineId(): String = headlineEn()
+// Indonesian branch (B2). Acuan: string sistem Android ("Pengaturan") dan
+// pedoman BPBD untuk instruksi ("dekatkan ke router", "tidak dapat diubah").
+internal fun AddSensorWizardStep.headlineId(): String = when (this) {
+    AddSensorWizardStep.WELCOME -> ""
+    AddSensorWizardStep.LOCATION -> "Di mana sensor ini dipasang?"
+    AddSensorWizardStep.CREDENTIALS -> "ID Stasiun dan Inisialisasi Kredensial"
+    AddSensorWizardStep.WLAN -> "Pengaturan WLAN"
+    AddSensorWizardStep.FINISHING -> "Penyelesaian"
+    AddSensorWizardStep.RATE_LIMIT -> "Tidak dapat menambah sensor"
+}
 
 internal fun AddSensorWizardStep.headlineEn(): String = when (this) {
     AddSensorWizardStep.WELCOME -> ""
@@ -42,8 +50,27 @@ internal fun AddSensorWizardStep.headlineEn(): String = when (this) {
 internal fun AddSensorWizardStep.helperText(lang: DisplayLanguage = DisplayLanguage.EN): String =
     if (lang == DisplayLanguage.ID) helperTextId() else helperTextEn()
 
-// Indonesian branch lands in B2.
-internal fun AddSensorWizardStep.helperTextId(): String = helperTextEn()
+// Indonesian branch (B2).
+internal fun AddSensorWizardStep.helperTextId(): String = when (this) {
+    AddSensorWizardStep.WELCOME -> ""
+    AddSensorWizardStep.LOCATION ->
+        "Geser peta untuk menempatkan sensor. Anda dapat memakai posisi tepat " +
+            "atau menggeser pin beberapa meter demi privasi. Posisi tepat memberi " +
+            "akurasi deteksi terbaik."
+    AddSensorWizardStep.CREDENTIALS ->
+        "Tanda tangan unik di dalam sensor ini. Setiap data yang dikirim " +
+            "ditandatangani dengannya, sehingga QuakeAlert tahu data benar-benar " +
+            "berasal dari perangkat Anda, bukan dari penyusup.\n\nDitampilkan " +
+            "sekarang karena tidak dapat dilihat lagi setelah penyiapan."
+    AddSensorWizardStep.WLAN ->
+        "Jika jaringan tidak muncul, dekatkan sensor ke router. Pastikan kata " +
+            "sandi benar, karena tidak dapat diubah lagi."
+    AddSensorWizardStep.FINISHING ->
+        "Terima kasih atas kontribusi Anda untuk Jaringan QuakeAlert. Setelah " +
+            "langkah ini, sensor Anda berlabel menunggu selama beberapa hari. " +
+            "Untuk informasi lebih lanjut, lihat Bantuan Sensor."
+    AddSensorWizardStep.RATE_LIMIT -> ""
+}
 
 internal fun AddSensorWizardStep.helperTextEn(): String = when (this) {
     AddSensorWizardStep.WELCOME -> ""
@@ -89,8 +116,72 @@ internal fun AddSensorWizardStep.indicatorIndex(): Int = when (this) {
 internal fun failureCopy(failure: WizardFailure, lang: DisplayLanguage = DisplayLanguage.EN): ErrorCopy =
     if (lang == DisplayLanguage.ID) failureCopyId(failure) else failureCopyEn(failure)
 
-// Indonesian branch lands in B2.
-internal fun failureCopyId(failure: WizardFailure): ErrorCopy = failureCopyEn(failure)
+// Indonesian branch (B2).
+internal fun failureCopyId(failure: WizardFailure): ErrorCopy = when (failure) {
+    WizardFailure.OFFLINE -> ErrorCopy(
+        title = "Anda sedang luring",
+        message = "QuakeAlert tidak dapat menjangkau jaringan peringatan untuk " +
+            "mendaftarkan sensor ini. Sambungkan kembali, lalu coba lagi.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.REGISTER_REJECTED -> ErrorCopy(
+        title = "Sensor gagal didaftarkan",
+        message = "Jaringan peringatan tidak dapat mendaftarkan sensor ini. " +
+            "Tidak ada yang tersimpan, jadi aman untuk mencoba lagi.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.SENSOR_NOT_JOINED -> ErrorCopy(
+        title = "Belum terhubung ke sensor",
+        message = "Ponsel Anda belum terhubung ke sensor. Coba lagi dan terima " +
+            "permintaan sambungan saat ponsel memintanya.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.SENSOR_NOT_ANSWERING -> ErrorCopy(
+        title = "Sensor tidak menjawab",
+        message = "Sensor tidak merespons. Pastikan menyala dan dekat dengan " +
+            "ponsel Anda, lalu coba lagi.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.SETTINGS_NOT_ACCEPTED -> ErrorCopy(
+        title = "Sensor tidak menerima pengaturan",
+        message = "Sensor tidak menyimpan pengaturan ini. Biarkan menyala dan " +
+            "dekat dengan ponsel Anda, lalu coba lagi.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.WIFI_CREDENTIALS_REJECTED -> ErrorCopy(
+        title = "Sensor gagal bergabung ke jaringan",
+        message = "Sensor tidak dapat terhubung dengan nama dan kata sandi ini. " +
+            "Periksa kembali lalu coba lagi. Tidak ada yang tersimpan, jadi " +
+            "sensor masih menunggu penyiapan.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.LOCATION_UNAVAILABLE -> ErrorCopy(
+        title = "Lokasi Anda tidak didapat",
+        message = "QuakeAlert tidak dapat membaca posisi Anda. Pastikan izin " +
+            "lokasi diberikan untuk QuakeAlert, atau letakkan pin di peta sendiri.",
+        action = ErrorAction.RETRY
+    )
+
+    WizardFailure.PLACE_NAME_MISSING -> ErrorCopy(
+        title = "Tempat ini belum bernama",
+        message = "Tidak ditemukan nama tempat untuk pin ini. Ketuk nama tempat " +
+            "di atas peta dan ketik satu nama.",
+        action = ErrorAction.NONE
+    )
+
+    WizardFailure.SENSOR_NEVER_CHECKED_IN -> ErrorCopy(
+        title = "Sensor belum melapor",
+        message = "Sensor Anda belum melapor ke jaringan peringatan. Sensor terus " +
+            "mencoba sendiri, jadi biarkan menyala dan periksa daftar Sensor nanti.",
+        action = ErrorAction.NONE
+    )
+}
 
 internal fun failureCopyEn(failure: WizardFailure): ErrorCopy = when (failure) {
     WizardFailure.OFFLINE -> ErrorCopy(
@@ -162,8 +253,16 @@ internal fun failureCopyEn(failure: WizardFailure): ErrorCopy = when (failure) {
 internal fun DetailsError.message(lang: DisplayLanguage = DisplayLanguage.EN): String =
     if (lang == DisplayLanguage.ID) messageId() else messageEn()
 
-// Indonesian branch lands in B2.
-internal fun DetailsError.messageId(): String = messageEn()
+// Indonesian branch (B2).
+internal fun DetailsError.messageId(): String = when (this) {
+    DetailsError.NAME_REQUIRED -> "Masukkan nama tempat untuk sensor ini."
+    DetailsError.NAME_TOO_LONG ->
+        "Nama tempat itu terlalu panjang. Maksimal ${SensorNameRules.MAX_LENGTH} karakter."
+    DetailsError.NAME_HAS_NODE_ID ->
+        "Gunakan nama tempat di sini. ID sensor ditambahkan otomatis."
+    DetailsError.NAME_NOT_PLACE_LIKE -> "Itu tidak terlihat seperti nama tempat."
+    DetailsError.POSITION_MISSING -> "Geser peta untuk menempatkan sensor dulu."
+}
 
 internal fun DetailsError.messageEn(): String = when (this) {
     DetailsError.NAME_REQUIRED -> "Enter a place name for this sensor."
@@ -179,8 +278,13 @@ internal fun DetailsError.messageEn(): String = when (this) {
 internal fun LinkError.message(lang: DisplayLanguage = DisplayLanguage.EN): String =
     if (lang == DisplayLanguage.ID) messageId() else messageEn()
 
-// Indonesian branch lands in B2.
-internal fun LinkError.messageId(): String = messageEn()
+// Indonesian branch (B2).
+internal fun LinkError.messageId(): String = when (this) {
+    LinkError.SSID_REQUIRED -> "Pilih jaringan yang harus diikuti sensor."
+    LinkError.PASSWORD_TOO_SHORT ->
+        "Kata sandi itu lebih panjang dari yang dapat disimpan sensor. " +
+            "Maksimal ${WifiRules.MAX_PASSWORD_LENGTH} karakter."
+}
 
 internal fun LinkError.messageEn(): String = when (this) {
     LinkError.SSID_REQUIRED -> "Choose the network your sensor should join."

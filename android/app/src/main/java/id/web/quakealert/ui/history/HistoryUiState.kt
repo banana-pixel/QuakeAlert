@@ -25,7 +25,8 @@ val MmiSeverity.label: String
     get() = label(DisplayLanguage.EN)
 
 /**
- * Human-readable severity name in [lang]. Indonesian branch lands in B2.
+ * Human-readable severity name in [lang]. Indonesian branch (B2): baku BMKG
+ * memakai "ringan/sedang/kuat" untuk tingkat guncangan.
  */
 fun MmiSeverity.label(lang: DisplayLanguage): String {
     if (lang == DisplayLanguage.ID) return labelId()
@@ -35,7 +36,10 @@ fun MmiSeverity.label(lang: DisplayLanguage): String {
     }
 }
 
-private fun MmiSeverity.labelId(): String = label(DisplayLanguage.EN)
+private fun MmiSeverity.labelId(): String = when (this) {
+    MmiSeverity.MODERATE -> "Sedang"
+    MmiSeverity.SEVERE -> "Kuat"
+}
 
 /**
  * A single earthquake history entry. Rendered compactly by [QuakeHistoryCard] in
@@ -107,9 +111,9 @@ fun QuakeHistoryItem.distanceLabel(
         "${unitSystem.formatDistance(it)} $away"
     } ?: if (lang == DisplayLanguage.ID) distanceUnknownId() else "Distance unknown"
 
-// Indonesian branches land in B2.
-private fun distanceAwayId(): String = "Away"
-private fun distanceUnknownId(): String = "Distance unknown"
+// Indonesian branches (B2).
+private fun distanceAwayId(): String = "dari Anda"
+private fun distanceUnknownId(): String = "Jarak tidak diketahui"
 
 /**
  * Combined date + time line shown in the detail overlay's banner (Figma node
@@ -140,9 +144,17 @@ fun QuakeHistoryItem.toShareText(
     append("Centroid: $coordinates")
 }
 
-// Indonesian branch lands in B2.
-private fun QuakeHistoryItem.shareTextId(unitSystem: UnitSystem): String =
-    toShareText(unitSystem, DisplayLanguage.EN)
+// Indonesian branch (B2). Urutan baris sama dengan cabang Inggris agar dua
+// teks bagikan yang diteruskan keluar app dapat dibandingkan.
+private fun QuakeHistoryItem.shareTextId(unitSystem: UnitSystem): String = buildString {
+    appendLine("Gempa bumi: $location")
+    appendLine("MMI $intensity (${severity.label(DisplayLanguage.ID)})")
+    appendLine(timestampLabel)
+    appendLine("PGA (Maks): $pgaLabel")
+    appendLine("Stasiun pelapor: $reportingNodesLabel")
+    appendLine("Jarak dari saya: ${distanceKm?.let { unitSystem.formatDistance(it) } ?: "tidak diketahui"}")
+    append("Sentroid: $coordinates")
+}
 
 /**
  * Immutable UI state for the History screen. Hoisted into [HistoryViewModel] and

@@ -169,6 +169,24 @@ jobs:
           python3 -c "import yaml" 2>/dev/null || pip install -q pyyaml
           bash server/scripts/check_contracts.sh
 
+      - name: No em dash in user-visible Android strings
+        # U+2014 is banned from rendered copy (comments exempt): resource text
+        # nodes in values/ and values-in/ must not contain it. Kotlin copy is
+        # guarded by IndonesianCopyTest instead, which can name the function.
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, xml.etree.ElementTree as ET
+          bad = []
+          for f in glob.glob('android/app/src/main/res/values*/strings.xml'):
+              for s in ET.parse(f).getroot().iter('string'):
+                  if '—' in (s.text or ''):
+                      bad.append(f"{f}:{s.get('name')}")
+          if bad:
+              print("em dash in user-visible strings:\n" + "\n".join(bad))
+              sys.exit(1)
+          print("no em dash in Android string resources")
+          EOF
+
       - name: Shellcheck deploy and server scripts
         # warning ke atas saja yang menggagalkan: temuan info (fungsi yang
         # dipanggil lewat trap, $ literal yang disengaja di grep selftest,

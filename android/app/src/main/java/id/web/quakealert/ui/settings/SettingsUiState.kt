@@ -124,8 +124,8 @@ data class SettingsUiState(
         locationLabel?.takeIf { it.isNotBlank() }
             ?: if (lang == DisplayLanguage.ID) locationNotSetId() else "Location not set"
 
-    // Indonesian branch lands in B2.
-    private fun locationNotSetId(): String = "Location not set"
+    // Indonesian branch (B2).
+    private fun locationNotSetId(): String = "Lokasi belum diatur"
 
     /** Pre-formatted "Last Sync : {time}" info-pill text. */
     fun lastSyncPillLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
@@ -134,9 +134,9 @@ data class SettingsUiState(
         return "$prefix${lastSyncLabel ?: never}"
     }
 
-    // Indonesian branches land in B2.
-    private fun neverId(): String = "never"
-    private fun lastSyncPrefixId(): String = "Last Sync : "
+    // Indonesian branches (B2).
+    private fun neverId(): String = "belum pernah"
+    private fun lastSyncPrefixId(): String = "Sinkron Terakhir : "
 
     /**
      * Radius of the map preview's geofence circle as a fraction of the card's

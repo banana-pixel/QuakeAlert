@@ -133,7 +133,9 @@ fun InfoPill(
 fun SyncRefreshButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSyncing: Boolean = false
+    isSyncing: Boolean = false,
+    syncingLabel: String = "Syncing location",
+    idleLabel: String = "Sync location now"
 ) {
     // Restarted from 0 on each sync rather than run forever and hidden: an infinite
     // transition that is always composed keeps a frame callback alive for the whole
@@ -167,7 +169,7 @@ fun SyncRefreshButton(
     ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_refresh_cw),
-            contentDescription = if (isSyncing) "Syncing location" else "Sync location now",
+            contentDescription = if (isSyncing) syncingLabel else idleLabel,
             tint = if (isSyncing) TextSecondary else TextPrimary,
             modifier = Modifier
                 .size(Dimens.SyncRefreshIconSize)
@@ -286,7 +288,8 @@ fun AboutCard(
     credit: String,
     version: String,
     onMoreAboutUs: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    moreAboutUs: String = "More About Us"
 ) {
     val shape = RoundedCornerShape(Dimens.SettingCardRadius)
     Column(
@@ -321,7 +324,7 @@ fun AboutCard(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "More About Us", style = ChipLabel, color = TextPrimary)
+            Text(text = moreAboutUs, style = ChipLabel, color = TextPrimary)
         }
     }
 }
@@ -359,7 +362,13 @@ fun PermissionsHubCardBody(
     onFixNotifications: () -> Unit,
     onFixLocation: () -> Unit,
     onFixBattery: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    notificationsTitle: String = "Notifications",
+    locationTitle: String = "Precise Location",
+    backgroundTitle: String = "Background Delivery",
+    allowedLabel: String = "Allowed",
+    unrestrictedLabel: String = "Unrestricted",
+    tapToAllowLabel: String = "Tap to allow"
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -367,23 +376,26 @@ fun PermissionsHubCardBody(
     ) {
         PermissionHubRow(
             iconRes = R.drawable.ic_notification_permission,
-            title = "Notifications",
+            title = notificationsTitle,
             granted = notificationGranted,
-            grantedLabel = "Allowed",
+            grantedLabel = allowedLabel,
+            tapToAllowLabel = tapToAllowLabel,
             onFix = onFixNotifications
         )
         PermissionHubRow(
             iconRes = R.drawable.ic_pin_location,
-            title = "Precise Location",
+            title = locationTitle,
             granted = locationGranted,
-            grantedLabel = "Allowed",
+            grantedLabel = allowedLabel,
+            tapToAllowLabel = tapToAllowLabel,
             onFix = onFixLocation
         )
         PermissionHubRow(
             iconRes = R.drawable.ic_battery_optimization,
-            title = "Background Delivery",
+            title = backgroundTitle,
             granted = batteryUnrestricted,
-            grantedLabel = "Unrestricted",
+            grantedLabel = unrestrictedLabel,
+            tapToAllowLabel = tapToAllowLabel,
             onFix = onFixBattery
         )
     }
@@ -407,6 +419,7 @@ private fun PermissionHubRow(
     title: String,
     granted: Boolean,
     grantedLabel: String,
+    tapToAllowLabel: String = "Tap to allow",
     onFix: () -> Unit
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
@@ -446,7 +459,7 @@ private fun PermissionHubRow(
                 )
             }
             Text(
-                text = if (granted) grantedLabel else "Tap to allow",
+                text = if (granted) grantedLabel else tapToAllowLabel,
                 style = ChipLabel,
                 color = if (granted) TextPrimary else MmiOrange
             )
@@ -471,7 +484,8 @@ fun IdentityRow(
     label: String,
     value: String?,
     onCopy: ((String) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    notSignedInLabel: String = "Not signed in yet"
 ) {
     val shown = value?.takeIf { it.isNotBlank() }
     val rowModifier = if (shown != null && onCopy != null) {
@@ -487,7 +501,7 @@ fun IdentityRow(
         Text(
             // "Not signed in yet" rather than an empty line: the bootstrap is a
             // network call, so this state is reachable on a cold start offline.
-            text = shown ?: "Not signed in yet",
+            text = shown ?: notSignedInLabel,
             style = CardTitle,
             color = TextPrimary
         )

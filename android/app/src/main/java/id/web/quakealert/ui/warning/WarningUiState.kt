@@ -130,8 +130,12 @@ data class RecentSeismicActivity(
         }
     }
 
-    // Indonesian branch lands in B2.
-    private fun countTextId(): String = countText(DisplayLanguage.EN)
+    // Indonesian branch (B2). Tanpa infleksi plural.
+    private fun countTextId(): String = when {
+        eventCount == 0 -> "Tidak ada kejadian"
+        isCountCapped -> "$eventCount+ kejadian"
+        else -> "$eventCount kejadian"
+    }
 
     /** The count row's value, or the reason there is no count. */
     fun countValue(lang: DisplayLanguage = DisplayLanguage.EN): String = measured(countText(lang), lang)
@@ -148,7 +152,7 @@ data class RecentSeismicActivity(
         if (lang == DisplayLanguage.ID) noneRecordedId() else "None recorded"
 
     // Indonesian branch lands in B2.
-    private fun noneRecordedId(): String = "None recorded"
+    private fun noneRecordedId(): String = "Belum ada yang tercatat"
 
     /** The count with no noun, for the banner's second clause: "9" / "100+". */
     private val countShort: String
@@ -173,8 +177,14 @@ data class RecentSeismicActivity(
         }
     }
 
-    // Indonesian branch lands in B2.
-    private fun bannerTitleId(): String = bannerTitle(DisplayLanguage.EN)
+    // Indonesian branch (B2). "Aktif" di sini berarti tidak ada peringatan yang
+    // berjalan — klaim sempit yang sama dengan cabang Inggris.
+    private fun bannerTitleId(): String =
+        if (availability == ActivityAvailability.MEASURED && eventCount == 0) {
+            "Tidak Ada Gempa Terkini"
+        } else {
+            "Tidak Ada Gempa Aktif"
+        }
 
     /**
      * The resting banner's one line. Radius is left out on purpose — the banner has
@@ -203,8 +213,18 @@ data class RecentSeismicActivity(
         }
     }
 
-    // Indonesian branch lands in B2.
-    private fun bannerLabelId(): String = bannerLabel(DisplayLanguage.EN)
+    // Indonesian branch (B2).
+    private fun bannerLabelId(): String = when (availability) {
+        ActivityAvailability.MEASURED -> when {
+            eventCount == 0 ->
+                "Tidak ada gempa tercatat di dekat Anda dalam $windowDays hari terakhir"
+            mostRecent != null ->
+                "Terbaru: $mostRecent \u00b7 $countShort di dekat sini dalam $windowDays hari"
+            else -> "${countText(DisplayLanguage.ID)} di dekat sini dalam $windowDays hari terakhir"
+        }
+        ActivityAvailability.NO_POSITION -> "Sinkronkan lokasi untuk melihat aktivitas di dekat sini"
+        ActivityAvailability.UNAVAILABLE -> "Aktivitas terkini tidak tersedia"
+    }
 
     private fun measured(value: String, lang: DisplayLanguage = DisplayLanguage.EN): String = when (availability) {
         ActivityAvailability.MEASURED -> value
@@ -213,8 +233,8 @@ data class RecentSeismicActivity(
     }
 
     // Indonesian branches land in B2.
-    private fun needsPositionId(): String = NEEDS_POSITION
-    private fun unavailableValueId(): String = UNAVAILABLE_VALUE
+    private fun needsPositionId(): String = "Butuh lokasi Anda"
+    private fun unavailableValueId(): String = "Tidak tersedia luring"
 
     companion object {
         /** Copy for the idle banner variants, matching the design (Figma 124:1426). */
@@ -281,8 +301,12 @@ fun suggestedActions(lang: DisplayLanguage = DisplayLanguage.EN): List<Suggested
     )
 }
 
-// Indonesian branch lands in B2.
-private fun suggestedActionsId(): List<SuggestedAction> = suggestedActions(DisplayLanguage.EN)
+// Indonesian branch (B2). Acuan BMKG: "Lindungi diri Anda!", "Lindungi Kepala".
+private fun suggestedActionsId(): List<SuggestedAction> = listOf(
+    SuggestedAction("drop", R.drawable.ic_action_drop, "Berlindung!"),
+    SuggestedAction("cover", R.drawable.ic_action_cover, "Lindungi Kepala!"),
+    SuggestedAction("hold-on", R.drawable.ic_action_hold_on, "Berpegangan!")
+)
 
 /**
  * Immutable UI state for the Warning screen, as a two-state hierarchy rather than
@@ -454,7 +478,10 @@ sealed interface WarningUiState {
          */
         fun proximityLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
             val distance = distanceKm
-                ?.let { "${unitSystem.formatDistance(it)} away" }
+                ?.let {
+                    val d = unitSystem.formatDistance(it)
+                    if (lang == DisplayLanguage.ID) "$d dari Anda" else "$d away"
+                }
                 ?: if (lang == DisplayLanguage.ID) distanceUnknownId() else "Distance unknown"
             return locationName
                 .takeIf { it.isNotBlank() }
@@ -463,7 +490,7 @@ sealed interface WarningUiState {
         }
 
         // Indonesian branch lands in B2.
-        private fun distanceUnknownId(): String = "Distance unknown"
+        private fun distanceUnknownId(): String = "Jarak tidak diketahui"
     }
 }
 
@@ -495,8 +522,28 @@ fun activeQuakeTips(lang: DisplayLanguage = DisplayLanguage.EN): List<Preparedne
     )
 }
 
-// Indonesian branch lands in B2.
-private fun activeQuakeTipsId(): List<PreparednessTip> = activeQuakeTips(DisplayLanguage.EN)
+// Indonesian branch (B2). Acuan: pedoman kesiapsiagaan BPBD — periksa rumah,
+// pastikan keluarga, hindari bahaya.
+private fun activeQuakeTipsId(): List<PreparednessTip> = listOf(
+    PreparednessTip(
+        id = "inspect",
+        icon = R.drawable.ic_prep_inspect,
+        title = "Periksa Rumah Anda",
+        description = "Periksa dinding, plafon, dan fondasi dari retak atau kerusakan sebelum masuk kembali."
+    ),
+    PreparednessTip(
+        id = "review",
+        icon = R.drawable.ic_prep_review,
+        title = "Tinjau Rencana Keselamatan Anda",
+        description = "Pastikan anggota keluarga aman dan perbarui kontak darurat bila perlu."
+    ),
+    PreparednessTip(
+        id = "hazard",
+        icon = R.drawable.ic_prep_hazard,
+        title = "Hindari Bahaya",
+        description = "Jauhi pecahan kaca, tumpahan bahan kimia, dan kabel listrik yang rusak."
+    )
+)
 
 /**
  * Tips for the calm state (Figma 124:1426): pre-quake preparedness guidance.
@@ -526,8 +573,27 @@ fun noActiveQuakeTips(lang: DisplayLanguage = DisplayLanguage.EN): List<Prepared
     )
 }
 
-// Indonesian branch lands in B2.
-private fun noActiveQuakeTipsId(): List<PreparednessTip> = noActiveQuakeTips(DisplayLanguage.EN)
+// Indonesian branch (B2).
+private fun noActiveQuakeTipsId(): List<PreparednessTip> = listOf(
+    PreparednessTip(
+        id = "kit",
+        icon = R.drawable.ic_prep_kit,
+        title = "Siapkan Tas Siaga 72 Jam",
+        description = "Kemas air, makanan tahan lama, senter, baterai cadangan, dan kotak P3K dalam tas yang mudah dijangkau."
+    ),
+    PreparednessTip(
+        id = "comms",
+        icon = R.drawable.ic_prep_comms,
+        title = "Buat Rencana Komunikasi",
+        description = "Pilih titik kumpul keluarga yang aman dan tentukan kontak darurat luar kota bila jaringan seluler setempat mati."
+    ),
+    PreparednessTip(
+        id = "home",
+        icon = R.drawable.ic_prep_home,
+        title = "Amankan Barang Berat",
+        description = "Jangkar furnitur tinggi, TV, dan peralatan besar ke dinding agar tidak jatuh."
+    )
+)
 
 /**
  * What the "Emergency Steps & Contacts" overlay shows that is not fixed copy.

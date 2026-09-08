@@ -140,7 +140,7 @@ object WarningNotifier {
             WarningActivity.intent(
                 context = context,
                 eventId = message.eventId,
-                intensityValue = message.intensityValueLabel(),
+                intensityValue = message.intensityValueLabel(lang.locale()),
                 locationName = message.locationName,
                 distanceKm = distanceKm,
                 isTest = message.isTest,
@@ -267,16 +267,22 @@ object WarningNotifier {
         return if (message.isTest) "TEST - earthquake drill" else "Earthquake detected"
     }
 
-    // Indonesian branches land in B2. Separate functions so the two languages
-    // are reviewed side by side.
-    private fun channelNameId(): String = "Earthquake Emergency Alerts"
-    private fun channelDescId(): String = "Life-safety warnings for earthquakes near you."
-    private fun summaryTextId(message: WsAlertMessage, distanceKm: Int?): String =
-        summaryText(message, distanceKm, DisplayLanguage.EN)
-    private fun bodyTextId(message: WsAlertMessage, distanceKm: Int?): String =
-        bodyText(message, distanceKm, DisplayLanguage.EN)
+    // Indonesian branches (B2). Acuan BMKG: "Lindungi diri Anda!".
+    private fun channelNameId(): String = "Peringatan Darurat Gempa Bumi"
+    private fun channelDescId(): String = "Peringatan keselamatan jiwa untuk gempa bumi di dekat Anda."
+    private fun summaryTextId(message: WsAlertMessage, distanceKm: Int?): String {
+        val where = message.locationName.takeIf { it.isNotBlank() } ?: "daerah Anda"
+        if (message.isTest) return "Latihan (peringatan uji) di dekat $where"
+        val proximity = distanceKm?.let { ", $it km dari Anda" }.orEmpty()
+        return "Intensitas ${message.mmi} di dekat $where$proximity"
+    }
+    private fun bodyTextId(message: WsAlertMessage, distanceKm: Int?): String {
+        val where = message.locationName.takeIf { it.isNotBlank() } ?: "daerah Anda"
+        val proximity = distanceKm?.let { "$it km dari Anda" } ?: "jarak tidak diketahui"
+        return "Intensitas ${message.mmi} di dekat $where ($proximity). Segera berlindung di tempat yang aman."
+    }
     private fun alertTitleId(message: WsAlertMessage): String =
-        alertTitle(message, DisplayLanguage.EN)
+        if (message.isTest) "UJI - latihan gempa bumi" else "Gempa bumi terdeteksi"
 
     private fun canPost(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||

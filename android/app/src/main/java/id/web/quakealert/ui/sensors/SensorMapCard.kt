@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import id.web.quakealert.R
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.MapFocus
 import id.web.quakealert.ui.common.MapMarker
 import id.web.quakealert.ui.common.QuakeMap
@@ -98,7 +99,8 @@ fun SensorMapCard(
     height: Dp = Dimens.MapCardHeight,
     markers: List<MapMarker> = emptyList(),
     focus: MapFocus? = null,
-    pillLabel: String = overview.locationLabel
+    pillLabel: String = overview.locationLabel,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val cardShape = remember { RoundedCornerShape(Dimens.RadiusCard) }
     val animatedFraction by animateFloatAsState(
@@ -164,7 +166,7 @@ fun SensorMapCard(
 
         // Bottom-left: range/sensor-count summary badge.
         if (showRangeBadge) RangeBadge(
-            label = overview.summaryLabel(unitSystem),
+            label = overview.summaryLabel(unitSystem, lang),
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(Dimens.MapCardPadding)

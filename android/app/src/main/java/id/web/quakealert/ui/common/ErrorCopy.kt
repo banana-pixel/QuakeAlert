@@ -65,9 +65,57 @@ fun errorCopy(
     if (lang == DisplayLanguage.ID) errorCopyId(throwable, isNarrowed)
     else errorCopyEn(throwable, isNarrowed)
 
-// Indonesian branch lands in B2.
-private fun errorCopyId(throwable: Throwable, isNarrowed: Boolean): ErrorCopy =
-    errorCopyEn(throwable, isNarrowed)
+// Indonesian branch (B2). Aturan yang sama dengan cabang Inggris: sebut yang
+// gagal menurut pengguna, jangan salahkan pengguna, satu tawaran yang bisa
+// membantu.
+private fun errorCopyId(throwable: Throwable, isNarrowed: Boolean): ErrorCopy = when {
+    throwable is ApiException -> apiErrorCopyId(throwable, isNarrowed)
+    throwable is UnknownHostException ||
+        throwable is SocketTimeoutException ||
+        throwable is SSLException ||
+        throwable is IOException -> ErrorCopy(
+        title = "Anda sedang luring",
+        message = "QuakeAlert tidak dapat menjangkau jaringan peringatan. Data tersimpan Anda tetap ditampilkan.",
+        action = ErrorAction.RETRY
+    )
+
+    else -> ErrorCopy(
+        title = "Terjadi Kesalahan",
+        message = "QuakeAlert tidak dapat menyelesaikan permintaan itu. Coba lagi sebentar lagi.",
+        action = ErrorAction.RETRY
+    )
+}
+
+private fun apiErrorCopyId(failure: ApiException, isNarrowed: Boolean): ErrorCopy = when {
+    failure.isUnauthenticated -> ErrorCopy(
+        title = "Sesi masuk kedaluwarsa",
+        message = "QuakeAlert tidak dapat memastikan perangkat ini ke jaringan peringatan. " +
+            "Data tersimpan Anda tetap ditampilkan.",
+        action = ErrorAction.RETRY
+    )
+
+    failure.httpCode == 429 -> ErrorCopy(
+        title = "Terlalu banyak permintaan",
+        message = "QuakeAlert terlalu sering bertanya ke jaringan peringatan. Tunggu sebentar dan coba lagi.",
+        action = ErrorAction.RETRY
+    )
+
+    failure.httpCode in 400..499 -> ErrorCopy(
+        title = "Permintaan itu tidak diterima",
+        message = if (isNarrowed) {
+            "Jaringan peringatan tidak dapat menjawab kombinasi filter ini."
+        } else {
+            "Jaringan peringatan tidak dapat menjawab permintaan ini. Data tersimpan Anda tetap ditampilkan."
+        },
+        action = if (isNarrowed) ErrorAction.RESET_FILTERS else ErrorAction.NONE
+    )
+
+    else -> ErrorCopy(
+        title = "Terjadi Kesalahan",
+        message = "QuakeAlert tidak dapat menyelesaikan permintaan itu. Coba lagi sebentar lagi.",
+        action = ErrorAction.RETRY
+    )
+}
 
 private fun errorCopyEn(throwable: Throwable, isNarrowed: Boolean = false): ErrorCopy = when {
     throwable is ApiException -> apiErrorCopy(throwable, isNarrowed)

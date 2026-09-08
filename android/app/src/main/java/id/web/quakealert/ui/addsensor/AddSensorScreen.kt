@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.ErrorCopy
 import id.web.quakealert.ui.common.LocationPickerMap
 import id.web.quakealert.ui.common.MapFocus
@@ -120,9 +121,11 @@ fun AddSensorWizardDialog(
     onBack: () -> Unit,
     onExitCancelled: () -> Unit,
     onRequestExit: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val busy = state.isBusy
+    val strings = remember(lang) { addSensorStrings(lang) }
     // Hoisted so the body's scroll position survives every recomposition the keyboard
     // inset animation triggers while typing.
     val bodyScroll = rememberScrollState()
@@ -139,7 +142,7 @@ fun AddSensorWizardDialog(
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
             .heightIn(max = maxCardHeight)
     ) {
-        QuakeModalHeader(title = "Add a Sensor", onDismiss = onRequestExit)
+        QuakeModalHeader(title = strings.title, onDismiss = onRequestExit)
 
         Box(modifier = Modifier.weight(1f, fill = false)) {
             Column(
@@ -148,12 +151,12 @@ fun AddSensorWizardDialog(
                     .verticalScroll(bodyScroll),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                StepBadge(state.currentStep)
+                StepBadge(state.currentStep, strings)
 
                 // Welcome carries its own title in the body art, so no headline here.
                 if (state.currentStep != AddSensorWizardStep.WELCOME) {
                     Text(
-                        text = state.currentStep.headline(),
+                        text = state.currentStep.headline(lang),
                         style = WizardHeadline,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -164,10 +167,11 @@ fun AddSensorWizardDialog(
                 Spacer(Modifier.height(Dimens.WizardSectionGap))
 
                 when (state.currentStep) {
-                    AddSensorWizardStep.WELCOME -> WelcomeBody()
+                    AddSensorWizardStep.WELCOME -> WelcomeBody(strings)
 
                     AddSensorWizardStep.LOCATION -> LocationBody(
                         state = state,
+                        strings = strings,
                         onSyncLocationClick = onSyncLocationClick,
                         onMapPinMoved = onMapPinMoved,
                         onLocationNameChanged = onLocationNameChanged
@@ -175,12 +179,14 @@ fun AddSensorWizardDialog(
 
                     AddSensorWizardStep.CREDENTIALS -> CredentialsBody(
                         state = state,
+                        strings = strings,
                         onSecretRevealed = onSecretRevealed,
                         onCopySecret = onCopySecret
                     )
 
                     AddSensorWizardStep.WLAN -> WlanBody(
                         state = state,
+                        strings = strings,
                         onRescanNetworks = onRescanNetworks,
                         onNetworkSelected = onNetworkSelected,
                         onPasswordChanged = onPasswordChanged
@@ -188,28 +194,30 @@ fun AddSensorWizardDialog(
 
                     AddSensorWizardStep.FINISHING -> FinishingBody(
                         state = state,
+                        strings = strings,
                         onCheckNow = onCheckNow
                     )
 
-                    AddSensorWizardStep.RATE_LIMIT -> RateLimitBody()
+                    AddSensorWizardStep.RATE_LIMIT -> RateLimitBody(strings)
                 }
 
                 // Everything the step is currently complaining about, in the order
                 // the user meets it: the field rule first, then the situation.
-                InlineNote(state.detailsError?.message())
-                InlineNote(state.linkError?.message())
-                state.failure?.let { FailurePanel(failureCopy(it)) }
+                InlineNote(state.detailsError?.message(lang))
+                InlineNote(state.linkError?.message(lang))
+                state.failure?.let { FailurePanel(failureCopy(it, lang)) }
 
-                HelperText(state.currentStep.helperText())
+                HelperText(state.currentStep.helperText(lang))
             }
 
-            if (busy) ProcessingCover(modifier = Modifier.matchParentSize())
+            if (busy) ProcessingCover(strings, modifier = Modifier.matchParentSize())
         }
 
         PageIndicatorRow(state.currentStep)
 
         ActionRow(
             state = state,
+            strings = strings,
             onStartClicked = onStartClicked,
             onLocationContinue = onLocationContinue,
             onCredentialsContinue = onCredentialsContinue,
@@ -227,16 +235,14 @@ fun AddSensorWizardDialog(
     // be resumed.
     if (state.showingExitConfirm) {
         QuakeConfirmDialog(
-            title = "Discard sensor setup?",
+            title = strings.discardTitle,
             message = if (state.shouldRevokeOnExit) {
-                "Leaving now cancels this sensor's registration and discards the " +
-                    "credentials on screen, which can never be shown again."
+                strings.discardRevoke
             } else {
-                "This setup is not finished. Leaving now discards it, and the " +
-                    "credentials on screen cannot be shown again."
+                strings.discardPlain
             },
-            confirmLabel = "Discard",
-            dismissLabel = "Keep going",
+            confirmLabel = strings.discard,
+            dismissLabel = strings.keepGoing,
             onConfirm = onDismiss,
             onDismiss = onExitCancelled
         )
@@ -249,15 +255,8 @@ fun AddSensorWizardDialog(
 
 /** "Step N" capsule; welcome shows none and the rate limit shows "Error". */
 @Composable
-private fun StepBadge(step: AddSensorWizardStep, modifier: Modifier = Modifier) {
-    val label = when (step) {
-        AddSensorWizardStep.WELCOME -> null
-        AddSensorWizardStep.LOCATION -> "Step 1"
-        AddSensorWizardStep.CREDENTIALS -> "Step 2"
-        AddSensorWizardStep.WLAN -> "Step 3"
-        AddSensorWizardStep.FINISHING -> "Step 4"
-        AddSensorWizardStep.RATE_LIMIT -> "Error"
-    } ?: return
+private fun StepBadge(step: AddSensorWizardStep, strings: AddSensorStrings, modifier: Modifier = Modifier) {
+    val label = strings.stepBadge(step) ?: return
 
     val shape = RoundedCornerShape(Dimens.SectionHeaderPillRadius)
     Box(
@@ -292,6 +291,7 @@ private fun PageIndicatorRow(step: AddSensorWizardStep) {
 @Composable
 private fun ActionRow(
     state: AddSensorState,
+    strings: AddSensorStrings,
     onStartClicked: () -> Unit,
     onLocationContinue: () -> Unit,
     onCredentialsContinue: () -> Unit,
@@ -303,7 +303,7 @@ private fun ActionRow(
     when (state.currentStep) {
         AddSensorWizardStep.WELCOME ->
             QuakeModalActionButton(
-                label = "Start",
+                label = strings.start,
                 filled = false,
                 onClick = onStartClicked,
                 enabled = !busy,
@@ -318,14 +318,14 @@ private fun ActionRow(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.WizardActionGap)
             ) {
                 QuakeModalActionButton(
-                    label = "Back",
+                    label = strings.back,
                     filled = false,
                     onClick = onBack,
                     enabled = !busy,
                     modifier = Modifier.weight(1f)
                 )
                 QuakeModalActionButton(
-                    label = "Next",
+                    label = strings.next,
                     enabled = !busy && when (state.currentStep) {
                         AddSensorWizardStep.LOCATION -> state.locationStepValid
                         AddSensorWizardStep.CREDENTIALS -> true
@@ -344,14 +344,14 @@ private fun ActionRow(
         // whether or not it has checked in yet; it keeps trying on its own.
         AddSensorWizardStep.FINISHING ->
             QuakeModalActionButton(
-                label = "Finish",
+                label = strings.finish,
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             )
 
         AddSensorWizardStep.RATE_LIMIT ->
             QuakeModalActionButton(
-                label = "Exit",
+                label = strings.exit,
                 onClick = onDismiss,
                 container = DestructiveActionFill,
                 modifier = Modifier.fillMaxWidth()
@@ -364,7 +364,7 @@ private fun ActionRow(
  * and the disabled action row still read as context rather than as breakage.
  */
 @Composable
-private fun ProcessingCover(modifier: Modifier = Modifier) {
+private fun ProcessingCover(strings: AddSensorStrings, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
     Column(
         modifier = modifier
@@ -377,7 +377,7 @@ private fun ProcessingCover(modifier: Modifier = Modifier) {
     ) {
         GlyphDisc(R.drawable.ic_loading_spinner)
         Spacer(Modifier.height(Dimens.WizardPanelGap))
-        Text(text = "Processing, please hang tight...", style = WizardStatusText)
+        Text(text = strings.processing, style = WizardStatusText)
     }
 }
 
@@ -415,20 +415,18 @@ private fun GlyphPair(secondIcon: Int, secondTint: Color = TextPrimary) {
 // ============================================================
 
 @Composable
-private fun WelcomeBody() {
+private fun WelcomeBody(strings: AddSensorStrings) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         GlyphPair(R.drawable.ic_wifi_signal)
         Text(
-            text = "Welcome to QuakeAlert Sensor Wizard!",
+            text = strings.welcomeTitle,
             style = WizardHeadline,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = Dimens.WizardSectionGap)
         )
         Text(
-            text = "You are going to add a new device to the QuakeAlert Network, for " +
-                "further info you can visit Sensor Guide.\n\nWhen you are ready, start " +
-                "the sensor addition process with the button below.",
+            text = strings.welcomeBody,
             style = WizardBodyText,
             modifier = Modifier
                 .fillMaxWidth()
@@ -447,6 +445,7 @@ private const val ZOOM_PICK = 13.0
 @Composable
 private fun LocationBody(
     state: AddSensorState,
+    strings: AddSensorStrings,
     onSyncLocationClick: () -> Unit,
     onMapPinMoved: (Double, Double) -> Unit,
     onLocationNameChanged: (String) -> Unit
@@ -486,9 +485,9 @@ private fun LocationBody(
                 ) {
                     Text(
                         text = if (state.isSyncingLocation) {
-                            "Finding your location..."
+                            strings.findingLocation
                         } else {
-                            "Tap sync to put your location on the map."
+                            strings.tapSyncHint
                         },
                         style = WizardBodyText.copy(color = TextSecondary),
                         modifier = Modifier.padding(horizontal = Dimens.WizardEmphasisPadding)
@@ -500,6 +499,7 @@ private fun LocationBody(
             // the way of the thumb that is panning.
             SyncChip(
                 isSyncing = state.isSyncingLocation,
+                strings = strings,
                 onClick = onSyncLocationClick,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -541,6 +541,7 @@ private fun CentrePin(modifier: Modifier = Modifier) {
 @Composable
 private fun SyncChip(
     isSyncing: Boolean,
+    strings: AddSensorStrings,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -556,7 +557,12 @@ private fun SyncChip(
     ) {
         // The button owns the tap; the chip is only its container, so there is one
         // clickable here and not two competing for the same pixels.
-        SyncRefreshButton(onClick = onClick, isSyncing = isSyncing)
+        SyncRefreshButton(
+            onClick = onClick,
+            isSyncing = isSyncing,
+            syncingLabel = strings.syncingLocation,
+            idleLabel = strings.syncLocationNow
+        )
     }
 }
 
@@ -603,7 +609,7 @@ private fun PlaceAndCoordinatesPanel(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Detected City Name :",
+                    text = strings.detectedCity,
                     style = MetricLabel,
                     modifier = Modifier.weight(1f)
                 )
@@ -628,7 +634,7 @@ private fun PlaceAndCoordinatesPanel(
                 decorationBox = { field ->
                     if (editedName.isEmpty()) {
                         Text(
-                            text = detectedName ?: "Tap to enter a place name",
+                            text = detectedName ?: strings.tapToEnter,
                             style = MetricValue,
                             color = TextSecondary,
                             maxLines = 1
@@ -642,11 +648,11 @@ private fun PlaceAndCoordinatesPanel(
         QuakeModalHairline()
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Your Current Coordinates :", style = MetricLabel)
+            Text(text = strings.yourCoords, style = MetricLabel)
             Text(
                 text = latitude?.let { lat ->
                     longitude?.let { lon -> "%.5f, %.5f".format(lat, lon) }
-                } ?: "Not available",
+                } ?: strings.notAvailable,
                 style = MetricValue.copy(fontWeight = FontWeight.Black)
             )
         }
@@ -663,6 +669,7 @@ private const val COPIED_RESET_MS = 2_000L
 @Composable
 private fun CredentialsBody(
     state: AddSensorState,
+    strings: AddSensorStrings,
     onSecretRevealed: () -> Unit,
     onCopySecret: () -> Boolean
 ) {
@@ -677,7 +684,7 @@ private fun CredentialsBody(
 
     QuakeModalPanel {
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Station ID", style = MetricLabel)
+            Text(text = strings.stationId, style = MetricLabel)
             Text(text = node.stationId, style = MetricValue, maxLines = 1)
         }
 
@@ -688,13 +695,13 @@ private fun CredentialsBody(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Provisioning Secrets", style = MetricLabel)
+                Text(text = strings.secretsTitle, style = MetricLabel)
                 if (state.secretRevealed) {
                     // Display once: the server keeps only ciphertext of this.
                     Text(text = node.provisioningSecret, style = MetricValue, maxLines = 2)
                 } else {
                     Text(
-                        text = "Show secret",
+                        text = strings.showSecret,
                         style = MetricValue.copy(textDecoration = TextDecoration.Underline),
                         modifier = Modifier.clickable(role = Role.Button, onClick = onSecretRevealed)
                     )
@@ -702,7 +709,7 @@ private fun CredentialsBody(
             }
             if (state.secretRevealed) {
                 ChipButton(
-                    label = if (copied) "Copied" else "Copy",
+                    label = if (copied) strings.copied else strings.copy,
                     onClick = { copied = onCopySecret() }
                 )
             }
@@ -747,23 +754,25 @@ private fun ChipButton(label: String, onClick: () -> Unit, selected: Boolean = f
 @Composable
 private fun WlanBody(
     state: AddSensorState,
+    strings: AddSensorStrings,
     onRescanNetworks: () -> Unit,
     onNetworkSelected: (String) -> Unit,
     onPasswordChanged: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.WizardSectionGap)) {
         QuakeModalPanel {
-            Text(text = "Networks Detected by Sensor :", style = MetricLabel)
+            Text(text = strings.networksDetected, style = MetricLabel)
 
             if (state.scannedSsids.isEmpty()) {
                 Text(
-                    text = "None found yet. Rescan once the sensor has finished starting up.",
+                    text = strings.noneFound,
                     style = WizardBodyText.copy(color = TextSecondary)
                 )
             } else {
                 state.scannedSsids.forEachIndexed { index, ssid ->
                     SsidRow(
                         ssid = ssid,
+                        strings = strings,
                         selected = ssid == state.selectedSsid,
                         onSelected = { onNetworkSelected(ssid) }
                     )
@@ -772,7 +781,7 @@ private fun WlanBody(
             }
 
             QuakeModalActionButton(
-                label = "Rescan",
+                label = strings.rescan,
                 container = WizardConfirmActionFill,
                 onClick = onRescanNetworks,
                 enabled = !state.isBusy,
@@ -781,14 +790,14 @@ private fun WlanBody(
         }
 
         QuakeModalPanel {
-            Text(text = "WLAN Password (empty if open network) :", style = MetricLabel)
-            PasswordField(password = state.wifiPassword, onPasswordChanged = onPasswordChanged)
+            Text(text = strings.wlanPassword, style = MetricLabel)
+            PasswordField(password = state.wifiPassword, strings = strings, onPasswordChanged = onPasswordChanged)
         }
     }
 }
 
 @Composable
-private fun SsidRow(ssid: String, selected: Boolean, onSelected: () -> Unit) {
+private fun SsidRow(ssid: String, strings: AddSensorStrings, selected: Boolean, onSelected: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -805,12 +814,12 @@ private fun SsidRow(ssid: String, selected: Boolean, onSelected: () -> Unit) {
             maxLines = 1,
             modifier = Modifier.weight(1f)
         )
-        ChipButton(label = if (selected) "Chosen" else "Choose", onClick = onSelected, selected = selected)
+        ChipButton(label = if (selected) strings.chosen else strings.choose, onClick = onSelected, selected = selected)
     }
 }
 
 @Composable
-private fun PasswordField(password: String, onPasswordChanged: (String) -> Unit) {
+private fun PasswordField(password: String, strings: AddSensorStrings, onPasswordChanged: (String) -> Unit) {
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
     BasicTextField(
         value = password,
@@ -836,7 +845,7 @@ private fun PasswordField(password: String, onPasswordChanged: (String) -> Unit)
             ) {
                 if (password.isEmpty()) {
                     Text(
-                        text = "Enter password...",
+                        text = strings.enterPassword,
                         style = MetricValue.copy(color = TextSecondary)
                     )
                 }
@@ -854,6 +863,7 @@ private fun PasswordField(password: String, onPasswordChanged: (String) -> Unit)
 @Composable
 private fun FinishingBody(
     state: AddSensorState,
+    strings: AddSensorStrings,
     onCheckNow: () -> Unit
 ) {
     val stationId = state.effectiveStationId ?: state.provisioned?.stationId ?: ""
@@ -878,22 +888,22 @@ private fun FinishingBody(
             }
             Text(
                 text = when (state.confirmState) {
-                    ConfirmState.WAITING -> "Processing, please hang tight..."
-                    ConfirmState.PENDING -> "Configured. Your sensor is awaiting verification."
-                    ConfirmState.ONLINE -> "Your sensor is online."
+                    ConfirmState.WAITING -> strings.processing
+                    ConfirmState.PENDING -> strings.configuredPending
+                    ConfirmState.ONLINE -> strings.online
                 },
                 style = WizardStatusText
             )
         }
 
         QuakeModalPanel {
-            Text(text = "Station ID", style = MetricLabel)
+            Text(text = strings.stationId, style = MetricLabel)
             Text(text = stationId, style = MetricValue, maxLines = 1)
         }
 
         if (state.confirmState == ConfirmState.WAITING) {
             QuakeModalActionButton(
-                label = "Check Now",
+                label = strings.checkNow,
                 container = WizardConfirmActionFill,
                 onClick = onCheckNow,
                 modifier = Modifier.fillMaxWidth()
@@ -907,7 +917,7 @@ private fun FinishingBody(
 // ============================================================
 
 @Composable
-private fun RateLimitBody() {
+private fun RateLimitBody(strings: AddSensorStrings) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
     Column(
         modifier = Modifier
@@ -921,8 +931,7 @@ private fun RateLimitBody() {
     ) {
         GlyphPair(R.drawable.ic_alert_hexagon)
         Text(
-            text = "You have added sensors as often as the network allows for now. " +
-                "Try again in a few hours.",
+            text = strings.rateLimitedBody,
             style = WizardStatusText
         )
     }

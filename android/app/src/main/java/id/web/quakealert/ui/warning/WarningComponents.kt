@@ -91,7 +91,8 @@ fun AlertBanner(
     banner: WarningBanner,
     onSeeDetails: () -> Unit,
     onProtectionStatus: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strings: WarningStrings = warningStrings(DisplayLanguage.EN)
 ) {
     val shape = RoundedCornerShape(Dimens.AlertBannerRadius)
     val (gradient, glyph) = when (banner) {
@@ -185,7 +186,7 @@ fun AlertBanner(
                         vertical = Dimens.AlertActionPaddingVertical
                     )
             ) {
-                Text(text = "SEE DETAILS", style = ChipLabel)
+                Text(text = strings.seeDetails, style = ChipLabel)
             }
         }
 
@@ -225,7 +226,8 @@ fun AlertBanner(
 fun WarningOfflineNotice(
     message: String,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    retryLabel: String = "RETRY"
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
 
@@ -268,7 +270,7 @@ fun WarningOfflineNotice(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "RETRY", style = ChipLabel)
+            Text(text = retryLabel, style = ChipLabel)
         }
     }
 }
@@ -357,7 +359,8 @@ fun PrepTipRow(
 @Composable
 fun EmergencyCta(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String = "EMERGENCY STEPS & CONTACTS"
 ) {
     val shape = RoundedCornerShape(Dimens.EmergencyCtaRadius)
 
@@ -373,7 +376,7 @@ fun EmergencyCta(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "EMERGENCY STEPS & CONTACTS",
+            text = label,
             style = ChipLabel
         )
     }
@@ -439,6 +442,7 @@ fun RecentSeismicActivityCard(
     modifier: Modifier = Modifier,
     lang: DisplayLanguage = DisplayLanguage.EN
 ) {
+    val strings = remember(lang) { warningStrings(lang) }
     val shape = remember { RoundedCornerShape(Dimens.RadiusCard) }
     val statsShape = remember { RoundedCornerShape(Dimens.RadiusSmall) }
     val focus = remember(activity.latitude, activity.longitude) {
@@ -462,7 +466,7 @@ fun RecentSeismicActivityCard(
             .padding(Dimens.ModalPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.EventDetailSectionGap)
     ) {
-        QuakeModalHeader(onDismiss = onDismiss, title = "Recent Seismic Activity")
+        QuakeModalHeader(onDismiss = onDismiss, title = strings.cardTitle)
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -477,7 +481,7 @@ fun RecentSeismicActivityCard(
             // The query, stated rather than implied. Every number below is scoped by
             // it, and a count without its radius and window is not a fact.
             Text(
-                text = "Within $radiusLabel, past ${activity.windowDays} days",
+                text = strings.within(radiusLabel, activity.windowDays),
                 style = EventDetailMeta,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -507,14 +511,14 @@ fun RecentSeismicActivityCard(
             verticalArrangement = Arrangement.spacedBy(Dimens.EventDetailInfoGap)
         ) {
             ActivityStatRow(
-                label = "Confirmed Events",
+                label = strings.confirmedEvents,
                 value = activity.countValue(lang)
             )
 
             ActivityStatDivider()
 
             ActivityStatRow(
-                label = "Most Recent",
+                label = strings.mostRecent,
                 value = activity.mostRecentValue(lang)
             )
 
@@ -523,13 +527,13 @@ fun RecentSeismicActivityCard(
             // "The last one" and "the worst one" are different questions, and in a
             // month of records they are usually different events.
             ActivityStatRow(
-                label = "Strongest Shaking",
+                label = strings.strongest,
                 value = activity.strongestValue(lang)
             )
         }
 
         Text(
-            text = ACTIVITY_DISCLAIMER,
+            text = strings.disclaimer,
             style = PossibilityDisclaimer,
             modifier = Modifier.fillMaxWidth()
         )
@@ -540,11 +544,9 @@ fun RecentSeismicActivityCard(
  * Accuracy note under the stats. Reworded from the design's copy to drop its
  * "possibility" framing and to name the real limit: these are counts from a community
  * network whose density varies, so an area with two stations under-reports compared to
- * one with twenty. It is not, and must not read as, a forecast.
+ * one with twenty. It is not, and must not read as, a forecast. Owned by
+ * [WarningStrings.disclaimer].
  */
-private const val ACTIVITY_DISCLAIMER =
-    "Counts come from QuakeAlert's own stations and depend on how many are near you. " +
-        "They describe shaking already recorded. They are not a forecast of what comes next."
 
 /** Hairline between two [ActivityStatRow]s. */
 @Composable

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakeModalHeader
 import id.web.quakealert.ui.theme.AboutActionDonateFill
 import id.web.quakealert.ui.theme.AboutActionEmailFill
@@ -65,16 +66,27 @@ object AboutLinks {
 }
 
 /** Mission statement (Figma node 4:672, first paragraph). */
-private const val ABOUT_MISSION =
-    "QuakeAlert is built to provide a warning system that can be accessed for " +
-        "everyone, especially for the countries or places that don’t have early " +
-        "warning system for earthquake. I hope this app can save lives."
+private fun aboutMission(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) {
+        "QuakeAlert dibangun untuk menyediakan sistem peringatan yang dapat " +
+            "diakses semua orang, terutama untuk negara atau tempat yang belum " +
+            "memiliki sistem peringatan dini gempa bumi. Saya harap aplikasi " +
+            "ini dapat menyelamatkan nyawa."
+    } else {
+        "QuakeAlert is built to provide a warning system that can be accessed for " +
+            "everyone, especially for the countries or places that don’t have early " +
+            "warning system for earthquake. I hope this app can save lives."
+    }
 
 /** Feedback invitation (Figma node 4:672, second paragraph). */
-private const val ABOUT_FEEDBACK =
-    "If you have some suggestion or found any bugs, feel free to contact me."
+private fun aboutFeedback(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) {
+        "Jika Anda punya saran atau menemukan bug, jangan ragu menghubungi saya."
+    } else {
+        "If you have some suggestion or found any bugs, feel free to contact me."
+    }
 
-/** Author attribution (Figma node 4:672, closing line). */
+/** Author attribution (Figma node 4:672, closing line). Not translated: a name. */
 private const val ABOUT_ATTRIBUTION = "by @banana-pixel (Vito Wiratara)"
 
 /**
@@ -97,7 +109,8 @@ fun AboutModalDialog(
     onDismiss: () -> Unit,
     onGithubClick: () -> Unit,
     onEmailClick: () -> Unit,
-    onDonateClick: () -> Unit
+    onDonateClick: () -> Unit,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -108,9 +121,10 @@ fun AboutModalDialog(
             onGithubClick = onGithubClick,
             onEmailClick = onEmailClick,
             onDonateClick = onDonateClick,
-            modifier = Modifier.padding(Dimens.ScreenHorizontalPadding)
+            lang = lang
         )
     }
+}
 }
 
 /**
@@ -135,7 +149,8 @@ fun AboutModal(
     onGithubClick: () -> Unit,
     onEmailClick: () -> Unit,
     onDonateClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
 
@@ -149,10 +164,11 @@ fun AboutModal(
             .padding(Dimens.ModalPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.AboutModalSectionGap)
     ) {
-        QuakeModalHeader(onDismiss = onDismiss, title = "About")
+        QuakeModalHeader(onDismiss = onDismiss, title = if (lang == DisplayLanguage.ID) "Tentang" else "About")
         AboutLogoBadge()
-        AboutModalBody()
+        AboutModalBody(lang)
         AboutModalActions(
+            lang = lang,
             onGithubClick = onGithubClick,
             onEmailClick = onEmailClick,
             onDonateClick = onDonateClick
@@ -237,12 +253,12 @@ private fun ConcentricDisc(
  * tinted text for tappable links (`TextLink`), and this line is not one.
  */
 @Composable
-private fun AboutModalBody(modifier: Modifier = Modifier) {
+private fun AboutModalBody(lang: DisplayLanguage = DisplayLanguage.EN, modifier: Modifier = Modifier) {
     Text(
         text = buildAnnotatedString {
-            append(ABOUT_MISSION)
+            append(aboutMission(lang))
             append("\n\n")
-            append(ABOUT_FEEDBACK)
+            append(aboutFeedback(lang))
             append("\n\n")
             withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) {
                 append(ABOUT_ATTRIBUTION)
@@ -263,8 +279,12 @@ private fun AboutModalActions(
     onGithubClick: () -> Unit,
     onEmailClick: () -> Unit,
     onDonateClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
+    val githubLabel = "GitHub Pages"
+    val emailLabel = "Email"
+    val donateLabel = if (lang == DisplayLanguage.ID) "Donasi" else "Donate"
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Dimens.AboutModalActionGap)
@@ -275,13 +295,13 @@ private fun AboutModalActions(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AboutActionButton(
-                label = "GitHub Pages",
+                label = githubLabel,
                 fill = AboutActionGithubFill,
                 onClick = onGithubClick,
                 modifier = Modifier.weight(1f)
             )
             AboutActionButton(
-                label = "Email",
+                label = emailLabel,
                 fill = AboutActionEmailFill,
                 onClick = onEmailClick,
                 modifier = Modifier.weight(1f)
@@ -289,7 +309,7 @@ private fun AboutModalActions(
         }
 
         AboutActionButton(
-            label = "Donate",
+            label = donateLabel,
             fill = AboutActionDonateFill,
             onClick = onDonateClick,
             modifier = Modifier.fillMaxWidth()

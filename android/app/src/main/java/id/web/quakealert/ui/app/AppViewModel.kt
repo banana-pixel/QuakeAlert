@@ -52,6 +52,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Current unit system, for the status notification's radius line. */
     private val unitSystem = MutableStateFlow(UnitSystem.METRIC)
 
+    /** Language user strings render in; shells (nav, root) collect this. */
+    val displayLang: StateFlow<DisplayLanguage> = repository.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
+
     init {
         viewModelScope.launch {
             repository.unitSystem.collect { unitSystem.value = it }
@@ -79,7 +84,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         // Registered up front so the channel exists (and its settings are the user's)
         // before the first alert needs it — creating a channel while posting to it
         // works, but leaves no chance to see it in system settings beforehand.
-        WarningNotifier.ensureChannel(application)
+        // Labelled in the resolved language on first creation; Android freezes the
+        // name afterwards, so a later language switch does not rename it (reinstall
+        // does). Documented, not a defect.
+        viewModelScope.launch {
+            repository.language.collect { tag ->
+                WarningNotifier.ensureChannel(application, resolveDisplayLanguage(tag))
+            }
+        }
 
         observeStatusNotification()
     }

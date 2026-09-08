@@ -35,6 +35,7 @@ import id.web.quakealert.R
 import id.web.quakealert.device.AlertOutput
 import id.web.quakealert.device.DeviceAlertOutput
 import id.web.quakealert.device.TestAlertPlayback
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.EmergencyAlertGradient
@@ -79,7 +80,8 @@ import id.web.quakealert.ui.theme.TextPrimary
 fun TestAlertSoundDialog(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    output: AlertOutput? = null
+    output: AlertOutput? = null,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -178,10 +180,10 @@ fun TestAlertSoundCard(
                 )
             }
 
-            Text(text = TEST_ALERT_TITLE, style = EmergencyAlertTitle)
+            Text(text = testAlertTitle(lang), style = EmergencyAlertTitle)
         }
 
-        Text(text = TEST_ALERT_BODY, style = TestAlertBodyText)
+        Text(text = testAlertBody(lang), style = TestAlertBodyText)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -192,16 +194,12 @@ fun TestAlertSoundCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TestAlertAction(
-                label = if (isPlaying && remainingSeconds > 0) {
-                    "START (${remainingSeconds}s)"
-                } else {
-                    "START"
-                },
+                label = startLabel(lang, remainingSeconds, isPlaying),
                 engaged = isPlaying,
                 onClick = onStart
             )
             TestAlertAction(
-                label = "STOP",
+                label = stopLabel(lang),
                 engaged = false,
                 onClick = onStop
             )
@@ -260,16 +258,35 @@ private fun TestAlertAction(
 }
 
 /** Title copy, node 144:1030. */
-private const val TEST_ALERT_TITLE = "Test Alert Sound"
+private fun testAlertTitle(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) "Uji Suara Peringatan" else "Test Alert Sound"
 
 /**
  * Body copy, node 144:1033, verbatim from the design — including the typographic
  * apostrophe and the blank line between the two warnings.
  */
-private const val TEST_ALERT_BODY =
-    "Make sure you’re not playing this on public place to prevent panic. " +
-        "It will play a loud noise.\n\n" +
-        "If not working, check required permission and device volume settings."
+private fun testAlertBody(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) {
+        "Pastikan Anda tidak memutar ini di tempat umum untuk mencegah kepanikan. " +
+            "Ini akan memutar suara keras.\n\n" +
+            "Jika tidak berfungsi, periksa izin yang diperlukan dan pengaturan volume perangkat."
+    } else {
+        "Make sure you’re not playing this on public place to prevent panic. " +
+            "It will play a loud noise.\n\n" +
+            "If not working, check required permission and device volume settings."
+    }
+
+private fun startLabel(lang: DisplayLanguage, remainingSeconds: Int, isPlaying: Boolean): String {
+    val start = if (lang == DisplayLanguage.ID) "MULAI" else "START"
+    return if (isPlaying && remainingSeconds > 0) {
+        "$start (${remainingSeconds}s)"
+    } else {
+        start
+    }
+}
+
+private fun stopLabel(lang: DisplayLanguage): String =
+    if (lang == DisplayLanguage.ID) "BERHENTI" else "STOP"
 
 @Preview(showBackground = true, backgroundColor = 0xFF0A0A0A)
 @Composable

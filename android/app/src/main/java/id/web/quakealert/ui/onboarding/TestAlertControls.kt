@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakeCard
 import id.web.quakealert.ui.theme.CardSubtitle
 import id.web.quakealert.ui.theme.Dimens
@@ -33,23 +34,24 @@ import id.web.quakealert.ui.theme.TextSecondary
 fun TestAlertControls(
     onTestAlert: () -> Unit,
     onTestAlertSound: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strings: OnboardingStrings = onboardingStrings(DisplayLanguage.EN)
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Dimens.CardListSpacing)
     ) {
         QuakeCard(
-            title = "Test Notification",
+            title = strings.testNotification,
             onClick = onTestAlert,
             modifier = Modifier.fillMaxWidth(),
-            detail = { CardHint("Sends one now, to check alerts reach your screen") }
+            detail = { CardHint(strings.testNotificationDetail) }
         )
         QuakeCard(
-            title = "Test Alert Sound",
+            title = strings.testSound,
             onClick = onTestAlertSound,
             modifier = Modifier.fillMaxWidth(),
-            detail = { CardHint("Plays the siren, to check it is loud enough to wake you") }
+            detail = { CardHint(strings.testSoundDetail) }
         )
     }
 }

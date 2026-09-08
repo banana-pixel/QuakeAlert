@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import id.web.quakealert.R
 import id.web.quakealert.data.network.QuakeNetwork
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.TestAlertSoundDialog
 import id.web.quakealert.ui.common.QuakePageIndicator
 import id.web.quakealert.ui.common.QuakePrimaryButton
@@ -112,9 +113,11 @@ private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
 @Composable
 fun OnboardingScreen(
     modifier: Modifier = Modifier,
-    onFinish: () -> Unit = {}
+    onFinish: () -> Unit = {},
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
-    val pages = rememberOnboardingPages()
+    val strings = remember(lang) { onboardingStrings(lang) }
+    val pages = rememberOnboardingPages(strings, lang)
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -184,15 +187,15 @@ fun OnboardingScreen(
     // TestAlertControls so it survives the page recomposing under a swipe.
     var showTestAlertSound by remember { mutableStateOf(false) }
     if (showTestAlertSound) {
-        TestAlertSoundDialog(onDismissRequest = { showTestAlertSound = false })
+        TestAlertSoundDialog(onDismissRequest = { showTestAlertSound = false }, lang = lang)
     }
 
     val fireTestAlert: () -> Unit = {
-        val shown = TestAlertNotifier.showTestAlert(context)
+        val shown = TestAlertNotifier.showTestAlert(context, lang)
         if (!shown) {
             Toast.makeText(
                 context,
-                "Enable notifications first to test alerts.",
+                strings.toastEnableFirst,
                 Toast.LENGTH_SHORT
             ).show()
             requestNotification()
@@ -276,7 +279,7 @@ fun OnboardingScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         QuakeSecondaryButton(
-                            text = "Back",
+                            text = strings.back,
                             onClick = {
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage - 1)
@@ -285,7 +288,7 @@ fun OnboardingScreen(
                             modifier = Modifier.weight(1f)
                         )
                         QuakePrimaryButton(
-                            text = if (isLast) "Get Started" else "Next",
+                            text = if (isLast) strings.getStarted else strings.next,
                             onClick = {
                                 if (isLast) {
                                     onFinish()
@@ -358,7 +361,10 @@ fun OnboardingPageItem(
             )
 
             when (page.kind) {
-                OnboardingPageKind.READY -> ReadyText(modifier = Modifier.fillMaxWidth())
+                OnboardingPageKind.READY -> ReadyText(
+                    strings = strings,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 else -> Text(
                     text = page.description,
                     color = TextSecondary,
@@ -376,6 +382,7 @@ fun OnboardingPageItem(
                     title = page.cardTitle,
                     isGranted = notificationGranted,
                     grantedLabel = page.grantedLabel,
+                    tapToAllowLabel = strings.tapToAllow,
                     onClick = onRequestNotification
                 )
 
@@ -383,6 +390,7 @@ fun OnboardingPageItem(
                     title = page.cardTitle,
                     isGranted = batteryUnrestricted,
                     grantedLabel = page.grantedLabel,
+                    tapToAllowLabel = strings.tapToAllow,
                     onClick = onRequestBattery
                 )
 
@@ -390,10 +398,12 @@ fun OnboardingPageItem(
                     title = page.cardTitle,
                     isGranted = locationGranted,
                     grantedLabel = page.grantedLabel,
+                    tapToAllowLabel = strings.tapToAllow,
                     onClick = onRequestLocation
                 )
 
                 OnboardingPageKind.TEST_ALERT -> TestAlertControls(
+                    strings = strings,
                     onTestAlert = onTestAlert,
                     onTestAlertSound = onTestAlertSound
                 )
@@ -425,64 +435,104 @@ private fun openBatteryOptimizationSettings(
 }
 
 @Composable
-private fun rememberOnboardingPages(): List<OnboardingPage> = listOf(
-    OnboardingPage(
-        iconRes = R.drawable.ic_puzzle_piece,
-        title = "Welcome to QuakeAlert App.",
-        description = "QuakeAlert is community based earthquake early warning " +
-            "system (platform). Keep safe with intelligent real time EWS " +
-            "alert that can be notified through this app!",
-        actionText = "Start",
-        largeTitle = true
-    ),
-    OnboardingPage(
-        iconRes = R.drawable.ic_sensor_chip,
-        title = "Based on low cost Sensors that can be placed all over the world.",
-        description = "This is a community supported early warning system. You can " +
-            "place your own low cost sensors on your home. Just need a stable WiFi " +
-            "network and you\u2019re good to go! Read disclaimer and guides here on " +
-            "our GitHub pages."
-    ),
-    OnboardingPage(
-        iconRes = R.drawable.ic_notification_permission,
-        title = "Please allow notification permission.",
-        description = "To receive earthquake alerts, QuakeAlert App needs " +
-            "permission to send you notifications.",
-        kind = OnboardingPageKind.NOTIFICATION_PERMISSION,
-        cardTitle = "Allow Notification",
-        grantedLabel = "Allowed"
-    ),
-    OnboardingPage(
-        iconRes = R.drawable.ic_battery_optimization,
-        title = "Please set battery optimization settings.",
-        description = "To ensure alerts are never delayed, QuakeAlert App needs " +
-            "to run witout battery restrictions.",
-        kind = OnboardingPageKind.BATTERY_OPTIMIZATION,
-        cardTitle = "Disable Restrictions",
-        grantedLabel = "Disabled"
-    ),
-    OnboardingPage(
-        iconRes = R.drawable.ic_location_permission,
-        title = "Please allow precise location access.",
-        description = "To calculate your location from the earthquake center and " +
-            "give relevant and accurate earthquake alerts.",
-        kind = OnboardingPageKind.LOCATION_PERMISSION,
-        cardTitle = "Allow Precise Location Access",
-        grantedLabel = "Allowed"
-    ),
-    OnboardingPage(
-        iconRes = R.drawable.ic_alert_test,
-        title = "Test alert.",
-        description = "Send a test notification to make sure the notification service is working.",
-        kind = OnboardingPageKind.TEST_ALERT
-    ),
-    OnboardingPage(
-        iconRes = R.drawable.ic_ready_smiley,
-        title = "You\u2019re ready.",
-        description = "",
-        kind = OnboardingPageKind.READY
+private fun rememberOnboardingPages(strings: OnboardingStrings, lang: DisplayLanguage): List<OnboardingPage> {
+    val id = lang == DisplayLanguage.ID
+    return listOf(
+        OnboardingPage(
+            iconRes = R.drawable.ic_puzzle_piece,
+            title = if (id) "Selamat datang di Aplikasi QuakeAlert." else "Welcome to QuakeAlert App.",
+            description = if (id) {
+                "QuakeAlert adalah sistem peringatan dini gempa bumi berbasis " +
+                    "komunitas (platform). Tetap aman dengan peringatan EWS real time " +
+                    "cerdas yang dapat diberitahukan lewat aplikasi ini!"
+            } else {
+                "QuakeAlert is community based earthquake early warning " +
+                    "system (platform). Keep safe with intelligent real time EWS " +
+                    "alert that can be notified through this app!"
+            },
+            actionText = strings.start,
+            largeTitle = true
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_sensor_chip,
+            title = if (id) {
+                "Berdasarkan Sensor murah yang dapat dipasang di seluruh dunia."
+            } else {
+                "Based on low cost Sensors that can be placed all over the world."
+            },
+            description = if (id) {
+                "Ini adalah sistem peringatan dini yang didukung komunitas. Anda " +
+                    "dapat memasang sensor murah Anda sendiri di rumah. Hanya butuh " +
+                    "jaringan WiFi yang stabil dan Anda siap! Baca penafian dan " +
+                    "panduan di sini pada halaman GitHub kami."
+            } else {
+                "This is a community supported early warning system. You can " +
+                    "place your own low cost sensors on your home. Just need a stable WiFi " +
+                    "network and you\u2019re good to go! Read disclaimer and guides here on " +
+                    "our GitHub pages."
+            }
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_notification_permission,
+            title = if (id) "Mohon izinkan izin notifikasi." else "Please allow notification permission.",
+            description = if (id) {
+                "Untuk menerima peringatan gempa bumi, Aplikasi QuakeAlert membutuhkan " +
+                    "izin untuk mengirimi Anda notifikasi."
+            } else {
+                "To receive earthquake alerts, QuakeAlert App needs " +
+                    "permission to send you notifications."
+            },
+            kind = OnboardingPageKind.NOTIFICATION_PERMISSION,
+            cardTitle = if (id) "Izinkan Notifikasi" else "Allow Notification",
+            grantedLabel = strings.allowed
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_battery_optimization,
+            title = if (id) "Mohon atur pengaturan optimasi baterai." else "Please set battery optimization settings.",
+            description = if (id) {
+                "Agar peringatan tidak pernah tertunda, Aplikasi QuakeAlert perlu " +
+                    "berjalan tanpa pembatasan baterai."
+            } else {
+                "To ensure alerts are never delayed, QuakeAlert App needs " +
+                    "to run witout battery restrictions."
+            },
+            kind = OnboardingPageKind.BATTERY_OPTIMIZATION,
+            cardTitle = if (id) "Matikan Pembatasan" else "Disable Restrictions",
+            grantedLabel = strings.disabled
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_location_permission,
+            title = if (id) "Mohon izinkan akses lokasi presisi." else "Please allow precise location access.",
+            description = if (id) {
+                "Untuk menghitung lokasi Anda dari pusat gempa bumi dan " +
+                    "memberikan peringatan gempa yang relevan dan akurat."
+            } else {
+                "To calculate your location from the earthquake center and " +
+                    "give relevant and accurate earthquake alerts."
+            },
+            kind = OnboardingPageKind.LOCATION_PERMISSION,
+            cardTitle = if (id) "Izinkan Akses Lokasi Presisi" else "Allow Precise Location Access",
+            grantedLabel = strings.allowed
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_alert_test,
+            title = if (id) "Uji peringatan." else "Test alert.",
+            description = if (id) {
+                "Kirim notifikasi uji untuk memastikan layanan notifikasi bekerja."
+            } else {
+                "Send a test notification to make sure the notification service is working."
+            },
+            kind = OnboardingPageKind.TEST_ALERT
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_ready_smiley,
+            title = if (id) "Anda siap." else "You\u2019re ready.",
+            description = "",
+            kind = OnboardingPageKind.READY
+        )
     )
-)
+}
+
 
 @Preview(showBackground = true, widthDp = 402, heightDp = 874)
 @Composable

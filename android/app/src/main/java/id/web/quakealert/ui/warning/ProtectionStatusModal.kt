@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.ui.common.QuakeModalHeader
 import id.web.quakealert.ui.settings.InfoPill
@@ -54,7 +55,8 @@ fun ProtectionStatusModalDialog(
     radiusLabel: String,
     alertsEnabled: Boolean,
     notificationsPermitted: Boolean,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    strings: WarningStrings = warningStrings(DisplayLanguage.EN)
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -65,6 +67,7 @@ fun ProtectionStatusModalDialog(
             alertsEnabled = alertsEnabled,
             notificationsPermitted = notificationsPermitted,
             onDismiss = onDismiss,
+            strings = strings,
             modifier = Modifier.padding(Dimens.ScreenHorizontalPadding)
         )
     }
@@ -95,7 +98,8 @@ fun ProtectionStatusModal(
     alertsEnabled: Boolean,
     notificationsPermitted: Boolean,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strings: WarningStrings = warningStrings(DisplayLanguage.EN)
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
 
@@ -109,49 +113,42 @@ fun ProtectionStatusModal(
             .padding(Dimens.ModalPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.SettingCardContentGap)
     ) {
-        QuakeModalHeader(onDismiss = onDismiss, title = "Protection Status")
+        QuakeModalHeader(onDismiss = onDismiss, title = strings.statusTitle)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Automatic", style = CardTitle, color = TextPrimary)
-            InfoPill(text = statusBadge(alertsEnabled, notificationsPermitted))
+            Text(text = strings.automatic, style = CardTitle, color = TextPrimary)
+            InfoPill(text = statusBadge(alertsEnabled, notificationsPermitted, strings))
         }
 
         ProtectionRule(
-            title = "Alerts within $radiusLabel",
-            detail = "Any earthquake whose estimated centroid falls inside this " +
-                "distance sounds the alarm. The radius is set by the system, the " +
-                "same value the server uses to choose who to notify."
+            title = strings.ruleRadiusTitle(radiusLabel),
+            detail = strings.ruleRadiusDetail
         )
 
         ProtectionRule(
-            title = "Severe quakes ignore distance",
-            detail = "MMI VII and above, or peak ground acceleration of " +
-                "${SafetyPolicy.OVERRIDE_PGA_GAL.roundToInt()} gal or more, alarms " +
-                "wherever you are. At that size there is no distance at which you " +
-                "did not need to know."
+            title = strings.ruleSevereTitle,
+            detail = strings.ruleSevereDetail(SafetyPolicy.OVERRIDE_PGA_GAL.roundToInt())
         )
 
         if (!alertsEnabled || !notificationsPermitted) {
             ProtectionRule(
                 title = if (alertsEnabled) {
-                    "Warnings cannot be delivered"
+                    strings.cannotDeliver
                 } else {
                     // The badge already says "Turned off"; the row is the fix, not an
                     // echo of the fact.
-                    "Re-enable earthquake warnings in Settings."
+                    strings.reEnable
                 },
                 detail = if (alertsEnabled) {
                     // Permission blocked: the app wants to warn, the OS will not post.
-                    "Notifications are blocked in system settings. Allow them for " +
-                        "QuakeAlert so warnings can reach your screen."
+                    strings.cannotDeliverDetail
                 } else {
                     // User switch off: point at where it lives.
-                    "The earthquake-warnings switch is on the Settings screen. " +
-                        "Turning it back on restores protection immediately."
+                    strings.reEnableDetail
                 }
             )
         }
@@ -163,11 +160,15 @@ fun ProtectionStatusModal(
  * ranking: a revoked grant is the loudest fact, then the user's own switch, then
  * active protection. One word each — the rules below carry the explanation.
  */
-private fun statusBadge(alertsEnabled: Boolean, notificationsPermitted: Boolean): String =
+private fun statusBadge(
+    alertsEnabled: Boolean,
+    notificationsPermitted: Boolean,
+    strings: WarningStrings
+): String =
     when {
-        !notificationsPermitted -> "Blocked"
-        !alertsEnabled -> "Turned off"
-        else -> "Active"
+        !notificationsPermitted -> strings.badgeBlocked
+        !alertsEnabled -> strings.badgeOff
+        else -> strings.badgeActive
     }
 
 /**

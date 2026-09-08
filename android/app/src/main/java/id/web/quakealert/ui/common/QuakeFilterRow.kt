@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import id.web.quakealert.R
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.ChipLabel
 import id.web.quakealert.ui.theme.Dimens
@@ -63,7 +64,8 @@ fun QuakeFilterRow(
     onModeSelected: (QuakeFilter) -> Unit,
     onFilterSheetClicked: (() -> Unit)? = null,
     onAddSensorClicked: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strings: FilterStrings = filterStrings(DisplayLanguage.EN)
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -71,12 +73,12 @@ fun QuakeFilterRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         FilterPill(
-            label = "All",
+            label = strings.all,
             selected = filter.mode == QuakeFilter.ALL,
             onClick = { onModeSelected(QuakeFilter.ALL) }
         )
         FilterPill(
-            label = "Near",
+            label = strings.near,
             selected = filter.mode == QuakeFilter.NEAR,
             onClick = { onModeSelected(QuakeFilter.NEAR) }
         )
@@ -88,7 +90,7 @@ fun QuakeFilterRow(
             Spacer(modifier = Modifier.weight(1f))
         }
         onAddSensorClicked?.let { addSensor ->
-            FilterPill(label = "+ Add Sensor", selected = false, onClick = addSensor)
+            FilterPill(label = strings.addSensor, selected = false, onClick = addSensor)
         }
         onFilterSheetClicked?.let { openSheet ->
             FilterSheetButton(

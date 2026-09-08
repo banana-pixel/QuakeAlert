@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.web.quakealert.R
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakePill
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.CardSubtitle
@@ -65,7 +66,8 @@ fun QuakeHistoryCard(
     unitSystem: UnitSystem,
     onShareClicked: () -> Unit,
     onSeeMoreClicked: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val accent = if (item.severity == MmiSeverity.SEVERE) MmiRed else MmiOrange
     val badgeContainer =
@@ -183,7 +185,7 @@ private fun DetailsColumn(
             // Shared QuakePill capsule — same fill/stroke/shape as the Sensor
             // telemetry pills.
             QuakePill(
-                text = item.distanceLabel(unitSystem),
+                text = item.distanceLabel(unitSystem, lang),
                 modifier = Modifier.weight(1f)
             )
             ShareButton(onClick = onShareClicked)

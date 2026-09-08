@@ -51,7 +51,9 @@ import id.web.quakealert.ui.theme.TextSecondary
 fun ChatBubble(
     message: ChatMessage,
     onRetry: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sendingLabel: String = "Sending...",
+    notSentLabel: String = "Not sent. Tap to retry"
 ) {
     val isMine = message.author == ChatAuthor.ME
     val bubbleShape = RoundedCornerShape(Dimens.ChatBubbleRadius)
@@ -110,8 +112,8 @@ fun ChatBubble(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 when (message.sendState) {
-                    ChatSendState.SENDING -> Timestamp("Sending...")
-                    ChatSendState.FAILED -> Timestamp("Not sent. Tap to retry")
+                    ChatSendState.SENDING -> Timestamp(sendingLabel)
+                    ChatSendState.FAILED -> Timestamp(notSentLabel)
                     ChatSendState.SENT -> Unit
                 }
                 Timestamp(message.time)

@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +81,7 @@ fun ActiveAlertCard(
     modifier: Modifier = Modifier,
     lang: DisplayLanguage = DisplayLanguage.EN
 ) {
+    val strings = remember(lang) { warningStrings(lang) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -93,11 +95,16 @@ fun ActiveAlertCard(
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AlertHeadline(isTest = state.isTest)
+        AlertHeadline(
+            isTest = state.isTest,
+            drillBadge = strings.drillBadge,
+            title = strings.alertTitle
+        )
 
         IntensityReadout(
             intensityValue = state.intensityValue,
-            proximityLabel = state.proximityLabel(lang)
+            proximityLabel = state.proximityLabel(lang),
+            estimatedLabel = strings.estimatedIntensity
         )
 
         // Coexistence count (D-020, U-011): other live events persist silently
@@ -105,18 +112,23 @@ fun ActiveAlertCard(
         // second full alarm screen is out of scope for the cap policy.
         if (state.extraActiveCount > 0) {
             Text(
-                text = "+${state.extraActiveCount} more active",
+                text = strings.moreActive(state.extraActiveCount),
                 style = ChipLabel,
                 color = TextPrimary
             )
         }
 
-        SuggestedActionsBox()
+        SuggestedActionsBox(strings)
 
         EmergencyControls(
             isMuted = state.isMuted,
             isSosLightOn = state.isSosLightOn,
             isSosLightUnavailable = state.isSosLightUnavailable,
+            soundOnLabel = strings.soundOn,
+            muteLabel = strings.muteAlert,
+            sosOnLabel = strings.sosOn,
+            sosLightLabel = strings.sosLight,
+            noLightLabel = strings.noLight,
             onMuteClick = onMuteClick,
             onSosLightClick = onSosLightClick
         )
@@ -136,7 +148,12 @@ fun ActiveAlertCard(
  * means for anyone handed the phone mid-exercise.
  */
 @Composable
-private fun AlertHeadline(isTest: Boolean, modifier: Modifier = Modifier) {
+private fun AlertHeadline(
+    isTest: Boolean,
+    drillBadge: String = "TEST - DRILL, NOT A REAL EARTHQUAKE",
+    title: String = "Earthquake Alert",
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(Dimens.EmergencyBadgeTitleGap),
@@ -144,7 +161,7 @@ private fun AlertHeadline(isTest: Boolean, modifier: Modifier = Modifier) {
     ) {
         if (isTest) {
             Text(
-                text = "TEST - DRILL, NOT A REAL EARTHQUAKE",
+                text = drillBadge,
                 style = EmergencyControlLabel,
                 modifier = Modifier
                     .background(
@@ -180,7 +197,7 @@ private fun AlertHeadline(isTest: Boolean, modifier: Modifier = Modifier) {
             )
         }
 
-        Text(text = "Earthquake Alert", style = EmergencyAlertTitle)
+        Text(text = title, style = EmergencyAlertTitle)
     }
 }
 
@@ -195,6 +212,7 @@ private fun AlertHeadline(isTest: Boolean, modifier: Modifier = Modifier) {
 private fun IntensityReadout(
     intensityValue: String,
     proximityLabel: String,
+    estimatedLabel: String = "Estimated Intensity :",
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -208,7 +226,7 @@ private fun IntensityReadout(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Estimated Intensity :",
+                text = estimatedLabel,
                 style = EmergencyIntensityLabel,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -238,7 +256,7 @@ private fun IntensityReadout(
  * [SuggestedAction] for why the wordmarks stay baked into the artwork.
  */
 @Composable
-private fun SuggestedActionsBox(modifier: Modifier = Modifier) {
+private fun SuggestedActionsBox(strings: WarningStrings, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -261,18 +279,18 @@ private fun SuggestedActionsBox(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Suggested Actions :",
+            text = strings.suggestedActions,
             style = SuggestedActionsHeader,
             modifier = Modifier.fillMaxWidth()
         )
 
         Row(
             modifier = Modifier
-                .widthIn(max = Dimens.SuggestedActionsRowMaxWidth)
+                .widthIn(max = Dimens.SuggestedActionRowMaxWidth)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.SuggestedActionCardGap)
         ) {
-            suggestedActions(lang).forEach { action ->
+            suggestedActions(strings.lang).forEach { action ->
                 SuggestedActionCard(
                     action = action,
                     modifier = Modifier.weight(1f)
@@ -318,8 +336,36 @@ private fun EmergencyControls(
     isSosLightUnavailable: Boolean,
     onMuteClick: () -> Unit,
     onSosLightClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    soundOnLabel: String = "SOUND ON",
+    muteLabel: String = "MUTE ALERT",
+    sosOnLabel: String = "SOS ON",
+    sosLightLabel: String = "SOS LIGHT",
+    noLightLabel: String = "NO LIGHT"
 ) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.EmergencyControlsGap),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        MuteControl(
+            isMuted = isMuted,
+            soundOnLabel = soundOnLabel,
+            muteLabel = muteLabel,
+            onClick = onMuteClick,
+            modifier = Modifier.weight(1f)
+        )
+
+        SosLightControl(
+            isOn = isSosLightOn,
+            isUnavailable = isSosLightUnavailable,
+            sosOnLabel = sosOnLabel,
+            sosLightLabel = sosLightLabel,
+            noLightLabel = noLightLabel,
+            onClick = onSosLightClick
+        )
+    }
+}
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Dimens.EmergencyControlsGap),
@@ -351,9 +397,11 @@ private fun EmergencyControls(
 private fun MuteControl(
     isMuted: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    soundOnLabel: String = "SOUND ON",
+    muteLabel: String = "MUTE ALERT"
 ) {
-    val label = if (isMuted) "SOUND ON" else "MUTE ALERT"
+    val label = if (isMuted) soundOnLabel else muteLabel
     Row(
         modifier = modifier
             .minimumInteractiveComponentSize()
@@ -403,12 +451,15 @@ private fun SosLightControl(
     isOn: Boolean,
     isUnavailable: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    sosOnLabel: String = "SOS ON",
+    sosLightLabel: String = "SOS LIGHT",
+    noLightLabel: String = "NO LIGHT"
 ) {
     val label = when {
-        isUnavailable -> "NO LIGHT"
-        isOn -> "SOS ON"
-        else -> "SOS LIGHT"
+        isUnavailable -> noLightLabel
+        isOn -> sosOnLabel
+        else -> sosLightLabel
     }
     Column(
         modifier = modifier

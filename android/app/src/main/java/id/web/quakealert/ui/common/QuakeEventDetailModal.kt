@@ -179,7 +179,7 @@ fun QuakeEventDetailModal(
 
         SpatialInfoCard(event = event, unitSystem = unitSystem, lang = lang)
 
-        ShareAction(onClick = onShare)
+        ShareAction(onClick = onShare, lang = lang)
     }
 }
 
@@ -361,17 +361,17 @@ private fun SeismicMetricsRow(
         horizontalArrangement = Arrangement.spacedBy(Dimens.EventDetailSectionGap)
     ) {
         MetricCell(
-            label = "PGA (Max)",
+            label = if (lang == DisplayLanguage.ID) "PGA (Maks)" else "PGA (Max)",
             value = event.pgaLabel,
             modifier = Modifier.weight(1f)
         )
         MetricCell(
-            label = "Intensity",
+            label = if (lang == DisplayLanguage.ID) "Intensitas" else "Intensity",
             value = event.severity.label(lang),
             modifier = Modifier.weight(1f)
         )
         MetricCell(
-            label = "Stations",
+            label = if (lang == DisplayLanguage.ID) "Stasiun" else "Stations",
             value = event.reportingNodesLabel,
             modifier = Modifier.weight(1f)
         )
@@ -453,7 +453,7 @@ private fun SpatialInfoCard(
         verticalArrangement = Arrangement.spacedBy(Dimens.EventDetailInfoGap)
     ) {
         SpatialInfoRow(
-            label = "Distance from you",
+            label = if (lang == DisplayLanguage.ID) "Jarak dari Anda" else "Distance from you",
             value = event.distanceLabel(unitSystem, lang)
         )
 
@@ -464,7 +464,7 @@ private fun SpatialInfoCard(
                 .background(EventDetailDividerColor)
         )
 
-        SpatialInfoRow(label = "Coordinates (Centroid)", value = event.coordinates)
+        SpatialInfoRow(label = if (lang == DisplayLanguage.ID) "Koordinat (Sentroid)" else "Coordinates (Centroid)", value = event.coordinates)
     }
 }
 
@@ -501,7 +501,11 @@ private fun SpatialInfoRow(
  * About modal's buttons also use; only the [EventDetailShareFill] wash is its own.
  */
 @Composable
-private fun ShareAction(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ShareAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
+) {
     val shape = remember { RoundedCornerShape(Dimens.RadiusSmall) }
 
     Box(
@@ -515,7 +519,7 @@ private fun ShareAction(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .padding(horizontal = Dimens.ModalActionPaddingHorizontal),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = "Share", style = ChipLabel)
+        Text(text = if (lang == DisplayLanguage.ID) "Bagikan" else "Share", style = ChipLabel)
     }
 }
 

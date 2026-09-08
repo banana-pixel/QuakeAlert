@@ -472,8 +472,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             null
         }
 
-    // Indonesian branch lands in B2.
-    private fun noticeRegionalId(): String = "Sync your location in Settings to join your area's channel."
+    // Indonesian branch (B2). Acuan string sistem: "Pengaturan".
+    private fun noticeRegionalId(): String = "Sinkronkan lokasi di Pengaturan untuk bergabung ke kanal daerah Anda."
 
     /**
      * This device's `user_id`, read once at start-up.
