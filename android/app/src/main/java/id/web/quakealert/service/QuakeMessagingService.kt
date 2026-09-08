@@ -11,6 +11,7 @@ import id.web.quakealert.domain.AlertGate
 import id.web.quakealert.domain.AlertType
 import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
+import id.web.quakealert.domain.resolveDisplayLanguage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -133,7 +134,12 @@ class QuakeMessagingService : FirebaseMessagingService() {
                 return@launch
             }
 
-            WarningNotifier.notify(applicationContext, message, decision)
+            WarningNotifier.notify(
+                applicationContext,
+                message,
+                decision,
+                resolveDisplayLanguage(runCatching { settings.language.first() }.getOrNull())
+            )
         }
     }
 

@@ -18,6 +18,7 @@ import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.intensityValueLabel
 import id.web.quakealert.domain.ActiveAlertBoard
 import id.web.quakealert.domain.AlertDecision
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
 import id.web.quakealert.ui.warning.WarningActivity
@@ -59,18 +60,23 @@ object WarningNotifier {
         QuakeNetwork.from(context).activeAlerts.selectedId() ?: ""
 
     /** Registers the emergency channel. Safe to call repeatedly. */
-    fun ensureChannel(context: Context) {
+    fun ensureChannel(context: Context, lang: DisplayLanguage = DisplayLanguage.EN) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
 
+        // Name/description follow the language at creation time only: Android
+        // freezes them afterwards, so switching language later does not rename
+        // an existing channel (documented; reinstall picks the new label up).
+        val name = if (lang == DisplayLanguage.ID) channelNameId() else "Earthquake Emergency Alerts"
+        val desc = if (lang == DisplayLanguage.ID) channelDescId() else "Life-safety warnings for earthquakes near you."
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Earthquake Emergency Alerts",
+            name,
             // IMPORTANCE_HIGH is the minimum a full-screen intent is honoured at.
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Life-safety warnings for earthquakes near you."
+            description = desc
             enableVibration(true)
             enableLights(true)
             // Audible HIGH channel: makes a sound and appears as a heads-up
@@ -98,8 +104,13 @@ object WarningNotifier {
     // canPost() below is exactly the checkSelfPermission call lint asks for; it cannot
     // see through the helper, and letting the post throw instead would drop an alert.
     @SuppressLint("MissingPermission")
-    fun notify(context: Context, message: WsAlertMessage, decision: AlertDecision): Boolean {
-        ensureChannel(context)
+    fun notify(
+        context: Context,
+        message: WsAlertMessage,
+        decision: AlertDecision,
+        lang: DisplayLanguage = DisplayLanguage.EN
+    ): Boolean {
+        ensureChannel(context, lang)
         if (!canPost(context)) {
             Log.w(TAG, "POST_NOTIFICATIONS not granted; alert cannot be shown")
             return false
@@ -143,8 +154,8 @@ object WarningNotifier {
             // A drill says so in the shade as well as on the screen. Only ever
             // reachable on a debug build (the mapper drops an is_test frame
             // otherwise), so this branch cannot change what a real user is told.
-            .setContentTitle(if (message.isTest) "TEST - earthquake drill" else "Earthquake detected")
-            .setContentText(bodyText(message, distanceKm))
+            .setContentTitle(alertTitle(message, lang))
+            .setContentText(bodyText(message, distanceKm, lang))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -168,7 +179,7 @@ object WarningNotifier {
         // and not on arrival: the claim it feeds is that the app has alerted this user,
         // and an alert filtered out by the distance gate or dropped by the OS never did.
         AppSettingsRepository(context).setLastAlert(
-            summary = summaryText(message, distanceKm),
+            summary = summaryText(message, distanceKm, lang),
             epochMs = System.currentTimeMillis()
         )
         return true
@@ -232,7 +243,8 @@ object WarningNotifier {
      * The one-line record kept for the status notification: what and where, no advice and
      * no distance-unknown caveat. It is read weeks later in a shade, not during shaking.
      */
-    private fun summaryText(message: WsAlertMessage, distanceKm: Int?): String {
+    private fun summaryText(message: WsAlertMessage, distanceKm: Int?, lang: DisplayLanguage): String {
+        if (lang == DisplayLanguage.ID) return summaryTextId(message, distanceKm)
         val where = message.locationName.takeIf { it.isNotBlank() } ?: "your area"
         // Kept distinguishable weeks later: a "Last alert" line that cannot be told
         // apart from a real one would misrepresent what the app has warned about.
@@ -241,13 +253,30 @@ object WarningNotifier {
         return "Intensity ${message.mmi} near $where$proximity"
     }
 
-    private fun bodyText(message: WsAlertMessage, distanceKm: Int?): String {
+    private fun bodyText(message: WsAlertMessage, distanceKm: Int?, lang: DisplayLanguage): String {
+        if (lang == DisplayLanguage.ID) return bodyTextId(message, distanceKm)
         val where = message.locationName.takeIf { it.isNotBlank() } ?: "your area"
         // "Distance unknown" rather than a fabricated number — the gate fails open on
         // an unknown position, so this is a real case and not a defensive branch.
         val proximity = distanceKm?.let { "$it km away" } ?: "distance unknown"
         return "Intensity ${message.mmi} near $where ($proximity). Drop, cover, hold on."
     }
+
+    private fun alertTitle(message: WsAlertMessage, lang: DisplayLanguage): String {
+        if (lang == DisplayLanguage.ID) return alertTitleId(message)
+        return if (message.isTest) "TEST - earthquake drill" else "Earthquake detected"
+    }
+
+    // Indonesian branches land in B2. Separate functions so the two languages
+    // are reviewed side by side.
+    private fun channelNameId(): String = "Earthquake Emergency Alerts"
+    private fun channelDescId(): String = "Life-safety warnings for earthquakes near you."
+    private fun summaryTextId(message: WsAlertMessage, distanceKm: Int?): String =
+        summaryText(message, distanceKm, DisplayLanguage.EN)
+    private fun bodyTextId(message: WsAlertMessage, distanceKm: Int?): String =
+        bodyText(message, distanceKm, DisplayLanguage.EN)
+    private fun alertTitleId(message: WsAlertMessage): String =
+        alertTitle(message, DisplayLanguage.EN)
 
     private fun canPost(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||

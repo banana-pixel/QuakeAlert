@@ -3,14 +3,21 @@ package id.web.quakealert.ui.updates
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.toUpdateItems
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.OperatorUpdate
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.ui.common.errorCopy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -34,6 +41,13 @@ class UpdatesViewModel(application: Application) : AndroidViewModel(application)
 
     private val network = QuakeNetwork.from(application)
 
+    private val repository = AppSettingsRepository(application)
+
+    /** Language user strings render in; screens collect this for components. */
+    val displayLang: StateFlow<DisplayLanguage> = repository.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
+
     private val _uiState = MutableStateFlow(UpdatesUiState(isLoading = true))
 
     val uiState: StateFlow<UpdatesUiState> = _uiState.asStateFlow()
@@ -56,12 +70,16 @@ class UpdatesViewModel(application: Application) : AndroidViewModel(application)
     private fun load() {
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
+            val lang = resolveDisplayLanguage(
+                runCatching { repository.language.first() }.getOrNull()
+            )
+            val locale = lang.locale()
             network.apiClient.fetchBroadcasts()
                 .onSuccess { updates ->
                     held = updates.newestFirst()
                     _uiState.value = UpdatesUiState(
                         isLoading = false,
-                        updates = held.toUpdateItems(Instant.now())
+                        updates = held.toUpdateItems(Instant.now(), locale)
                     )
                 }
                 .onFailure { failure ->
@@ -70,8 +88,8 @@ class UpdatesViewModel(application: Application) : AndroidViewModel(application)
                         isLoading = false,
                         // The page already held is kept: a failed refresh must not
                         // blank a list the user was reading.
-                        updates = held.toUpdateItems(Instant.now()),
-                        error = if (held.isEmpty()) errorCopy(failure) else null
+                        updates = held.toUpdateItems(Instant.now(), locale),
+                        error = if (held.isEmpty()) errorCopy(failure, lang = lang) else null
                     )
                 }
         }
@@ -86,10 +104,13 @@ class UpdatesViewModel(application: Application) : AndroidViewModel(application)
      */
     private fun observeSocket() {
         viewModelScope.launch {
+            val locale = resolveDisplayLanguage(
+                runCatching { repository.language.first() }.getOrNull()
+            ).locale()
             network.webSocketClient.operatorUpdates.collect { incoming ->
                 held = held.mergedWith(incoming)
                 _uiState.update {
-                    it.copy(updates = held.toUpdateItems(Instant.now()), error = null)
+                    it.copy(updates = held.toUpdateItems(Instant.now(), locale), error = null)
                 }
             }
         }

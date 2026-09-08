@@ -9,8 +9,10 @@ import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.QuakeFormat
 import id.web.quakealert.device.canPostNotifications
 import id.web.quakealert.device.isBatteryUnrestricted
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.ProtectionStatus
 import id.web.quakealert.domain.SafetyPolicy
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.service.StatusNotifier
 import id.web.quakealert.service.WarningNotifier
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,9 +148,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             repository.statusNotification,
             repository.notificationsEnabled,
             repository.autoSyncLocation,
-            repository.lastSyncAtMs
-        ) { enabled, alertsEnabled, autoSync, lastSyncAtMs ->
-            StatusPreferences(enabled, alertsEnabled, autoSync, lastSyncAtMs)
+            repository.lastSyncAtMs,
+            repository.language
+        ) { enabled, alertsEnabled, autoSync, lastSyncAtMs, languageTag ->
+            StatusPreferences(enabled, alertsEnabled, autoSync, lastSyncAtMs, languageTag)
         }
         viewModelScope.launch {
             combine(preferences, systemState, repository.lastAlert) { prefs, system, lastAlert ->
@@ -157,33 +160,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 // the one surface that speaks while nothing is running, and silence
                 // there would look like the app died rather than like a choice. Only
                 // the status-notification toggle itself clears it.
+                val lang = resolveDisplayLanguage(prefs.languageTag)
                 ProtectionStatus(
                     alertsEnabled = prefs.alertsEnabled,
                     notificationsPermitted = system.notificationsPermitted,
                     autoSyncEnabled = prefs.autoSyncEnabled,
                     batteryUnrestricted = system.batteryUnrestricted,
-                    lastSyncLabel = prefs.lastSyncAtMs?.let(::relativeLabel),
+                    lastSyncLabel = prefs.lastSyncAtMs?.let { relativeLabel(it, lang) },
                     lastAlertLabel = lastAlert?.let {
-                        "${it.summary}, ${relativeLabel(it.atMs)}"
+                        "${it.summary}, ${relativeLabel(it.atMs, lang)}"
                     },
                     radiusLabel = unitSystem.value.formatDistance(
                         SafetyPolicy.ALERT_RADIUS_KM
                     )
-                )
+                ) to lang
             }
                 .distinctUntilChanged()
-                .collect { status ->
-                    if (status == null) {
-                        StatusNotifier.clear(context)
-                    } else {
-                        StatusNotifier.notify(context, status)
-                    }
+                .collect { (status, lang) ->
+                    StatusNotifier.notify(context, status, lang)
                 }
         }
     }
 
-    private fun relativeLabel(epochMs: Long): String =
-        QuakeFormat.relativeTime(Instant.ofEpochMilli(epochMs), Instant.now())
+    private fun relativeLabel(epochMs: Long, lang: DisplayLanguage = DisplayLanguage.EN): String =
+        QuakeFormat.relativeTime(Instant.ofEpochMilli(epochMs), Instant.now(), locale = lang.locale())
 
     /** Persists onboarding completion, flipping the entry point to MainScreen. */
     fun completeOnboarding() {
@@ -196,7 +196,8 @@ private data class StatusPreferences(
     val enabled: Boolean,
     val alertsEnabled: Boolean,
     val autoSyncEnabled: Boolean,
-    val lastSyncAtMs: Long?
+    val lastSyncAtMs: Long?,
+    val languageTag: String? = null
 )
 
 /** The OS-owned half of [ProtectionStatus], polled rather than observed. */

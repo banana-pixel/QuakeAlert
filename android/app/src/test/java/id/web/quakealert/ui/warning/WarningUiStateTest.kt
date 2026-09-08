@@ -11,7 +11,7 @@ import org.junit.Test
 
 /**
  * Covers the Warning screen's state contract: the read the composables make without
- * re-deriving it ([WarningUiState.ActiveAlert.proximityLabel]) and the unit fold that
+ * re-deriving it ([WarningUiState.ActiveAlert.proximityLabel()]) and the unit fold that
  * keeps a new state variant from silently ignoring the user's Settings choice.
  *
  * Server health is no longer part of this contract — it lives in
@@ -30,14 +30,14 @@ class WarningUiStateTest {
 
     @Test
     fun `proximity label pairs distance with the geocoded name`() {
-        assertEquals("3 km away (Bandung, West Java, ID)", alert.proximityLabel)
+        assertEquals("3 km away (Bandung, West Java, ID)", alert.proximityLabel())
     }
 
     @Test
     fun `proximity label follows the selected unit system`() {
         assertEquals(
             "2 mi away (Bandung, West Java, ID)",
-            alert.withUnitSystem(UnitSystem.IMPERIAL).proximityLabel
+            alert.withUnitSystem(UnitSystem.IMPERIAL).proximityLabel()
         )
     }
 
@@ -48,20 +48,20 @@ class WarningUiStateTest {
         // independently, because either can be missing on a real payload.
         assertEquals(
             "Distance unknown (Bandung, West Java, ID)",
-            alert.copy(distanceKm = null).proximityLabel
+            alert.copy(distanceKm = null).proximityLabel()
         )
     }
 
     @Test
     fun `unnamed centroid drops the parenthetical instead of rendering empty braces`() {
-        assertEquals("3 km away", alert.copy(locationName = "").proximityLabel)
+        assertEquals("3 km away", alert.copy(locationName = "").proximityLabel())
     }
 
     @Test
     fun `both halves can degrade at once`() {
         assertEquals(
             "Distance unknown",
-            alert.copy(distanceKm = null, locationName = "").proximityLabel
+            alert.copy(distanceKm = null, locationName = "").proximityLabel()
         )
     }
 
@@ -162,20 +162,20 @@ class WarningUiStateTest {
         val activity = measuredActivity(eventCount = 3)
         assertEquals(
             "Latest: IV (moderate), 2 days ago \u00b7 3 nearby in 30 days",
-            activity.bannerLabel
+            activity.bannerLabel()
         )
-        assertEquals("No Active Earthquake", activity.bannerTitle)
-        assertEquals("3 events", activity.countValue)
+        assertEquals("No Active Earthquake", activity.bannerTitle())
+        assertEquals("3 events", activity.countValue())
     }
 
     /** The only state in which "No Recent Earthquake" is a true sentence. */
     @Test
     fun `a measured quiet month is the only no-recent-earthquake headline`() {
         val quiet = measuredActivity(eventCount = 0)
-        assertEquals("No Recent Earthquake", quiet.bannerTitle)
+        assertEquals("No Recent Earthquake", quiet.bannerTitle())
         assertEquals(
             "No quakes recorded near you in the past 30 days",
-            quiet.bannerLabel
+            quiet.bannerLabel()
         )
     }
 
@@ -185,28 +185,28 @@ class WarningUiStateTest {
      */
     @Test
     fun `an unmeasured neighbourhood never claims to be quiet`() {
-        assertEquals("No Active Earthquake", RecentSeismicActivity().bannerTitle)
+        assertEquals("No Active Earthquake", RecentSeismicActivity().bannerTitle())
         assertEquals(
             "No Active Earthquake",
             measuredActivity(eventCount = 3)
                 .copy(availability = ActivityAvailability.UNAVAILABLE)
-                .bannerTitle
+                .bannerTitle()
         )
     }
 
     @Test
     fun `a single event is not pluralised`() {
-        assertEquals("1 event", measuredActivity(eventCount = 1).countValue)
+        assertEquals("1 event", measuredActivity(eventCount = 1).countValue())
     }
 
     /** A full page is a floor, so the count has to admit there may be more behind it. */
     @Test
     fun `a capped count reads as a floor`() {
         val activity = measuredActivity(eventCount = 100, isCountCapped = true)
-        assertEquals("100+ events", activity.countValue)
+        assertEquals("100+ events", activity.countValue())
         assertEquals(
             "Latest: IV (moderate), 2 days ago \u00b7 100+ nearby in 30 days",
-            activity.bannerLabel
+            activity.bannerLabel()
         )
     }
 
@@ -217,19 +217,19 @@ class WarningUiStateTest {
     @Test
     fun `a measured quiet area reports no events`() {
         val activity = measuredActivity(eventCount = 0)
-        assertEquals("No events", activity.countValue)
-        assertEquals("None recorded", activity.mostRecentValue)
-        assertEquals("None recorded", activity.strongestValue)
+        assertEquals("No events", activity.countValue())
+        assertEquals("None recorded", activity.mostRecentValue())
+        assertEquals("None recorded", activity.strongestValue())
     }
 
     @Test
     fun `without a position every value asks for one instead of reporting zero`() {
         val activity = RecentSeismicActivity()
         assertEquals(ActivityAvailability.NO_POSITION, activity.availability)
-        assertEquals("Sync your location to see nearby activity", activity.bannerLabel)
-        assertEquals("Needs your location", activity.countValue)
-        assertEquals("Needs your location", activity.mostRecentValue)
-        assertEquals("Needs your location", activity.strongestValue)
+        assertEquals("Sync your location to see nearby activity", activity.bannerLabel())
+        assertEquals("Needs your location", activity.countValue())
+        assertEquals("Needs your location", activity.mostRecentValue())
+        assertEquals("Needs your location", activity.strongestValue())
     }
 
     /**
@@ -240,9 +240,9 @@ class WarningUiStateTest {
     fun `a failed query reports unavailable rather than zero`() {
         val activity = measuredActivity(eventCount = 3)
             .copy(availability = ActivityAvailability.UNAVAILABLE)
-        assertEquals("Recent activity unavailable", activity.bannerLabel)
-        assertEquals("Unavailable offline", activity.countValue)
-        assertEquals("Unavailable offline", activity.strongestValue)
+        assertEquals("Recent activity unavailable", activity.bannerLabel())
+        assertEquals("Unavailable offline", activity.countValue())
+        assertEquals("Unavailable offline", activity.strongestValue())
     }
 
     private fun measuredActivity(

@@ -3,6 +3,7 @@ package id.web.quakealert.ui.history
 import androidx.compose.runtime.Immutable
 import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.ErrorCopy
 import id.web.quakealert.ui.common.QuakeFilterState
 
@@ -21,10 +22,20 @@ enum class MmiSeverity { MODERATE, SEVERE }
  * never drift out of step with the badge colour it sits next to.
  */
 val MmiSeverity.label: String
-    get() = when (this) {
+    get() = label(DisplayLanguage.EN)
+
+/**
+ * Human-readable severity name in [lang]. Indonesian branch lands in B2.
+ */
+fun MmiSeverity.label(lang: DisplayLanguage): String {
+    if (lang == DisplayLanguage.ID) return labelId()
+    return when (this) {
         MmiSeverity.MODERATE -> "Moderate"
         MmiSeverity.SEVERE -> "Severe"
     }
+}
+
+private fun MmiSeverity.labelId(): String = label(DisplayLanguage.EN)
 
 /**
  * A single earthquake history entry. Rendered compactly by [QuakeHistoryCard] in
@@ -87,8 +98,18 @@ data class QuakeHistoryItem(
  * One implementation for the list card, the detail overlay and the share sheet, so
  * the three cannot disagree about a quake whose distance is unknown.
  */
-fun QuakeHistoryItem.distanceLabel(unitSystem: UnitSystem): String =
-    distanceKm?.let { "${unitSystem.formatDistance(it)} Away" } ?: "Distance unknown"
+fun QuakeHistoryItem.distanceLabel(
+    unitSystem: UnitSystem,
+    lang: DisplayLanguage = DisplayLanguage.EN
+): String =
+    distanceKm?.let {
+        val away = if (lang == DisplayLanguage.ID) distanceAwayId() else "Away"
+        "${unitSystem.formatDistance(it)} $away"
+    } ?: if (lang == DisplayLanguage.ID) distanceUnknownId() else "Distance unknown"
+
+// Indonesian branches land in B2.
+private fun distanceAwayId(): String = "Away"
+private fun distanceUnknownId(): String = "Distance unknown"
 
 /**
  * Combined date + time line shown in the detail overlay's banner (Figma node
@@ -102,7 +123,14 @@ val QuakeHistoryItem.timestampLabel: String
  * share button and the detail overlay's "Share" action. Lives beside the model so
  * both entry points emit byte-identical text.
  */
-fun QuakeHistoryItem.toShareText(unitSystem: UnitSystem): String = buildString {
+fun QuakeHistoryItem.toShareText(
+    unitSystem: UnitSystem,
+    lang: DisplayLanguage = DisplayLanguage.EN
+): String = buildString {
+    if (lang == DisplayLanguage.ID) {
+        append(shareTextId(unitSystem))
+        return@buildString
+    }
     appendLine("Earthquake: $location")
     appendLine("MMI $intensity (${severity.label})")
     appendLine(timestampLabel)
@@ -111,6 +139,10 @@ fun QuakeHistoryItem.toShareText(unitSystem: UnitSystem): String = buildString {
     appendLine("Distance from me: ${distanceKm?.let { unitSystem.formatDistance(it) } ?: "unknown"}")
     append("Centroid: $coordinates")
 }
+
+// Indonesian branch lands in B2.
+private fun QuakeHistoryItem.shareTextId(unitSystem: UnitSystem): String =
+    toShareText(unitSystem, DisplayLanguage.EN)
 
 /**
  * Immutable UI state for the History screen. Hoisted into [HistoryViewModel] and

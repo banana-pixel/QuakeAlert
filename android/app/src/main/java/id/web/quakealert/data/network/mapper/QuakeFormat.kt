@@ -11,22 +11,17 @@ import kotlin.math.abs
  * from the REST history and the same quake rendered from a live WebSocket frame
  * produce byte-identical strings.
  *
- * Locale is pinned to [Locale.US] on purpose: the UI copy is English ("20 Jun 2026",
- * "2 months ago") and a device set to another locale must not produce a card that
- * mixes languages mid-line. The *zone*, by contract, is the device's — timestamps
- * cross the wire as UTC and are converted only at the display boundary
- * (docs/CLIENT_SPEC.md §7).
+ * Every function takes the display [locale] (default US = the long-standing
+ * behaviour): the UI copy is rendered in the resolved [id.web.quakealert.domain.DisplayLanguage],
+ * and a device set to another locale must not produce a card that mixes languages
+ * mid-line. The *zone*, by contract, is the device's — timestamps cross the wire
+ * as UTC and are converted only at the display boundary (docs/CLIENT_SPEC.md §7).
+ *
+ * Numbers keep [Locale.US] in every language: canonical units (gal, coordinates)
+ * use a decimal dot by contract, and an Indonesian decimal comma there would be a
+ * data defect, not a translation.
  */
 internal object QuakeFormat {
-
-    /** e.g. "20 Jun 2026". */
-    private val DATE = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.US)
-
-    /** e.g. "07:19:18 WIB" — `zzz` renders the device zone's short name. */
-    private val TIME = DateTimeFormatter.ofPattern("HH:mm:ss zzz", Locale.US)
-
-    /** e.g. "09:41" — chat bubbles, where seconds and a zone name are noise. */
-    private val CHAT_TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
     /**
      * Placeholder for a value the server contract does not carry.
@@ -37,9 +32,19 @@ internal object QuakeFormat {
      */
     const val UNAVAILABLE: String = "-"
 
-    fun date(instant: Instant, zone: ZoneId): String = DATE.format(instant.atZone(zone))
+    private fun dateFormatter(locale: Locale): DateTimeFormatter =
+        DateTimeFormatter.ofPattern("dd MMM yyyy", locale)
 
-    fun time(instant: Instant, zone: ZoneId): String = TIME.format(instant.atZone(zone))
+    private fun timeFormatter(locale: Locale): DateTimeFormatter =
+        DateTimeFormatter.ofPattern("HH:mm:ss zzz", locale)
+
+    /** e.g. "20 Jun 2026" (EN) / "20 Jun 2026" (ID — same digits, local month). */
+    fun date(instant: Instant, zone: ZoneId, locale: Locale = Locale.US): String =
+        dateFormatter(locale).format(instant.atZone(zone))
+
+    /** e.g. "07:19:18 WIB" — `zzz` renders the device zone's short name. */
+    fun time(instant: Instant, zone: ZoneId, locale: Locale = Locale.US): String =
+        timeFormatter(locale).format(instant.atZone(zone))
 
     /**
      * Send time inside a chat bubble, e.g. "09:41".
@@ -48,13 +53,14 @@ internal object QuakeFormat {
      * sent to, so the seconds and the zone name that a quake read-out needs would
      * only be noise here.
      */
-    fun chatTime(instant: Instant, zone: ZoneId): String = CHAT_TIME.format(instant.atZone(zone))
+    fun chatTime(instant: Instant, zone: ZoneId): String =
+        DateTimeFormatter.ofPattern("HH:mm", Locale.US).format(instant.atZone(zone))
 
     /** PGA in the canonical unit, e.g. "61.5 gal". Never converted to `g` here. */
     fun pga(pgaGal: Double): String = String.format(Locale.US, "%.1f gal", pgaGal)
 
     /**
-     * How many stations reported the shaking, e.g. "3 stations".
+     * How many stations reported the shaking, e.g. "3 stations" / "3 stasiun".
      *
      * Replaces the shaking duration in the detail overlay's third metric cell. The
      * REST contract carries no duration: the firmware does send `dur_ms`, and the
@@ -65,11 +71,14 @@ internal object QuakeFormat {
      *
      * Zero is [UNAVAILABLE] rather than "0 stations": an event exists because
      * stations triggered, so a zero here is a missing field, not a real count.
+     *
+     * Indonesian has no plural inflection, so the two English shapes collapse.
      */
-    fun reportingNodes(count: Int): String = when {
-        count <= 0 -> UNAVAILABLE
-        count == 1 -> "1 station"
-        else -> "$count stations"
+    fun reportingNodes(count: Int, locale: Locale = Locale.US): String {
+        if (count <= 0) return UNAVAILABLE
+        val noun = if (isIndonesian(locale)) "stasiun" else "station"
+        if (count == 1) return "1 $noun"
+        return if (isIndonesian(locale)) "$count $noun" else "$count ${noun}s"
     }
 
     /**
@@ -88,8 +97,13 @@ internal object QuakeFormat {
      * a server that sent no `intensity_label`, so the line never trails an empty
      * bracket.
      */
-    fun intensityBanner(mmi: String, label: String, fallbackWord: String): String =
-        "Intensity : ${intensityValue(mmi, label, fallbackWord)}"
+    fun intensityBanner(
+        mmi: String,
+        label: String,
+        fallbackWord: String,
+        locale: Locale = Locale.US
+    ): String =
+        "${if (isIndonesian(locale)) "Intensitas" else "Intensity"} : ${intensityValue(mmi, label, fallbackWord)}"
 
     /**
      * The bare intensity read, e.g. "IV (moderate)", for the active alert card
@@ -106,27 +120,31 @@ internal object QuakeFormat {
     }
 
     /**
-     * Coarse age of an event, e.g. "just now", "20 minutes ago", "2 months ago".
+     * Coarse age of an event, e.g. "just now" / "baru saja", "20 minutes ago" /
+     * "20 menit yang lalu".
      *
      * Deliberately coarse — the exact timestamp is one line away on the same card,
      * and rounding "89 seconds" to "a minute ago" is what makes the list scannable.
      * Future timestamps (device clock behind the server) collapse to "just now"
      * rather than rendering a negative age.
      */
-    fun relativeTime(instant: Instant, now: Instant): String {
+    fun relativeTime(instant: Instant, now: Instant, locale: Locale = Locale.US): String {
         val seconds = now.epochSecond - instant.epochSecond
-        if (seconds < MINUTE) return "just now"
+        if (seconds < MINUTE) return if (isIndonesian(locale)) "baru saja" else "just now"
 
-        val (amount, unit) = when {
-            seconds < HOUR -> seconds / MINUTE to "minute"
-            seconds < DAY -> seconds / HOUR to "hour"
-            seconds < MONTH -> seconds / DAY to "day"
-            seconds < YEAR -> seconds / MONTH to "month"
-            else -> seconds / YEAR to "year"
+        val (amount, unitEn, unitId) = when {
+            seconds < HOUR -> Triple(seconds / MINUTE, "minute", "menit")
+            seconds < DAY -> Triple(seconds / HOUR, "hour", "jam")
+            seconds < MONTH -> Triple(seconds / DAY, "day", "hari")
+            seconds < YEAR -> Triple(seconds / MONTH, "month", "bulan")
+            else -> Triple(seconds / YEAR, "year", "tahun")
         }
+        if (isIndonesian(locale)) return "$amount $unitId yang lalu"
         val plural = if (abs(amount) == 1L) "" else "s"
-        return "$amount $unit$plural ago"
+        return "$amount $unitEn$plural ago"
     }
+
+    private fun isIndonesian(locale: Locale): Boolean = locale.language == "in"
 
     private const val MINUTE = 60L
     private const val HOUR = 60 * MINUTE

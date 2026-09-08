@@ -2,6 +2,7 @@ package id.web.quakealert.ui.common
 
 import androidx.compose.runtime.Immutable
 import id.web.quakealert.data.network.ApiException
+import id.web.quakealert.domain.DisplayLanguage
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -56,7 +57,19 @@ data class ErrorCopy(
  *   for a rejected request, where clearing the filter is the one thing that might
  *   turn an unacceptable query into an acceptable one.
  */
-fun errorCopy(throwable: Throwable, isNarrowed: Boolean = false): ErrorCopy = when {
+fun errorCopy(
+    throwable: Throwable,
+    isNarrowed: Boolean = false,
+    lang: DisplayLanguage = DisplayLanguage.EN
+): ErrorCopy =
+    if (lang == DisplayLanguage.ID) errorCopyId(throwable, isNarrowed)
+    else errorCopyEn(throwable, isNarrowed)
+
+// Indonesian branch lands in B2.
+private fun errorCopyId(throwable: Throwable, isNarrowed: Boolean): ErrorCopy =
+    errorCopyEn(throwable, isNarrowed)
+
+private fun errorCopyEn(throwable: Throwable, isNarrowed: Boolean = false): ErrorCopy = when {
     throwable is ApiException -> apiErrorCopy(throwable, isNarrowed)
     // Checked after ApiException, which is itself an IOException so that it travels
     // the same catch as a transport failure.

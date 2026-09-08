@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.history.MmiSeverity
 import id.web.quakealert.ui.history.QuakeHistoryItem
 import id.web.quakealert.ui.history.distanceLabel
@@ -89,7 +90,8 @@ fun QuakeEventDetailModalDialog(
     onDismiss: () -> Unit,
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
-    title: String = "Earthquake Details"
+    title: String = "Earthquake Details",
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -101,7 +103,8 @@ fun QuakeEventDetailModalDialog(
             onDismiss = onDismiss,
             onShare = onShare,
             modifier = modifier.padding(Dimens.ScreenHorizontalPadding),
-            title = title
+            title = title,
+            lang = lang
         )
     }
 }
@@ -131,7 +134,8 @@ fun QuakeEventDetailModal(
     onDismiss: () -> Unit,
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
-    title: String = "Earthquake Details"
+    title: String = "Earthquake Details",
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val shape = remember { RoundedCornerShape(Dimens.RadiusCard) }
     // Same severity → accent mapping the History card uses, so the overlay opens
@@ -171,9 +175,9 @@ fun QuakeEventDetailModal(
             )
         )
 
-        SeismicMetricsRow(event = event)
+        SeismicMetricsRow(event = event, lang = lang)
 
-        SpatialInfoCard(event = event, unitSystem = unitSystem)
+        SpatialInfoCard(event = event, unitSystem = unitSystem, lang = lang)
 
         ShareAction(onClick = onShare)
     }
@@ -349,6 +353,7 @@ private fun EventDetailMap(
 @Composable
 private fun SeismicMetricsRow(
     event: QuakeHistoryItem,
+    lang: DisplayLanguage = DisplayLanguage.EN,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -362,7 +367,7 @@ private fun SeismicMetricsRow(
         )
         MetricCell(
             label = "Intensity",
-            value = event.severity.label,
+            value = event.severity.label(lang),
             modifier = Modifier.weight(1f)
         )
         MetricCell(
@@ -433,6 +438,7 @@ private fun MetricCell(
 private fun SpatialInfoCard(
     event: QuakeHistoryItem,
     unitSystem: UnitSystem,
+    lang: DisplayLanguage = DisplayLanguage.EN,
     modifier: Modifier = Modifier
 ) {
     val shape = remember { RoundedCornerShape(Dimens.RadiusSmall) }
@@ -448,7 +454,7 @@ private fun SpatialInfoCard(
     ) {
         SpatialInfoRow(
             label = "Distance from you",
-            value = event.distanceLabel(unitSystem)
+            value = event.distanceLabel(unitSystem, lang)
         )
 
         Box(

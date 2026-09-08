@@ -15,6 +15,7 @@ import id.web.quakealert.device.canPostNotifications
 import id.web.quakealert.device.hasLocationPermission
 import id.web.quakealert.device.isBatteryUnrestricted
 import id.web.quakealert.device.warningCopy
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.ui.common.errorCopy
 import id.web.quakealert.ui.onboarding.TestAlertNotifier
@@ -77,7 +78,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             // Formatted on arrival: the pill reads "2 minutes ago", and the epoch
             // value it comes from means nothing to the screen.
             repository.lastSyncAtMs.collect { at ->
-                _uiState.update { it.copy(lastSyncLabel = at?.toRelativeLabel()) }
+                _uiState.update {
+                    it.copy(lastSyncLabel = at?.toRelativeLabel(it.language.toDisplay()))
+                }
             }
         }
         viewModelScope.launch {
@@ -127,7 +130,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 notificationPermissionGranted = context.canPostNotifications(),
                 locationPermissionGranted = context.hasLocationPermission(),
                 batteryUnrestricted = context.isBatteryUnrestricted(),
-                inUseAlertWarning = presentationHealth.warningCopy()
+                inUseAlertWarning = presentationHealth.warningCopy(it.language.toDisplay())
             )
         }
     }
@@ -220,7 +223,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(isSyncing = true, statusMessage = null) }
         viewModelScope.launch {
             val result = network.userLocationRepository.sync(force = true)
-            _uiState.update { it.copy(isSyncing = false, statusMessage = result.toMessage()) }
+            _uiState.update {
+                it.copy(isSyncing = false, statusMessage = result.toMessage(it.language.toDisplay()))
+            }
         }
     }
 
@@ -246,9 +251,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * Selects the app language. Persisted so the choice survives a restart, but not
-     * yet applied: the strings ship in English only, which is why the control is
-     * badged in the UI.
+     * Selects the app language. Persisted so the choice survives a restart, and
+     * applied to user copy throughout the app (see [DisplayLanguage]).
      */
     fun onLanguageSelected(language: AppLanguage) {
         repository.setLanguage(language.tag)
@@ -266,13 +270,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         if (_uiState.value.isRerolling) return
         _uiState.update { it.copy(isRerolling = true, statusMessage = null) }
         viewModelScope.launch {
+            val lang = _uiState.value.language.toDisplay()
             val message = network.apiClient.rerollPseudonym().fold(
                 onSuccess = { pseudonym -> "You are now $pseudonym" },
                 onFailure = { error ->
                     if ((error as? ApiException)?.httpCode == HTTP_TOO_MANY_REQUESTS) {
                         "You can change your pseudonym once a minute. Try again shortly."
                     } else {
-                        failureMessage("Could not change your pseudonym", error)
+                        failureMessage("Could not change your pseudonym", error, lang)
                     }
                 }
             )
@@ -303,6 +308,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         if (_uiState.value.isResetting) return
         _uiState.update { it.copy(showResetDialog = false, isResetting = true, statusMessage = null) }
         viewModelScope.launch {
+            val lang = _uiState.value.language.toDisplay()
             val message = runCatching {
                 network.authRepository.invalidate()
                 network.authRepository.ensureToken()
@@ -312,7 +318,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 onSuccess = { "New anonymous profile created" },
                 onFailure = { error ->
                     Log.w(TAG, "profile reset failed", error)
-                    failureMessage("Could not create a new profile", error)
+                    failureMessage("Could not create a new profile", error, lang)
                 }
             )
             _uiState.update { it.copy(isResetting = false, statusMessage = message) }
@@ -328,8 +334,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * never copy at all: `error.message` is the server's operator text, in
      * Indonesian, or a socket state from OkHttp.
      */
-    private fun failureMessage(action: String, error: Throwable): String =
-        "$action: ${errorCopy(error).title.replaceFirstChar { it.lowercase() }}"
+    private fun failureMessage(
+        action: String,
+        error: Throwable,
+        lang: DisplayLanguage = DisplayLanguage.EN
+    ): String =
+        "$action: ${errorCopy(error, lang = lang).title.replaceFirstChar { it.lowercase() }}"
 
     /** Clears the status pill once the user has had a chance to read it. */
     fun onStatusMessageShown() {
@@ -350,16 +360,34 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(statusMessage = message) }
     }
 
-    private fun Long.toRelativeLabel(): String =
-        QuakeFormat.relativeTime(Instant.ofEpochMilli(this), Instant.now())
+    private fun Long.toRelativeLabel(lang: DisplayLanguage = DisplayLanguage.EN): String =
+        QuakeFormat.relativeTime(Instant.ofEpochMilli(this), Instant.now(), lang.locale())
 
-    private fun LocationSyncResult.toMessage(): String = when (this) {
-        is LocationSyncResult.Updated -> "Location updated"
-        is LocationSyncResult.Unchanged -> "Location unchanged. You have not moved."
-        LocationSyncResult.PermissionDenied -> "Location permission is needed to sync"
-        LocationSyncResult.NoFix -> "Could not get a location fix. Try again outdoors."
-        is LocationSyncResult.Failed -> failureMessage("Could not update your location", cause)
+    private fun LocationSyncResult.toMessage(lang: DisplayLanguage = DisplayLanguage.EN): String = when (this) {
+        is LocationSyncResult.Updated -> if (lang == DisplayLanguage.ID) toMessageIdUpdated() else "Location updated"
+        is LocationSyncResult.Unchanged -> if (lang == DisplayLanguage.ID) {
+            toMessageIdUnchanged()
+        } else {
+            "Location unchanged. You have not moved."
+        }
+        LocationSyncResult.PermissionDenied -> if (lang == DisplayLanguage.ID) {
+            toMessageIdPermission()
+        } else {
+            "Location permission is needed to sync"
+        }
+        LocationSyncResult.NoFix -> if (lang == DisplayLanguage.ID) {
+            toMessageIdNoFix()
+        } else {
+            "Could not get a location fix. Try again outdoors."
+        }
+        is LocationSyncResult.Failed -> failureMessage("Could not update your location", cause, lang)
     }
+
+    // Indonesian branches land in B2.
+    private fun toMessageIdUpdated(): String = "Location updated"
+    private fun toMessageIdUnchanged(): String = "Location unchanged. You have not moved."
+    private fun toMessageIdPermission(): String = "Location permission is needed to sync"
+    private fun toMessageIdNoFix(): String = "Could not get a location fix. Try again outdoors."
 
     private companion object {
         const val TAG = "SettingsViewModel"

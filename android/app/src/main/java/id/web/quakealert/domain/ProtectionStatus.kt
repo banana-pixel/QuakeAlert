@@ -45,14 +45,19 @@ data class ProtectionStatus(
      * own switch is the next most total, then an absent position (alerts arrive but
      * cannot be aimed), then a delivery that may merely be late.
      */
-    val headline: String
-        get() = when {
-            !notificationsPermitted -> "Alerts blocked by system settings"
-            !alertsEnabled -> "Earthquake protection disabled"
-            lastSyncLabel == null -> "Watching, but your location is not set"
-            !batteryUnrestricted -> "Watching, but alerts may arrive late"
-            else -> "Earthquake protection active"
-        }
+    fun headline(lang: DisplayLanguage = DisplayLanguage.EN): String =
+        if (lang == DisplayLanguage.ID) headlineId() else headlineEn()
+
+    // Indonesian branch lands in B2.
+    private fun headlineId(): String = headlineEn()
+
+    private fun headlineEn(): String = when {
+        !notificationsPermitted -> "Alerts blocked by system settings"
+        !alertsEnabled -> "Earthquake protection disabled"
+        lastSyncLabel == null -> "Watching, but your location is not set"
+        !batteryUnrestricted -> "Watching, but alerts may arrive late"
+        else -> "Earthquake protection active"
+    }
 
     /**
      * The expanded body: what is wrong, and what the app has done.
@@ -67,8 +72,13 @@ data class ProtectionStatus(
      * "nothing yet" is the reassuring answer and an absent line would only look like a
      * missing feature.
      */
-    val lines: List<String>
-        get() = buildList {
+    fun lines(lang: DisplayLanguage = DisplayLanguage.EN): List<String> =
+        if (lang == DisplayLanguage.ID) linesId() else linesEn()
+
+    // Indonesian branch lands in B2.
+    private fun linesId(): List<String> = linesEn()
+
+    private fun linesEn(): List<String> = buildList {
             if (!notificationsPermitted) {
                 add("Notifications are blocked in system settings, so alerts cannot arrive.")
             }

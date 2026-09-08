@@ -36,6 +36,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.web.quakealert.R
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.MapFocus
 import id.web.quakealert.ui.common.QuakeMap
 import id.web.quakealert.ui.common.QuakeModalHeader
@@ -390,7 +391,8 @@ fun RecentSeismicActivityModal(
     activity: RecentSeismicActivity,
     unitSystem: UnitSystem,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -400,6 +402,7 @@ fun RecentSeismicActivityModal(
             activity = activity,
             unitSystem = unitSystem,
             onDismiss = onDismiss,
+            lang = lang,
             modifier = modifier.padding(Dimens.ScreenHorizontalPadding)
         )
     }
@@ -433,7 +436,8 @@ fun RecentSeismicActivityCard(
     activity: RecentSeismicActivity,
     unitSystem: UnitSystem,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val shape = remember { RoundedCornerShape(Dimens.RadiusCard) }
     val statsShape = remember { RoundedCornerShape(Dimens.RadiusSmall) }
@@ -504,14 +508,14 @@ fun RecentSeismicActivityCard(
         ) {
             ActivityStatRow(
                 label = "Confirmed Events",
-                value = activity.countValue
+                value = activity.countValue(lang)
             )
 
             ActivityStatDivider()
 
             ActivityStatRow(
                 label = "Most Recent",
-                value = activity.mostRecentValue
+                value = activity.mostRecentValue(lang)
             )
 
             ActivityStatDivider()
@@ -520,7 +524,7 @@ fun RecentSeismicActivityCard(
             // month of records they are usually different events.
             ActivityStatRow(
                 label = "Strongest Shaking",
-                value = activity.strongestValue
+                value = activity.strongestValue(lang)
             )
         }
 
@@ -593,7 +597,7 @@ private fun SeismicActivityBannerPreview() {
         AlertBanner(
             banner = SeismicActivityBanner(
                 title = "No Recent Earthquake",
-                activityLabel = previewActivity.bannerLabel
+                activityLabel = previewActivity.bannerLabel()
             ),
             onSeeDetails = {},
             onProtectionStatus = {},

@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.R
 import id.web.quakealert.data.network.ServerHealth
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.QuakeAppBar
 import id.web.quakealert.ui.common.QuakeEmptyState
 import id.web.quakealert.ui.common.GenericErrorCopy
@@ -56,9 +57,10 @@ fun WarningRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val protectionFacts by viewModel.protectionFacts.collectAsStateWithLifecycle()
+    val lang by viewModel.displayLang.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-    val shareEvent: (QuakeHistoryItem) -> Unit = remember(context) {
+    val shareEvent: (QuakeHistoryItem) -> Unit = remember(context, lang) {
         { item ->
             // startActivity throws when no app on the device can receive the
             // intent. Swallow it so a missing target leaves the screen (and any
@@ -67,7 +69,7 @@ fun WarningRoute(
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_SUBJECT, "QuakeAlert: ${item.location}")
-                    putExtra(Intent.EXTRA_TEXT, item.toShareText(uiState.unitSystem))
+                    putExtra(Intent.EXTRA_TEXT, item.toShareText(uiState.unitSystem, lang))
                 }
                 context.startActivity(Intent.createChooser(send, "Share earthquake details"))
             }
@@ -90,6 +92,7 @@ fun WarningRoute(
         uiState = uiState,
         protectionFacts = protectionFacts,
         health = health,
+        lang = lang,
         onOpenUpdates = onOpenUpdates,
         onSeeDetails = viewModel::onSeeDetailsClicked,
         onEmergency = viewModel::onEmergencyClicked,
@@ -153,6 +156,7 @@ fun WarningScreen(
     uiState: WarningUiState,
     protectionFacts: ProtectionFacts = ProtectionFacts(),
     health: ServerHealth = ServerHealth.HEALTHY,
+    lang: DisplayLanguage = DisplayLanguage.EN,
     onOpenUpdates: () -> Unit = {},
     onSeeDetails: () -> Unit,
     onEmergency: () -> Unit,
@@ -182,6 +186,7 @@ fun WarningScreen(
             is WarningUiState.Idle -> IdleBody(
                 uiState = uiState,
                 health = health,
+                lang = lang,
                 onSeeDetails = onSeeDetails,
                 onEmergency = onEmergency,
                 onRetry = onRetry,
@@ -193,6 +198,7 @@ fun WarningScreen(
                 state = uiState,
                 onMuteClick = onMuteClick,
                 onSosLightClick = onSosLightClick,
+                lang = lang,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -211,6 +217,7 @@ fun WarningScreen(
         QuakeEventDetailModalDialog(
             event = event,
             unitSystem = uiState.unitSystem,
+            lang = lang,
             onDismiss = onDetailDismissed,
             onShare = { onShareClicked(event) },
             title = "Recent Earthquake"
@@ -222,6 +229,7 @@ fun WarningScreen(
         RecentSeismicActivityModal(
             activity = activity,
             unitSystem = uiState.unitSystem,
+            lang = lang,
             onDismiss = onActivityDismissed
         )
     }
@@ -264,6 +272,7 @@ fun WarningScreen(
 private fun ColumnScope.IdleBody(
     uiState: WarningUiState.Idle,
     health: ServerHealth,
+    lang: DisplayLanguage = DisplayLanguage.EN,
     onSeeDetails: () -> Unit,
     onEmergency: () -> Unit,
     onRetry: () -> Unit,

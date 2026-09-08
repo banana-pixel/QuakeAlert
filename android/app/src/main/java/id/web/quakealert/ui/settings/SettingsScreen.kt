@@ -333,7 +333,7 @@ fun SettingsScreen(
             QuakeCard(
                 title = "Sync Location Now",
                 detail = {
-                    QuakePill(text = uiState.lastSyncPillLabel)
+                    QuakePill(text = uiState.lastSyncPillLabel(uiState.language.toDisplay()))
                     // The map moved inside this card (plan item 9): what a sync
                     // produces is a position, so the confirmation of it belongs
                     // next to the control that asks for one rather than in a
@@ -342,7 +342,7 @@ fun SettingsScreen(
                     // fill the frame and say nothing about coverage.
                     SensorMapCard(
                         overview = SensorMapOverview(
-                            locationLabel = uiState.locationPillLabel,
+                            locationLabel = uiState.locationPillLabel(uiState.language.toDisplay()),
                             // No radius and no count reach this card, because it
                             // does not show them: range and sensor coverage are
                             // the Sensors screen's subject, and printing them
@@ -544,9 +544,7 @@ fun SettingsScreen(
             }
 
             QuakeCard(
-                title = "Language",
-                // Persisted but not applied: the strings ship in English only.
-                detail = { QuakePill(text = "Coming Soon") }
+                title = "Language"
             ) {
                 QuakeSegmentedControl(
                     options = AppLanguage.entries,

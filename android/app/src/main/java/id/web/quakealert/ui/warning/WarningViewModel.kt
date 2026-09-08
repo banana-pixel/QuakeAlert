@@ -18,6 +18,7 @@ import id.web.quakealert.device.canPostNotifications
 import id.web.quakealert.domain.ActiveAlertBoard
 import id.web.quakealert.domain.AlertGate
 import id.web.quakealert.domain.AlertType
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.EarthquakeEvent
 import id.web.quakealert.domain.EmergencyContacts
 import id.web.quakealert.domain.EventState
@@ -27,6 +28,7 @@ import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.domain.UserLocation
 import id.web.quakealert.domain.WsAlertMessage
 import id.web.quakealert.domain.distanceKmTo
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.domain.standDownCopyFor
 import id.web.quakealert.domain.unconfirmedActivityLabel
 import id.web.quakealert.service.WarningNotifier
@@ -37,7 +39,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -123,6 +127,20 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = WarningUiState.Idle(isLoading = true)
     )
+
+    /**
+     * Language user strings are rendered in, following the stored override then
+     * the system locale ([resolveDisplayLanguage]). Screens collect this to pass
+     * down to components that compute copy from state; the state itself keeps
+     * holding strings the ViewModel already rendered with the same language.
+     */
+    val displayLang: StateFlow<DisplayLanguage> = repository.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
+
+    /** Suspend twin of [displayLang] for builders that run off-collection. */
+    private suspend fun currentLang(): DisplayLanguage =
+        resolveDisplayLanguage(runCatching { repository.language.first() }.getOrNull())
 
     /**
      * Detail payload behind the idle banner's "SEE DETAILS" capsule, built from
@@ -226,6 +244,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
                 // Logged rather than shown: the raw cause never reaches the screen,
                 // so this is the only place it survives for a bug report.
                 Log.w(TAG, "could not load the alert feed", throwable)
+                val lang = currentLang()
                 _uiState.update { state ->
                     if (state is WarningUiState.Idle) {
                         state.copy(
@@ -233,7 +252,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
                             isError = true,
                             // No filter reaches this feed, so a rejected request has
                             // nothing here for the user to relax.
-                            errorCopy = errorCopy(throwable)
+                            errorCopy = errorCopy(throwable, lang = lang)
                         )
                     } else {
                         state
@@ -252,6 +271,8 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      * recent-quake banner; a resolved one, or none at all, means the resting state.
      */
     private suspend fun fetchWarning(): LoadOutcome {
+        val lang = currentLang()
+        val locale = lang.locale()
         val latest = apiClient.fetchEvents(limit = 1).getOrThrow().firstOrNull()
         // Read before the resting early-return: the resting state is precisely the
         // one that offers the Earthquake Possibility card, so the position must be
@@ -260,11 +281,11 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         lastKnownLocation = userLocation
         if (latest == null || latest.status != EventStatus.HAPPENING) {
             activeAlertDetails = null
-            recentActivity = fetchRecentActivity(userLocation)
-            return LoadOutcome.Resting(restingSnapshot(recentActivity))
+            recentActivity = fetchRecentActivity(userLocation, lang)
+            return LoadOutcome.Resting(restingSnapshot(recentActivity, lang))
         }
 
-        activeAlertDetails = latest.toHistoryItem(userLocation)
+        activeAlertDetails = latest.toHistoryItem(userLocation, locale = locale)
 
         // Unresolved, but older than the window the siren answers for. It is still an
         // open quake, so it gets the recent-quake banner — which is exactly what that
@@ -273,8 +294,9 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         if (!latest.isOngoing()) {
             return LoadOutcome.DistantEmergency(
                 activeSnapshot(
-                    intensityLabel = latest.intensityBannerLabel(),
-                    timeAgo = QuakeFormat.relativeTime(latest.createdAt, Instant.now())
+                    intensityLabel = latest.intensityBannerLabel(locale),
+                    timeAgo = QuakeFormat.relativeTime(latest.createdAt, Instant.now(), locale),
+                    lang = lang
                 )
             )
         }
@@ -291,8 +313,9 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         if (!decision.shouldAlarm) {
             return LoadOutcome.DistantEmergency(
                 activeSnapshot(
-                    intensityLabel = latest.intensityBannerLabel(),
-                    timeAgo = QuakeFormat.relativeTime(latest.createdAt, Instant.now())
+                    intensityLabel = latest.intensityBannerLabel(locale),
+                    timeAgo = QuakeFormat.relativeTime(latest.createdAt, Instant.now(), locale),
+                    lang = lang
                 )
             )
         }
@@ -319,7 +342,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      *  - **request failed**: reported as unavailable, never as zero. "No quakes near
      *    you" is exactly the reading a life-safety app must not invent.
      */
-    private suspend fun fetchRecentActivity(center: UserLocation?): RecentSeismicActivity {
+    private suspend fun fetchRecentActivity(center: UserLocation?, lang: DisplayLanguage = DisplayLanguage.EN): RecentSeismicActivity {
         if (center == null) return RecentSeismicActivity()
 
         val label = QuakeFormat.coordinates(center.latitude, center.longitude)
@@ -339,6 +362,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         }
 
         val now = Instant.now()
+        val locale = lang.locale()
         // The feed is sorted created_at DESC, so the newest is the head — but the
         // strongest has to be searched for: intensity and recency are unrelated.
         val newest = events.firstOrNull()
@@ -352,7 +376,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
             // printing the page size as the count would understate a busy month.
             isCountCapped = events.size >= ACTIVITY_PAGE_LIMIT,
             mostRecent = newest?.let {
-                "${it.intensityValueLabel()}, ${QuakeFormat.relativeTime(it.createdAt, now)}"
+                "${it.intensityValueLabel()}, ${QuakeFormat.relativeTime(it.createdAt, now, locale)}"
             },
             strongest = strongest?.let {
                 "${it.intensityValueLabel()}, ${QuakeFormat.pga(it.pgaGal)}"
@@ -404,14 +428,17 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
                 // and unconfirmed, and escalating it would train users to ignore the
                 // real thing. It also must never *downgrade* a live alert, hence the
                 // Idle guard.
-                AlertType.EARTHQUAKE_ADVISORY -> _uiState.update { state ->
-                    if (state is WarningUiState.Idle) {
-                        state.copy(
-                            banner = advisoryBanner(message, recentActivity.bannerLabel),
-                            isLoading = false
-                        )
-                    } else {
-                        state
+                AlertType.EARTHQUAKE_ADVISORY -> {
+                    val lang = currentLang()
+                    _uiState.update { state ->
+                        if (state is WarningUiState.Idle) {
+                            state.copy(
+                                banner = advisoryBanner(message, recentActivity.bannerLabel(lang), lang),
+                                isLoading = false
+                            )
+                        } else {
+                            state
+                        }
                     }
                 }
 
@@ -437,9 +464,11 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      * informed, just not woken.
      */
     private suspend fun raiseAlert(message: WsAlertMessage) {
+        val lang = currentLang()
+        val locale = lang.locale()
         val userLocation: UserLocation? = apiClient.currentUserLocation()
         lastKnownLocation = userLocation
-        activeAlertDetails = message.toHistoryItem(userLocation)
+        activeAlertDetails = message.toHistoryItem(userLocation, locale = locale)
 
         val decision = AlertGate.decide(
             userLocation = userLocation,
@@ -453,7 +482,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
             Log.i(TAG, RaiseOutcomeLog.gatedOut(message.eventId, decision.reason))
             _uiState.update { state ->
                 if (state is WarningUiState.Idle) {
-                    val snapshot = distantSnapshot(message)
+                    val snapshot = distantSnapshot(message, lang)
                     state.copy(
                         banner = snapshot.banner,
                         sectionTitle = snapshot.sectionTitle,
@@ -579,7 +608,8 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      * D-020 edge). Siren and torch stop only when something actually ended; an
      * unknown id while others live changes nothing.
      */
-    private fun standDown(eventId: String = "", eventState: EventState? = null) {
+    private suspend fun standDown(eventId: String = "", eventState: EventState? = null) {
+        val lang = currentLang()
         val board = network.activeAlerts
         val result = WarningNotifier.clear(getApplication(), eventId)
         if (!result.removedAny) return
@@ -588,11 +618,11 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         torch.stop()
         if (board.selectedId() == null) {
             activeAlertDetails = null
-            val snapshot = restingSnapshot(recentActivity)
+            val snapshot = restingSnapshot(recentActivity, lang)
             // A withdrawn report is not an ended earthquake, and the banner is the one
             // surface that can say which happened. A build that does not recognise the
             // state falls back to all-clear wording, exactly as before.
-            val copy = standDownCopyFor(eventState)
+            val copy = standDownCopyFor(eventState, lang)
             _uiState.update { state ->
                 WarningUiState.Idle(
                     banner = SeismicActivityBanner(
@@ -812,9 +842,17 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         const val TAG = "WarningViewModel"
 
         /** Copy for the idle banner variants, matching the design (Figma 124:1297 / 124:1426). */
-        const val TITLE_ACTIVE = "Recent Earthquake Alert"
-        const val SECTION_ACTIVE = "Stay alert for aftershocks"
-        const val SECTION_RESTING = "Stay prepared for an earthquake"
+        fun titleActive(lang: DisplayLanguage = DisplayLanguage.EN): String =
+            if (lang == DisplayLanguage.ID) titleActiveId() else "Recent Earthquake Alert"
+        fun sectionActive(lang: DisplayLanguage = DisplayLanguage.EN): String =
+            if (lang == DisplayLanguage.ID) sectionActiveId() else "Stay alert for aftershocks"
+        fun sectionResting(lang: DisplayLanguage = DisplayLanguage.EN): String =
+            if (lang == DisplayLanguage.ID) sectionRestingId() else "Stay prepared for an earthquake"
+
+        // Indonesian branches land in B2.
+        private fun titleActiveId(): String = titleActive(DisplayLanguage.EN)
+        private fun sectionActiveId(): String = sectionActive(DisplayLanguage.EN)
+        private fun sectionRestingId(): String = sectionResting(DisplayLanguage.EN)
 
         /**
          * How many events one activity query may return. A page rather than a true
@@ -824,35 +862,41 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
          */
         const val ACTIVITY_PAGE_LIMIT = 100
 
-        fun activeSnapshot(intensityLabel: String, timeAgo: String) = WarningSnapshot(
+        fun activeSnapshot(
+            intensityLabel: String,
+            timeAgo: String,
+            lang: DisplayLanguage = DisplayLanguage.EN
+        ) = WarningSnapshot(
             banner = ActiveQuakeBanner(
-                title = TITLE_ACTIVE,
+                title = titleActive(lang),
                 intensityLabel = intensityLabel,
                 timeAgo = timeAgo
             ),
-            sectionTitle = SECTION_ACTIVE,
-            tips = activeQuakeTips()
+            sectionTitle = sectionActive(lang),
+            tips = activeQuakeTips(lang)
         )
 
         /** A confirmed alert that the distance gate kept off the emergency screen. */
-        fun distantSnapshot(message: WsAlertMessage) = activeSnapshot(
-            intensityLabel = message.intensityBannerLabel(),
+        fun distantSnapshot(message: WsAlertMessage, lang: DisplayLanguage = DisplayLanguage.EN) = activeSnapshot(
+            intensityLabel = message.intensityBannerLabel(lang.locale()),
             timeAgo = QuakeFormat.relativeTime(
                 Instant.ofEpochMilli(message.timestampMs),
-                Instant.now()
-            )
+                Instant.now(),
+                lang.locale()
+            ),
+            lang = lang
         )
 
-        fun restingSnapshot(activity: RecentSeismicActivity) = WarningSnapshot(
+        fun restingSnapshot(activity: RecentSeismicActivity, lang: DisplayLanguage = DisplayLanguage.EN) = WarningSnapshot(
             // Both halves come from the activity: the headline has to agree with the
             // line under it, and only the activity knows whether "No Recent
             // Earthquake" is a measured fact or an unmeasured guess.
             banner = SeismicActivityBanner(
-                title = activity.bannerTitle,
-                activityLabel = activity.bannerLabel
+                title = activity.bannerTitle(lang),
+                activityLabel = activity.bannerLabel(lang)
             ),
-            sectionTitle = SECTION_RESTING,
-            tips = noActiveQuakeTips()
+            sectionTitle = sectionResting(lang),
+            tips = noActiveQuakeTips(lang)
         )
 
         /**
@@ -868,15 +912,22 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
          * §13.3). Without a recognised state the banner keeps the previous behaviour,
          * so a pre-Phase-3 server changes nothing here.
          */
-        fun advisoryBanner(message: WsAlertMessage, activityLabel: String) =
+        fun advisoryBanner(
+            message: WsAlertMessage,
+            activityLabel: String,
+            lang: DisplayLanguage = DisplayLanguage.EN
+        ) =
             SeismicActivityBanner(
-                title = "Possible Tremor Detected",
+                title = if (lang == DisplayLanguage.ID) advisoryTitleId() else "Possible Tremor Detected",
                 activityLabel = if (message.eventState == EventState.UNCONFIRMED) {
-                    unconfirmedActivityLabel(message.nodeCount)
+                    unconfirmedActivityLabel(message.nodeCount, lang)
                 } else {
                     activityLabel
                 }
             )
+
+        // Indonesian branch lands in B2.
+        private fun advisoryTitleId(): String = "Possible Tremor Detected"
 
         /** Unresolved and inside the same window the realtime path uses. */
         fun EarthquakeEvent.isOngoing(nowMs: Long = System.currentTimeMillis()): Boolean =

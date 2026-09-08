@@ -10,7 +10,9 @@ import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.data.network.QuakeApiClient
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.toStationItems
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.SafetyPolicy
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.ui.common.FilterSection
 import id.web.quakealert.ui.common.QuakeFilterState
 import id.web.quakealert.ui.common.errorCopy
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -58,6 +61,11 @@ class SensorsViewModel(application: Application) : AndroidViewModel(application)
     private val networkMonitor = QuakeNetwork.from(application).networkMonitor
 
     private val _uiState = MutableStateFlow(SensorsUiState(isLoading = true))
+
+    /** Language user strings render in; screens collect this for components. */
+    val displayLang: StateFlow<DisplayLanguage> = repository.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
 
     /**
      * When the refresh indicator was last raised, on the elapsed-realtime clock; read
@@ -228,7 +236,7 @@ class SensorsViewModel(application: Application) : AndroidViewModel(application)
                         errorCopy = if (hadContent) {
                             null
                         } else {
-                            errorCopy(throwable, isNarrowed = narrowed)
+                            errorCopy(throwable, isNarrowed = narrowed, lang = displayLang.value)
                         }
                     )
                 }

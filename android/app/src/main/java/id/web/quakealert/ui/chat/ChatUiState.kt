@@ -3,6 +3,7 @@ package id.web.quakealert.ui.chat
 import androidx.compose.runtime.Immutable
 import id.web.quakealert.domain.ChatChannel
 import id.web.quakealert.domain.ChatChannelKind
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.ErrorCopy
 
 /**
@@ -104,15 +105,22 @@ data class ChatChannelInfo(
 )
 
 /** The two tiers as the header card describes them. */
-internal fun ChatChannel.toChannelInfo(canSwitch: Boolean): ChatChannelInfo = ChatChannelInfo(
+internal fun ChatChannel.toChannelInfo(
+    canSwitch: Boolean,
+    lang: DisplayLanguage = DisplayLanguage.EN
+): ChatChannelInfo = ChatChannelInfo(
     channelName = displayName,
     subtitle = when (kind) {
-        ChatChannelKind.GLOBAL -> "Everyone using QuakeAlert"
-        ChatChannelKind.REGIONAL -> "People in your area"
+        ChatChannelKind.GLOBAL -> if (lang == DisplayLanguage.ID) channelGlobalId() else "Everyone using QuakeAlert"
+        ChatChannelKind.REGIONAL -> if (lang == DisplayLanguage.ID) channelRegionalId() else "People in your area"
     },
     canSwitch = canSwitch,
     kind = kind
 )
+
+// Indonesian branches land in B2.
+private fun channelGlobalId(): String = "Everyone using QuakeAlert"
+private fun channelRegionalId(): String = "People in your area"
 
 /**
  * Immutable UI state for the Chat screen (Figma node 1:925). Hoisted into

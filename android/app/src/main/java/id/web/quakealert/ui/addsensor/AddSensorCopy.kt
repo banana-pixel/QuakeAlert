@@ -1,5 +1,6 @@
 package id.web.quakealert.ui.addsensor
 
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.common.ErrorAction
 import id.web.quakealert.ui.common.ErrorCopy
 
@@ -22,7 +23,13 @@ import id.web.quakealert.ui.common.ErrorCopy
  */
 
 /** Card title for each step. Welcome carries its title in the body art instead. */
-internal fun AddSensorWizardStep.headline(): String = when (this) {
+internal fun AddSensorWizardStep.headline(lang: DisplayLanguage = DisplayLanguage.EN): String =
+    if (lang == DisplayLanguage.ID) headlineId() else headlineEn()
+
+// Indonesian branch lands in B2.
+internal fun AddSensorWizardStep.headlineId(): String = headlineEn()
+
+internal fun AddSensorWizardStep.headlineEn(): String = when (this) {
     AddSensorWizardStep.WELCOME -> ""
     AddSensorWizardStep.LOCATION -> "Where would you like to provision this sensor?"
     AddSensorWizardStep.CREDENTIALS -> "Station ID and Credentials Initialization"
@@ -32,7 +39,13 @@ internal fun AddSensorWizardStep.headline(): String = when (this) {
 }
 
 /** The quiet paragraph under each step body. */
-internal fun AddSensorWizardStep.helperText(): String = when (this) {
+internal fun AddSensorWizardStep.helperText(lang: DisplayLanguage = DisplayLanguage.EN): String =
+    if (lang == DisplayLanguage.ID) helperTextId() else helperTextEn()
+
+// Indonesian branch lands in B2.
+internal fun AddSensorWizardStep.helperTextId(): String = helperTextEn()
+
+internal fun AddSensorWizardStep.helperTextEn(): String = when (this) {
     AddSensorWizardStep.WELCOME -> ""
     AddSensorWizardStep.LOCATION ->
         "Drag the map to place your sensor. You can use your exact position or shift " +
@@ -73,7 +86,13 @@ internal fun AddSensorWizardStep.indicatorIndex(): Int = when (this) {
  * this time; [ErrorAction.NONE] means nothing on this card will change the outcome, so
  * the panel offers no false hope.
  */
-internal fun failureCopy(failure: WizardFailure): ErrorCopy = when (failure) {
+internal fun failureCopy(failure: WizardFailure, lang: DisplayLanguage = DisplayLanguage.EN): ErrorCopy =
+    if (lang == DisplayLanguage.ID) failureCopyId(failure) else failureCopyEn(failure)
+
+// Indonesian branch lands in B2.
+internal fun failureCopyId(failure: WizardFailure): ErrorCopy = failureCopyEn(failure)
+
+internal fun failureCopyEn(failure: WizardFailure): ErrorCopy = when (failure) {
     WizardFailure.OFFLINE -> ErrorCopy(
         title = "You are offline",
         message = "QuakeAlert cannot reach the alert network to register this sensor. " +
@@ -140,7 +159,13 @@ internal fun failureCopy(failure: WizardFailure): ErrorCopy = when (failure) {
 }
 
 /** One line under the place name field. */
-internal fun DetailsError.message(): String = when (this) {
+internal fun DetailsError.message(lang: DisplayLanguage = DisplayLanguage.EN): String =
+    if (lang == DisplayLanguage.ID) messageId() else messageEn()
+
+// Indonesian branch lands in B2.
+internal fun DetailsError.messageId(): String = messageEn()
+
+internal fun DetailsError.messageEn(): String = when (this) {
     DetailsError.NAME_REQUIRED -> "Enter a place name for this sensor."
     DetailsError.NAME_TOO_LONG ->
         "That place name is too long. Keep it under ${SensorNameRules.MAX_LENGTH} characters."
@@ -151,7 +176,13 @@ internal fun DetailsError.message(): String = when (this) {
 }
 
 /** One line under the Wi-Fi rows. */
-internal fun LinkError.message(): String = when (this) {
+internal fun LinkError.message(lang: DisplayLanguage = DisplayLanguage.EN): String =
+    if (lang == DisplayLanguage.ID) messageId() else messageEn()
+
+// Indonesian branch lands in B2.
+internal fun LinkError.messageId(): String = messageEn()
+
+internal fun LinkError.messageEn(): String = when (this) {
     LinkError.SSID_REQUIRED -> "Choose the network your sensor should join."
     LinkError.PASSWORD_TOO_SHORT ->
         "That password is longer than the sensor can store. " +

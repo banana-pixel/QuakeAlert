@@ -16,6 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import id.web.quakealert.MainActivity
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.ProtectionStatus
 
 /**
@@ -60,17 +61,21 @@ object StatusNotifier {
      * silent section and can never compete with [WarningNotifier.CHANNEL_ID]. Its own
      * channel also means muting the status line does not touch real warnings.
      */
-    fun ensureChannel(context: Context) {
+    fun ensureChannel(context: Context, lang: DisplayLanguage = DisplayLanguage.EN) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "QuakeAlert Status",
+            if (lang == DisplayLanguage.ID) channelNameId() else "QuakeAlert Status",
             NotificationManager.IMPORTANCE_MIN
         ).apply {
-            description = "A quiet, ongoing summary of whether alerts can reach you."
+            description = if (lang == DisplayLanguage.ID) {
+                channelDescId()
+            } else {
+                "A quiet, ongoing summary of whether alerts can reach you."
+            }
             setShowBadge(false)
             enableVibration(false)
             enableLights(false)
@@ -78,6 +83,16 @@ object StatusNotifier {
         }
         manager.createNotificationChannel(channel)
     }
+
+    // Indonesian branches land in B2.
+    private fun channelNameId(): String = "QuakeAlert Status"
+    private fun channelDescId(): String = "A quiet, ongoing summary of whether alerts can reach you."
+    private fun openAppLabel(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) openAppLabelId() else "Open QuakeAlert"
+    private fun fixInSettingsLabel(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) fixInSettingsLabelId() else "Fix in settings"
+    private fun openAppLabelId(): String = "Open QuakeAlert"
+    private fun fixInSettingsLabelId(): String = "Fix in settings"
 
     /**
      * Posts (or updates in place) the status notification.
@@ -88,8 +103,8 @@ object StatusNotifier {
     // canPost() is the checkSelfPermission call lint asks for; it cannot see through
     // the helper.
     @SuppressLint("MissingPermission")
-    fun notify(context: Context, status: ProtectionStatus): Boolean {
-        ensureChannel(context)
+    fun notify(context: Context, status: ProtectionStatus, lang: DisplayLanguage = DisplayLanguage.EN): Boolean {
+        ensureChannel(context, lang)
         if (!canPost(context)) {
             Log.i(TAG, "POST_NOTIFICATIONS not granted; status notification suppressed")
             return false
@@ -103,19 +118,19 @@ object StatusNotifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val body = status.lines.joinToString(separator = "\n")
+        val body = status.lines(lang).joinToString(separator = "\n")
         // One action, and only ever the one that fits the state: a shortcut straight to
         // the system toggle when that is what is blocking delivery, otherwise the app.
         // Two actions on a MIN-importance row would be two ways to say "open something".
         val action = if (status.notificationsPermitted) {
-            NotificationCompat.Action.Builder(0, "Open QuakeAlert", open).build()
+            NotificationCompat.Action.Builder(0, openAppLabel(lang), open).build()
         } else {
-            NotificationCompat.Action.Builder(0, "Fix in settings", appNotificationSettings(context)).build()
+            NotificationCompat.Action.Builder(0, fixInSettingsLabel(lang), appNotificationSettings(context)).build()
         }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_status_wave)
-            .setContentTitle(status.headline)
-            .setContentText(status.lines.first())
+            .setContentTitle(status.headline(lang))
+            .setContentText(status.lines(lang).first())
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(NotificationCompat.CATEGORY_STATUS)

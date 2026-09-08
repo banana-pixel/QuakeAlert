@@ -11,14 +11,19 @@ import id.web.quakealert.data.network.mapper.toChatListItems
 import id.web.quakealert.domain.ChatChannel
 import id.web.quakealert.domain.ChatChannelKind
 import id.web.quakealert.domain.ChatMessageEntry
+import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.ui.common.errorCopy
 import id.web.quakealert.ui.common.shouldReloadOnReconnect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -51,6 +56,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Same per-consumer construction as every other ViewModel; DataStore itself is shared. */
     private val settings = AppSettingsRepository(application)
+
+    /** Language user strings render in; screens collect this for components. */
+    val displayLang: StateFlow<DisplayLanguage> = settings.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
 
     private val _uiState = MutableStateFlow(ChatUiState(isLoading = true))
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -230,7 +240,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         sendStates = emptyMap()
         _uiState.update {
             it.copy(
-                channel = channel.toChannelInfo(canSwitch = channels.size > 1),
+                channel = channel.toChannelInfo(
+                    canSwitch = channels.size > 1,
+                    lang = displayLang.value
+                ),
                 items = emptyList(),
                 hasOlder = false,
                 isLoadingOlder = false
@@ -295,12 +308,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             it.copy(
                                 isLoading = false,
                                 isError = true,
-                                errorCopy = errorCopy(IllegalStateException("no channels"))
+                                errorCopy = errorCopy(IllegalStateException("no channels"), lang = displayLang.value)
                             )
                         }
                         return@fold
                     }
-                    _uiState.update { it.copy(notice = noticeFor(available)) }
+                    _uiState.update { it.copy(notice = noticeFor(available, displayLang.value)) }
                     activate(active)
                 },
                 onFailure = { throwable ->
@@ -309,7 +322,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         it.copy(
                             isLoading = false,
                             isError = true,
-                            errorCopy = errorCopy(throwable)
+                                errorCopy = errorCopy(throwable, lang = displayLang.value)
                         )
                     }
                 }
@@ -436,7 +449,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Re-derives the rendered stream — date separators included — from [entries]. */
     private fun publish() {
-        val items = toChatListItems(entries = entries, sendStates = sendStates)
+        val lang = displayLang.value
+        val items = toChatListItems(entries = entries, sendStates = sendStates, locale = lang.locale())
         _uiState.update { it.copy(items = items) }
     }
 
@@ -447,12 +461,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
      * regional one is missing looks like a broken feature unless the reason is given
      * — and the reason is something the user can act on (sync a position in Settings).
      */
-    private fun noticeFor(available: List<ChatChannel>): String? =
+    private fun noticeFor(available: List<ChatChannel>, lang: DisplayLanguage = DisplayLanguage.EN): String? =
         if (available.none { it.kind == ChatChannelKind.REGIONAL }) {
-            "Sync your location in Settings to join your area's channel."
+            if (lang == DisplayLanguage.ID) {
+                noticeRegionalId()
+            } else {
+                "Sync your location in Settings to join your area's channel."
+            }
         } else {
             null
         }
+
+    // Indonesian branch lands in B2.
+    private fun noticeRegionalId(): String = "Sync your location in Settings to join your area's channel."
 
     /**
      * This device's `user_id`, read once at start-up.

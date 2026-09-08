@@ -15,6 +15,7 @@ import id.web.quakealert.ui.chat.ChatSendState
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
 
 /**
  * Wire → domain for the channel list.
@@ -112,7 +113,8 @@ fun toChatListItems(
     entries: List<ChatMessageEntry>,
     sendStates: Map<String, ChatSendState> = emptyMap(),
     zone: ZoneId = ZoneId.systemDefault(),
-    today: LocalDate = LocalDate.now(zone)
+    today: LocalDate = LocalDate.now(zone),
+    locale: Locale = Locale.US
 ): List<ChatListItem> {
     val ordered = entries.sortedBy { it.createdAt }
     val items = ArrayList<ChatListItem>(ordered.size + 2)
@@ -122,11 +124,11 @@ fun toChatListItems(
         val day = entry.createdAt.atZone(zone).toLocalDate()
         if (day != lastDay) {
             items += ChatListItem.DateSeparator(
-                ChatDateSeparator(id = "sep-$day", label = dayLabel(day, today, zone))
+                ChatDateSeparator(id = "sep-$day", label = dayLabel(day, today, zone, locale))
             )
             lastDay = day
         }
-        items += ChatListItem.Message(entry.toUiMessage(sendStates, zone))
+        items += ChatListItem.Message(entry.toUiMessage(sendStates, zone, locale))
     }
     return items
 }
@@ -142,11 +144,16 @@ fun toChatListItems(
  */
 private fun ChatMessageEntry.toUiMessage(
     sendStates: Map<String, ChatSendState>,
-    zone: ZoneId
+    zone: ZoneId,
+    locale: Locale = Locale.US
 ): ChatMessage = ChatMessage(
     id = messageId,
     author = if (isOwn) ChatAuthor.ME else ChatAuthor.OTHER,
-    senderName = if (isOwn) "You" else senderPseudonym.ifBlank { "Anonymous" },
+    senderName = if (isOwn) {
+        if (locale.language == "in") "Anda" else "You"
+    } else {
+        senderPseudonym.ifBlank { if (locale.language == "in") "Anonim" else "Anonymous" }
+    },
     body = body,
     time = QuakeFormat.chatTime(createdAt, zone),
     sendState = sendStates[messageId] ?: ChatSendState.SENT
@@ -156,8 +163,13 @@ private fun ChatMessageEntry.toUiMessage(
  * "Today" / "Yesterday" for the two days a user is actually reading, and a date for
  * anything older. Retention is 7 days, so "older" is at most a week.
  */
-private fun dayLabel(day: LocalDate, today: LocalDate, zone: ZoneId): String = when (day) {
-    today -> "Today"
-    today.minusDays(1) -> "Yesterday"
-    else -> QuakeFormat.date(day.atStartOfDay(zone).toInstant(), zone)
+private fun dayLabel(
+    day: LocalDate,
+    today: LocalDate,
+    zone: ZoneId,
+    locale: Locale = Locale.US
+): String = when (day) {
+    today -> if (locale.language == "in") "Hari ini" else "Today"
+    today.minusDays(1) -> if (locale.language == "in") "Kemarin" else "Yesterday"
+    else -> QuakeFormat.date(day.atStartOfDay(zone).toInstant(), zone, locale)
 }

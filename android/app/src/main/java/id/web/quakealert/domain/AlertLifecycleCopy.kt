@@ -37,7 +37,13 @@ data class StandDownCopy(
 )
 
 /** All-clear copy for [state]; see [StandDownCopy] for why null is not a third case. */
-fun standDownCopyFor(state: EventState?): StandDownCopy = when (state) {
+fun standDownCopyFor(state: EventState?, lang: DisplayLanguage = DisplayLanguage.EN): StandDownCopy =
+    when (lang) {
+        DisplayLanguage.ID -> standDownCopyId(state)
+        DisplayLanguage.EN -> standDownCopyEn(state)
+    }
+
+private fun standDownCopyEn(state: EventState?): StandDownCopy = when (state) {
     EventState.CANCELLED -> StandDownCopy(
         title = "Report Withdrawn",
         detail = "The earthquake report was withdrawn and is no longer active."
@@ -52,6 +58,10 @@ fun standDownCopyFor(state: EventState?): StandDownCopy = when (state) {
     )
 }
 
+// Indonesian branch lands in B2. Kept as a separate function so the two
+// languages are reviewed side by side rather than interleaved line by line.
+private fun standDownCopyId(state: EventState?): StandDownCopy = standDownCopyEn(state)
+
 /**
  * Idle-banner read-out while an UNCONFIRMED tremor is being evaluated: "1 station is
  * reporting shaking - not yet confirmed by separated stations", and its plural.
@@ -63,7 +73,8 @@ fun standDownCopyFor(state: EventState?): StandDownCopy = when (state) {
  * definition of the field. A zero or absent count drops the number rather than
  * printing "0 stations", which would read as no evidence at all.
  */
-fun unconfirmedActivityLabel(nodeCount: Int): String {
+fun unconfirmedActivityLabel(nodeCount: Int, lang: DisplayLanguage = DisplayLanguage.EN): String {
+    if (lang == DisplayLanguage.ID) return unconfirmedActivityLabelId(nodeCount)
     val subject = when {
         nodeCount <= 0 -> "A station is"
         nodeCount == 1 -> "1 station is"
@@ -71,3 +82,8 @@ fun unconfirmedActivityLabel(nodeCount: Int): String {
     }
     return "$subject reporting shaking - not yet confirmed by separated stations"
 }
+
+// Indonesian branch lands in B2. Indonesian has no plural inflection, so the
+// three English subject shapes collapse to one.
+private fun unconfirmedActivityLabelId(nodeCount: Int): String =
+    unconfirmedActivityLabel(nodeCount, DisplayLanguage.EN)

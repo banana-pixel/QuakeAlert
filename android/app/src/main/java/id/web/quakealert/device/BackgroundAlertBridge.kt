@@ -8,6 +8,7 @@ import id.web.quakealert.domain.AlertDecision
 import id.web.quakealert.domain.AlertType
 import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.domain.WsAlertMessage
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.domain.standDownCopyFor
 import id.web.quakealert.service.WarningNotifier
 import kotlinx.coroutines.CoroutineScope
@@ -149,7 +150,12 @@ object BackgroundAlertBridge {
             return
         }
 
-        val posted = WarningNotifier.notify(context, message, decision)
+        val posted = WarningNotifier.notify(
+            context,
+            message,
+            decision,
+            resolveDisplayLanguage(runCatching { settings.language.first() }.getOrNull())
+        )
         if (!posted) {
             android.util.Log.w(TAG, "background alert could not be posted (no permission)")
         }

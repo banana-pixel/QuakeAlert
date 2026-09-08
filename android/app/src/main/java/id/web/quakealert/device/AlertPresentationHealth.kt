@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.getSystemService
+import id.web.quakealert.domain.DisplayLanguage
 
 /**
  * Diagnostic for the approved in-use warning behaviour (D-017, U-012):
@@ -113,12 +114,12 @@ fun Context.alertPresentationHealth(): Set<PresentationDegradation> =
 
 /**
  * User-facing warning copy for a degraded result, null when healthy (so callers
- * render nothing). English only, matching the codebase convention that strings
- * ship in English. Names what is affected (in-use/unlocked alerts), what to do
+ * render nothing). Names what is affected (in-use/unlocked alerts), what to do
  * about each cause, and what is NOT affected (locked-screen alarm path).
  */
-fun Set<PresentationDegradation>.warningCopy(): String? {
+fun Set<PresentationDegradation>.warningCopy(lang: DisplayLanguage = DisplayLanguage.EN): String? {
     if (isEmpty()) return null
+    if (lang == DisplayLanguage.ID) return warningCopyId()
     val causes = map {
         when (it) {
             PresentationDegradation.HEADS_UP_DISABLED_GLOBALLY ->
@@ -130,8 +131,11 @@ fun Set<PresentationDegradation>.warningCopy(): String? {
         }
     }
     return "In-use alerts may not appear: " + causes.joinToString("; ") + ". " +
-        "While unlocked, earthquake warnings show as a heads-up banner with siren — " +
+        "While unlocked, earthquake warnings show as a heads-up banner with siren - " +
         "that banner cannot appear in this state. " +
         "Fix it in system Settings (Notifications), then re-check here. " +
         "The locked-screen alarm path is unaffected."
 }
+
+// Indonesian branch lands in B2.
+private fun Set<PresentationDegradation>.warningCopyId(): String? = warningCopy(DisplayLanguage.EN)

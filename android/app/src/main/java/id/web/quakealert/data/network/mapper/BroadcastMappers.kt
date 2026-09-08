@@ -85,23 +85,35 @@ private fun String.toInstantOrNull(): Instant? = runCatching { Instant.parse(thi
  *
  * @param now injected so the relative ages are reproducible in a test.
  */
-fun List<OperatorUpdate>.toUpdateItems(now: Instant = Instant.now()): List<OperatorUpdateItem> =
-    sortedByDescending { it.publishedAt }.map { it.toUpdateItem(now) }
+fun List<OperatorUpdate>.toUpdateItems(
+    now: Instant = Instant.now(),
+    locale: Locale = Locale.US
+): List<OperatorUpdateItem> =
+    sortedByDescending { it.publishedAt }.map { it.toUpdateItem(now, locale) }
 
-fun OperatorUpdate.toUpdateItem(now: Instant = Instant.now()): OperatorUpdateItem =
-    OperatorUpdateItem(
+fun OperatorUpdate.toUpdateItem(
+    now: Instant = Instant.now(),
+    locale: Locale = Locale.US
+): OperatorUpdateItem {
+    val indonesian = locale.language == "in"
+    return OperatorUpdateItem(
         id = id,
-        title = title.ifBlank { "QuakeAlert update" },
+        title = title.ifBlank { if (indonesian) "Pembaruan QuakeAlert" else "QuakeAlert update" },
         body = body,
-        scope = if (isNational) SCOPE_NATIONAL else regionScopeLabel(regionCode),
+        scope = if (isNational) {
+            if (indonesian) "Nasional" else SCOPE_NATIONAL
+        } else {
+            regionScopeLabel(regionCode)
+        },
         // Epoch is what the mapper leaves behind when the server sent an unparseable
         // timestamp. "2 months ago" would be a fabrication; saying so is not.
         published = if (publishedAt == Instant.EPOCH) {
-            "Date unknown"
+            if (indonesian) "Tanggal tidak diketahui" else "Date unknown"
         } else {
-            QuakeFormat.relativeTime(publishedAt, now)
+            QuakeFormat.relativeTime(publishedAt, now, locale)
         }
     )
+}
 
 /** Every device was told, and the list says so rather than leaving the scope blank. */
 private const val SCOPE_NATIONAL = "Nationwide"

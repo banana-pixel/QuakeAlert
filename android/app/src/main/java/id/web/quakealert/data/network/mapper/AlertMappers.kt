@@ -11,6 +11,7 @@ import id.web.quakealert.ui.history.MmiSeverity
 import id.web.quakealert.ui.history.QuakeHistoryItem
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -96,7 +97,8 @@ internal fun String.toEventStateOrNull(): EventState? =
 fun WsAlertMessage.toHistoryItem(
     userLocation: UserLocation?,
     zone: ZoneId = ZoneId.systemDefault(),
-    now: Instant = Instant.now()
+    now: Instant = Instant.now(),
+    locale: Locale = Locale.US
 ): QuakeHistoryItem {
     val occurredAt = Instant.ofEpochMilli(timestampMs)
     return QuakeHistoryItem(
@@ -107,12 +109,12 @@ fun WsAlertMessage.toHistoryItem(
         intensity = mmi,
         severity = severity(),
         location = locationName,
-        date = QuakeFormat.date(occurredAt, zone),
-        time = QuakeFormat.time(occurredAt, zone),
+        date = QuakeFormat.date(occurredAt, zone, locale),
+        time = QuakeFormat.time(occurredAt, zone, locale),
         distanceKm = userLocation.distanceKmTo(centroidLat, centroidLon)?.roundToInt(),
-        relativeTime = QuakeFormat.relativeTime(occurredAt, now),
+        relativeTime = QuakeFormat.relativeTime(occurredAt, now, locale),
         pgaLabel = QuakeFormat.pga(pgaGal),
-        reportingNodesLabel = QuakeFormat.reportingNodes(nodeCount),
+        reportingNodesLabel = QuakeFormat.reportingNodes(nodeCount, locale),
         coordinates = QuakeFormat.coordinates(centroidLat, centroidLon),
         latitude = centroidLat,
         longitude = centroidLon
@@ -138,8 +140,8 @@ fun WsAlertMessage.severity(): MmiSeverity =
  * produce the same string; the local severity word is the fallback when the server
  * sent no label.
  */
-fun WsAlertMessage.intensityBannerLabel(): String =
-    QuakeFormat.intensityBanner(mmi = mmi, label = intensityLabel, fallbackWord = severity().name)
+fun WsAlertMessage.intensityBannerLabel(locale: Locale = Locale.US): String =
+    QuakeFormat.intensityBanner(mmi = mmi, label = intensityLabel, fallbackWord = severity().name, locale = locale)
 
 /**
  * Bare intensity read for the active alert card, e.g. "IV (moderate)" (Figma node

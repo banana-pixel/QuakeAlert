@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.ChipLabel
 import id.web.quakealert.ui.theme.Dimens
@@ -76,7 +77,8 @@ fun ActiveAlertCard(
     state: WarningUiState.ActiveAlert,
     onMuteClick: () -> Unit,
     onSosLightClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Column(
         modifier = modifier
@@ -95,7 +97,7 @@ fun ActiveAlertCard(
 
         IntensityReadout(
             intensityValue = state.intensityValue,
-            proximityLabel = state.proximityLabel
+            proximityLabel = state.proximityLabel(lang)
         )
 
         // Coexistence count (D-020, U-011): other live events persist silently
@@ -270,7 +272,7 @@ private fun SuggestedActionsBox(modifier: Modifier = Modifier) {
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.SuggestedActionCardGap)
         ) {
-            suggestedActions().forEach { action ->
+            suggestedActions(lang).forEach { action ->
                 SuggestedActionCard(
                     action = action,
                     modifier = Modifier.weight(1f)

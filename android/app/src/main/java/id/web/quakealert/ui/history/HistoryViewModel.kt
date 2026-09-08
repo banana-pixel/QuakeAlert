@@ -10,6 +10,8 @@ import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.data.network.QuakeApiClient
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.toHistoryItems
+import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.domain.resolveDisplayLanguage
 import id.web.quakealert.ui.common.FilterSection
 import id.web.quakealert.ui.common.QuakeFilter
 import id.web.quakealert.ui.common.QuakeFilterState
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -51,6 +55,16 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     private val networkMonitor = QuakeNetwork.from(application).networkMonitor
 
     private val _uiState = MutableStateFlow(HistoryUiState(isLoading = true))
+
+    /** Language user strings render in; screens collect this for components. */
+    val displayLang: StateFlow<DisplayLanguage> = repository.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
+
+    /** Language user strings render in; screens collect this for components. */
+    val displayLang: StateFlow<DisplayLanguage> = repository.language
+        .map { resolveDisplayLanguage(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
 
     /**
      * When the refresh indicator was last raised, on the elapsed-realtime clock.
@@ -194,7 +208,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                         errorCopy = if (hadContent) {
                             null
                         } else {
-                            errorCopy(throwable, isNarrowed = narrowed)
+                            errorCopy(throwable, isNarrowed = narrowed, lang = displayLang.value)
                         }
                     )
                 }
@@ -294,6 +308,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun fetchPage(offset: Int): List<QuakeHistoryItem> {
         val userLocation = apiClient.currentUserLocation()
+        val lang = resolveDisplayLanguage(runCatching { repository.language.first() }.getOrNull())
         val filter = _uiState.value.filter
         val near = filter.mode == QuakeFilter.NEAR
         return apiClient.fetchEvents(
@@ -303,7 +318,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             center = userLocation.takeIf { near },
             minPgaGal = filter.minPgaGal,
             since = filter.since()
-        ).getOrThrow().toHistoryItems(userLocation)
+        ).getOrThrow().toHistoryItems(userLocation, locale = lang.locale())
     }
 
     /**

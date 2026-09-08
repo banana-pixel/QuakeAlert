@@ -10,6 +10,7 @@ import id.web.quakealert.ui.history.MmiSeverity
 import id.web.quakealert.ui.history.QuakeHistoryItem
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -74,18 +75,19 @@ fun List<EventDto>.toDomain(): List<EarthquakeEvent> = map { it.toDomain() }
 fun EarthquakeEvent.toHistoryItem(
     userLocation: UserLocation?,
     zone: ZoneId = ZoneId.systemDefault(),
-    now: Instant = Instant.now()
+    now: Instant = Instant.now(),
+    locale: Locale = Locale.US
 ): QuakeHistoryItem = QuakeHistoryItem(
     id = eventId,
     intensity = mmi,
     severity = severity(),
     location = locationName,
-    date = QuakeFormat.date(createdAt, zone),
-    time = QuakeFormat.time(createdAt, zone),
+    date = QuakeFormat.date(createdAt, zone, locale),
+    time = QuakeFormat.time(createdAt, zone, locale),
     distanceKm = userLocation.distanceKmTo(latitude, longitude)?.roundToInt(),
-    relativeTime = QuakeFormat.relativeTime(createdAt, now),
+    relativeTime = QuakeFormat.relativeTime(createdAt, now, locale),
     pgaLabel = QuakeFormat.pga(pgaGal),
-    reportingNodesLabel = QuakeFormat.reportingNodes(triggeredNodesCount),
+    reportingNodesLabel = QuakeFormat.reportingNodes(triggeredNodesCount, locale),
     coordinates = QuakeFormat.coordinates(latitude, longitude),
     latitude = latitude,
     longitude = longitude
@@ -94,8 +96,9 @@ fun EarthquakeEvent.toHistoryItem(
 fun List<EarthquakeEvent>.toHistoryItems(
     userLocation: UserLocation?,
     zone: ZoneId = ZoneId.systemDefault(),
-    now: Instant = Instant.now()
-): List<QuakeHistoryItem> = map { it.toHistoryItem(userLocation, zone, now) }
+    now: Instant = Instant.now(),
+    locale: Locale = Locale.US
+): List<QuakeHistoryItem> = map { it.toHistoryItem(userLocation, zone, now, locale) }
 
 /**
  * Banner intensity line for a stored event, e.g. "Intensity : IV (moderate)".
@@ -104,8 +107,8 @@ fun List<EarthquakeEvent>.toHistoryItems(
  * banner reads identically whether it was seeded from REST or pushed over the
  * WebSocket.
  */
-fun EarthquakeEvent.intensityBannerLabel(): String =
-    QuakeFormat.intensityBanner(mmi = mmi, label = intensityLabel, fallbackWord = severity().name)
+fun EarthquakeEvent.intensityBannerLabel(locale: Locale = Locale.US): String =
+    QuakeFormat.intensityBanner(mmi = mmi, label = intensityLabel, fallbackWord = severity().name, locale = locale)
 
 /**
  * Bare intensity read for the active alert card, e.g. "IV (moderate)" (Figma node

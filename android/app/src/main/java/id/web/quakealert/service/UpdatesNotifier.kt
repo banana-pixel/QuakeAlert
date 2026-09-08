@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import id.web.quakealert.MainActivity
 import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.OperatorUpdate
 
 /**
@@ -52,23 +53,34 @@ object UpdatesNotifier {
     private const val TAG = "UpdatesNotifier"
 
     /** Registers the updates channel. Safe to call repeatedly. */
-    fun ensureChannel(context: Context) {
+    fun ensureChannel(context: Context, lang: DisplayLanguage = DisplayLanguage.EN) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "QuakeAlert Updates",
+            if (lang == DisplayLanguage.ID) channelNameId() else "QuakeAlert Updates",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Announcements from the QuakeAlert operators. Never earthquake alerts."
+            description = if (lang == DisplayLanguage.ID) {
+                channelDescId()
+            } else {
+                "Announcements from the QuakeAlert operators. Never earthquake alerts."
+            }
             enableVibration(false)
             enableLights(false)
             setSound(null, null)
         }
         manager.createNotificationChannel(channel)
     }
+
+    // Indonesian branch lands in B2.
+    private fun channelNameId(): String = "QuakeAlert Updates"
+    private fun channelDescId(): String = "Announcements from the QuakeAlert operators. Never earthquake alerts."
+    private fun updateFallbackTitle(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) updateFallbackTitleId() else "QuakeAlert update"
+    private fun updateFallbackTitleId(): String = "QuakeAlert update"
 
     /**
      * Posts one announcement.
@@ -79,8 +91,8 @@ object UpdatesNotifier {
     // canPost() is the checkSelfPermission call lint asks for; it cannot see through
     // the helper.
     @SuppressLint("MissingPermission")
-    fun notify(context: Context, update: OperatorUpdate): Boolean {
-        ensureChannel(context)
+    fun notify(context: Context, update: OperatorUpdate, lang: DisplayLanguage = DisplayLanguage.EN): Boolean {
+        ensureChannel(context, lang)
         if (!canPost(context)) {
             Log.i(TAG, "POST_NOTIFICATIONS not granted; announcement suppressed")
             return false
@@ -99,7 +111,7 @@ object UpdatesNotifier {
             // Deliberately not ic_alert_triangle: the shade icon is the first thing
             // read, and the triangle is the app's alert mark.
             .setSmallIcon(R.drawable.ic_info_circle)
-            .setContentTitle(update.title.ifBlank { "QuakeAlert update" })
+            .setContentTitle(update.title.ifBlank { updateFallbackTitle(lang) })
             .setContentText(update.body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(update.body))
             .setPriority(NotificationCompat.PRIORITY_LOW)

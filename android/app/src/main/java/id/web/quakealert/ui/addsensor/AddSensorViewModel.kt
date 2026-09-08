@@ -7,6 +7,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.network.ApiException
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.model.NodePortalConfigDto
@@ -15,11 +16,16 @@ import id.web.quakealert.device.NodeLink
 import id.web.quakealert.device.PortalRejectedException
 import id.web.quakealert.device.ReverseGeocoder
 import id.web.quakealert.device.locationSource
+import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.domain.resolveDisplayLanguage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,6 +58,12 @@ class AddSensorViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _state = MutableStateFlow(AddSensorState())
     val state: StateFlow<AddSensorState> = _state.asStateFlow()
+
+    /** Language user strings render in; the screen collects this for copy. */
+    val displayLang: StateFlow<DisplayLanguage> =
+        AppSettingsRepository(application).language
+            .map { resolveDisplayLanguage(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DisplayLanguage.EN)
 
     /**
      * The running confirm loop, held so [reset] can cancel it. A plain boolean guard

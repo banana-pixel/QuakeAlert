@@ -3,6 +3,7 @@ package id.web.quakealert.ui.settings
 import androidx.compose.runtime.Immutable
 import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 
 /**
  * Selectable app languages shown in the "Language" segmented control (Figma node
@@ -20,6 +21,12 @@ enum class AppLanguage(val label: String, val tag: String) {
         /** The entry for [tag], defaulting to [EN] for anything unrecognised. */
         fun fromTag(tag: String): AppLanguage =
             entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) } ?: EN
+    }
+
+    /** Render-language twin of this preference (see [DisplayLanguage]). */
+    fun toDisplay(): DisplayLanguage = when (this) {
+        EN -> DisplayLanguage.EN
+        ID -> DisplayLanguage.ID
     }
 }
 
@@ -75,8 +82,9 @@ enum class AppLanguage(val label: String, val tag: String) {
  *   [AppSettingsRepository.setNotificationsEnabled] when the dialog is confirmed.
  * @param lightMode "Light Mode (Beta)" toggle — inert and badged "Coming Soon"
  *   while the app stays dark-theme only.
- * @param language selected app language. Also inert: the strings ship in English
- *   only, so the choice is persisted but not yet applied.
+ * @param language selected app language, applied to user copy throughout the
+ *   app (see [DisplayLanguage]). Fresh installs resolve the system locale first;
+ *   this preference wins once chosen.
  * @param unitSystem distance unit system, shared with History and Sensors.
  * @param appCredit primary credit line on the About card.
  * @param appVersion secondary version line on the About card.
@@ -112,12 +120,23 @@ data class SettingsUiState(
 ) {
 
     /** Map-card header text; falls back to a prompt when no position is stored. */
-    val locationPillLabel: String
-        get() = locationLabel?.takeIf { it.isNotBlank() } ?: "Location not set"
+    fun locationPillLabel(lang: DisplayLanguage = DisplayLanguage.EN): String =
+        locationLabel?.takeIf { it.isNotBlank() }
+            ?: if (lang == DisplayLanguage.ID) locationNotSetId() else "Location not set"
+
+    // Indonesian branch lands in B2.
+    private fun locationNotSetId(): String = "Location not set"
 
     /** Pre-formatted "Last Sync : {time}" info-pill text. */
-    val lastSyncPillLabel: String
-        get() = "Last Sync : ${lastSyncLabel ?: "never"}"
+    fun lastSyncPillLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
+        val never = if (lang == DisplayLanguage.ID) neverId() else "never"
+        val prefix = if (lang == DisplayLanguage.ID) lastSyncPrefixId() else "Last Sync : "
+        return "$prefix${lastSyncLabel ?: never}"
+    }
+
+    // Indonesian branches land in B2.
+    private fun neverId(): String = "never"
+    private fun lastSyncPrefixId(): String = "Last Sync : "
 
     /**
      * Radius of the map preview's geofence circle as a fraction of the card's

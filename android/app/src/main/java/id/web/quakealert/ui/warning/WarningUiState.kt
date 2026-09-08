@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
 import id.web.quakealert.R
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.EmergencyNumber
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.ui.common.ErrorCopy
@@ -119,22 +120,35 @@ data class RecentSeismicActivity(
 ) {
 
     /** "3 events" / "20+ events" / "1 event" / "No events" — measured cases only. */
-    private val countText: String
-        get() = when {
+    private fun countText(lang: DisplayLanguage = DisplayLanguage.EN): String {
+        if (lang == DisplayLanguage.ID) return countTextId()
+        return when {
             eventCount == 0 -> "No events"
             isCountCapped -> "$eventCount+ events"
             eventCount == 1 -> "1 event"
             else -> "$eventCount events"
         }
+    }
+
+    // Indonesian branch lands in B2.
+    private fun countTextId(): String = countText(DisplayLanguage.EN)
 
     /** The count row's value, or the reason there is no count. */
-    val countValue: String get() = measured(countText)
+    fun countValue(lang: DisplayLanguage = DisplayLanguage.EN): String = measured(countText(lang), lang)
 
     /** The newest event, "None recorded" for a quiet window, or the reason. */
-    val mostRecentValue: String get() = measured(mostRecent ?: NONE_RECORDED)
+    fun mostRecentValue(lang: DisplayLanguage = DisplayLanguage.EN): String =
+        measured(mostRecent ?: noneRecorded(lang), lang)
 
     /** The hardest shaking, on the same three-way terms as [mostRecentValue]. */
-    val strongestValue: String get() = measured(strongest ?: NONE_RECORDED)
+    fun strongestValue(lang: DisplayLanguage = DisplayLanguage.EN): String =
+        measured(strongest ?: noneRecorded(lang), lang)
+
+    private fun noneRecorded(lang: DisplayLanguage): String =
+        if (lang == DisplayLanguage.ID) noneRecordedId() else "None recorded"
+
+    // Indonesian branch lands in B2.
+    private fun noneRecordedId(): String = "None recorded"
 
     /** The count with no noun, for the banner's second clause: "9" / "100+". */
     private val countShort: String
@@ -150,12 +164,17 @@ data class RecentSeismicActivity(
      * of those say "No Active Earthquake" instead, which is the narrower thing this
      * screen actually knows — no alert is running right now.
      */
-    val bannerTitle: String
-        get() = if (availability == ActivityAvailability.MEASURED && eventCount == 0) {
+    fun bannerTitle(lang: DisplayLanguage = DisplayLanguage.EN): String {
+        if (lang == DisplayLanguage.ID) return bannerTitleId()
+        return if (availability == ActivityAvailability.MEASURED && eventCount == 0) {
             TITLE_NONE_RECENT
         } else {
             TITLE_NONE_ACTIVE
         }
+    }
+
+    // Indonesian branch lands in B2.
+    private fun bannerTitleId(): String = bannerTitle(DisplayLanguage.EN)
 
     /**
      * The resting banner's one line. Radius is left out on purpose — the banner has
@@ -166,8 +185,9 @@ data class RecentSeismicActivity(
      * the question a user opens this screen with; the count follows as context. The
      * banner renders two lines, so both clauses fit.
      */
-    val bannerLabel: String
-        get() = when (availability) {
+    fun bannerLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
+        if (lang == DisplayLanguage.ID) return bannerLabelId()
+        return when (availability) {
             ActivityAvailability.MEASURED -> when {
                 eventCount == 0 ->
                     "No quakes recorded near you in the past $windowDays days"
@@ -176,17 +196,25 @@ data class RecentSeismicActivity(
                 // A count with no newest event should not happen (both are read from
                 // the same page), so this keeps the old wording rather than inventing
                 // copy for a state that has no meaning.
-                else -> "$countText nearby in the past $windowDays days"
+                else -> "${countText(lang)} nearby in the past $windowDays days"
             }
             ActivityAvailability.NO_POSITION -> "Sync your location to see nearby activity"
             ActivityAvailability.UNAVAILABLE -> "Recent activity unavailable"
         }
-
-    private fun measured(value: String): String = when (availability) {
-        ActivityAvailability.MEASURED -> value
-        ActivityAvailability.NO_POSITION -> NEEDS_POSITION
-        ActivityAvailability.UNAVAILABLE -> UNAVAILABLE_VALUE
     }
+
+    // Indonesian branch lands in B2.
+    private fun bannerLabelId(): String = bannerLabel(DisplayLanguage.EN)
+
+    private fun measured(value: String, lang: DisplayLanguage = DisplayLanguage.EN): String = when (availability) {
+        ActivityAvailability.MEASURED -> value
+        ActivityAvailability.NO_POSITION -> if (lang == DisplayLanguage.ID) needsPositionId() else NEEDS_POSITION
+        ActivityAvailability.UNAVAILABLE -> if (lang == DisplayLanguage.ID) unavailableValueId() else UNAVAILABLE_VALUE
+    }
+
+    // Indonesian branches land in B2.
+    private fun needsPositionId(): String = NEEDS_POSITION
+    private fun unavailableValueId(): String = UNAVAILABLE_VALUE
 
     companion object {
         /** Copy for the idle banner variants, matching the design (Figma 124:1426). */
@@ -244,11 +272,17 @@ data class SuggestedAction(
  * The three actions, in the order the official graphic sequences them — the order
  * is the instruction, so it is fixed rather than data-driven.
  */
-fun suggestedActions(): List<SuggestedAction> = listOf(
-    SuggestedAction("drop", R.drawable.ic_action_drop, "Drop!"),
-    SuggestedAction("cover", R.drawable.ic_action_cover, "Cover!"),
-    SuggestedAction("hold-on", R.drawable.ic_action_hold_on, "Hold on!")
-)
+fun suggestedActions(lang: DisplayLanguage = DisplayLanguage.EN): List<SuggestedAction> {
+    if (lang == DisplayLanguage.ID) return suggestedActionsId()
+    return listOf(
+        SuggestedAction("drop", R.drawable.ic_action_drop, "Drop!"),
+        SuggestedAction("cover", R.drawable.ic_action_cover, "Cover!"),
+        SuggestedAction("hold-on", R.drawable.ic_action_hold_on, "Hold on!")
+    )
+}
+
+// Indonesian branch lands in B2.
+private fun suggestedActionsId(): List<SuggestedAction> = suggestedActions(DisplayLanguage.EN)
 
 /**
  * Immutable UI state for the Warning screen, as a two-state hierarchy rather than
@@ -418,16 +452,18 @@ sealed interface WarningUiState {
          * a fabricated number, and a centroid the server could not name drops the
          * parenthetical entirely rather than rendering an empty "()".
          */
-        val proximityLabel: String
-            get() {
-                val distance = distanceKm
-                    ?.let { "${unitSystem.formatDistance(it)} away" }
-                    ?: "Distance unknown"
-                return locationName
-                    .takeIf { it.isNotBlank() }
-                    ?.let { "$distance ($it)" }
-                    ?: distance
-            }
+        fun proximityLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
+            val distance = distanceKm
+                ?.let { "${unitSystem.formatDistance(it)} away" }
+                ?: if (lang == DisplayLanguage.ID) distanceUnknownId() else "Distance unknown"
+            return locationName
+                .takeIf { it.isNotBlank() }
+                ?.let { "$distance ($it)" }
+                ?: distance
+        }
+
+        // Indonesian branch lands in B2.
+        private fun distanceUnknownId(): String = "Distance unknown"
     }
 }
 
@@ -435,51 +471,63 @@ sealed interface WarningUiState {
  * Tips for the recent-quake state (Figma 124:1297): post-quake guidance for
  * aftershocks. Mirrors the design's copy and glyphs verbatim.
  */
-fun activeQuakeTips(): List<PreparednessTip> = listOf(
-    PreparednessTip(
-        id = "inspect",
-        icon = R.drawable.ic_prep_inspect,
-        title = "Inspect Your Home",
-        description = "Check walls, ceilings, and foundation for cracks or damage before re-entering."
-    ),
-    PreparednessTip(
-        id = "review",
-        icon = R.drawable.ic_prep_review,
-        title = "Review Your Safety Plan",
-        description = "Confirm family members are safe and update your emergency contacts if needed."
-    ),
-    PreparednessTip(
-        id = "hazard",
-        icon = R.drawable.ic_prep_hazard,
-        title = "Avoid Hazards",
-        description = "Stay clear of broken glass, spilled chemicals, and damaged electrical wiring."
+fun activeQuakeTips(lang: DisplayLanguage = DisplayLanguage.EN): List<PreparednessTip> {
+    if (lang == DisplayLanguage.ID) return activeQuakeTipsId()
+    return listOf(
+        PreparednessTip(
+            id = "inspect",
+            icon = R.drawable.ic_prep_inspect,
+            title = "Inspect Your Home",
+            description = "Check walls, ceilings, and foundation for cracks or damage before re-entering."
+        ),
+        PreparednessTip(
+            id = "review",
+            icon = R.drawable.ic_prep_review,
+            title = "Review Your Safety Plan",
+            description = "Confirm family members are safe and update your emergency contacts if needed."
+        ),
+        PreparednessTip(
+            id = "hazard",
+            icon = R.drawable.ic_prep_hazard,
+            title = "Avoid Hazards",
+            description = "Stay clear of broken glass, spilled chemicals, and damaged electrical wiring."
+        )
     )
-)
+}
+
+// Indonesian branch lands in B2.
+private fun activeQuakeTipsId(): List<PreparednessTip> = activeQuakeTips(DisplayLanguage.EN)
 
 /**
  * Tips for the calm state (Figma 124:1426): pre-quake preparedness guidance.
  * Mirrors the design's copy, reusing the existing kit/comms/home glyphs.
  */
-fun noActiveQuakeTips(): List<PreparednessTip> = listOf(
-    PreparednessTip(
-        id = "kit",
-        icon = R.drawable.ic_prep_kit,
-        title = "Build a 72-Hour Kit",
-        description = "Pack water, non-perishable food, flashlights, extra batteries, and a first-aid kit in an easy-to-reach bag."
-    ),
-    PreparednessTip(
-        id = "comms",
-        icon = R.drawable.ic_prep_comms,
-        title = "Create a Communication Plan",
-        description = "Choose a safe family meeting spot and designate an out-of-town emergency contact in case local cell networks fail."
-    ),
-    PreparednessTip(
-        id = "home",
-        icon = R.drawable.ic_prep_home,
-        title = "Secure Heavy Items",
-        description = "Anchor tall furniture, TVs, and large appliances to wall studs so they do not fall."
+fun noActiveQuakeTips(lang: DisplayLanguage = DisplayLanguage.EN): List<PreparednessTip> {
+    if (lang == DisplayLanguage.ID) return noActiveQuakeTipsId()
+    return listOf(
+        PreparednessTip(
+            id = "kit",
+            icon = R.drawable.ic_prep_kit,
+            title = "Build a 72-Hour Kit",
+            description = "Pack water, non-perishable food, flashlights, extra batteries, and a first-aid kit in an easy-to-reach bag."
+        ),
+        PreparednessTip(
+            id = "comms",
+            icon = R.drawable.ic_prep_comms,
+            title = "Create a Communication Plan",
+            description = "Choose a safe family meeting spot and designate an out-of-town emergency contact in case local cell networks fail."
+        ),
+        PreparednessTip(
+            id = "home",
+            icon = R.drawable.ic_prep_home,
+            title = "Secure Heavy Items",
+            description = "Anchor tall furniture, TVs, and large appliances to wall studs so they do not fall."
+        )
     )
-)
+}
+
+// Indonesian branch lands in B2.
+private fun noActiveQuakeTipsId(): List<PreparednessTip> = noActiveQuakeTips(DisplayLanguage.EN)
 
 /**
  * What the "Emergency Steps & Contacts" overlay shows that is not fixed copy.
