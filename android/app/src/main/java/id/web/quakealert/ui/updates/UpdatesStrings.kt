@@ -12,7 +12,9 @@ data class UpdatesStrings(
     val title: String,
     val loading: String,
     val emptyTitle: String,
-    val emptySubtitle: String
+    val emptySubtitle: String,
+    val retry: String,
+    val resetFilters: String
 )
 
 private fun updatesStringsEn(): UpdatesStrings = UpdatesStrings(
@@ -20,7 +22,9 @@ private fun updatesStringsEn(): UpdatesStrings = UpdatesStrings(
     loading = "Loading updates...",
     emptyTitle = "No Updates Yet",
     emptySubtitle = "Announcements from the QuakeAlert team will appear here. " +
-        "Earthquake warnings are never sent this way."
+        "Earthquake warnings are never sent this way.",
+    retry = "Retry",
+    resetFilters = "Reset Filters"
 )
 
 private fun updatesStringsId(): UpdatesStrings = UpdatesStrings(
@@ -28,7 +32,9 @@ private fun updatesStringsId(): UpdatesStrings = UpdatesStrings(
     loading = "Memuat pembaruan...",
     emptyTitle = "Belum Ada Pembaruan",
     emptySubtitle = "Pengumuman dari tim QuakeAlert akan muncul di sini. " +
-        "Peringatan gempa bumi tidak pernah dikirim lewat sini."
+        "Peringatan gempa bumi tidak pernah dikirim lewat sini.",
+    retry = "Coba Lagi",
+    resetFilters = "Atur Ulang Filter"
 )
 
 internal fun updatesStrings(lang: DisplayLanguage): UpdatesStrings =

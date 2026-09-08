@@ -112,7 +112,12 @@ fun UpdatesModal(
                 message = strings.loading
             )
 
-            uiState.error != null -> QuakeErrorState(copy = uiState.error, onRetry = onRetry)
+            uiState.error != null -> QuakeErrorState(
+                copy = uiState.error,
+                onRetry = onRetry,
+                retryLabel = strings.retry,
+                resetFiltersLabel = strings.resetFilters
+            )
 
             uiState.isEmpty -> QuakeEmptyState(
                 icon = R.drawable.ic_info_circle,

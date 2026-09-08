@@ -360,6 +360,7 @@ fun SettingsScreen(
                             longitude = uiState.longitude
                         ),
                         unitSystem = uiState.unitSystem,
+                        lang = uiState.language.toDisplay(),
                         // The user dot, and only the user dot: what this card
                         // claims is where the last fix landed, and a centred
                         // camera says that far less directly than a mark on the

@@ -196,7 +196,7 @@ fun HistoryScreen(
             filter = uiState.filter,
             sections = FilterSection.HISTORY,
             unitSystem = uiState.unitSystem,
-            filterStrings = filterStrings(lang),
+            strings = filterStrings(lang),
             onModeSelected = onModeSelected,
             onFilterSheetClicked = onFilterSheetClicked,
             modifier = Modifier.padding(top = Dimens.HeaderSectionGap)
@@ -346,7 +346,8 @@ fun HistoryScreen(
             unitSystem = uiState.unitSystem,
             lang = lang,
             onDismiss = onDetailDismissed,
-            onShare = { onShareClicked(event) }
+            onShare = { onShareClicked(event) },
+            title = strings.detailTitle
         )
     }
 }
