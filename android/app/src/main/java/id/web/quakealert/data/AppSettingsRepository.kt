@@ -169,10 +169,23 @@ class AppSettingsRepository(context: Context) {
         else it[KEY_LAST_LOCAL_TEST_EVENT_ID] = eventId
     }
 
-    /** UI language tag. Inert placeholder — only `en` ships today. */
-    val language: Flow<String> = read { it[KEY_LANGUAGE] ?: DEFAULT_LANGUAGE }
+    /**
+     * UI language tag, or null for System (D-022).
+     *
+     * Null means no explicit choice:
+     * [id.web.quakealert.domain.resolveDisplayLanguage] follows
+     * `Locale.getDefault()` (Indonesian → ID, anything else → EN). An explicit
+     * user choice wins and is mirrored to the system per-app language page via
+     * framework `LocaleManager` on API 33+ (see `SettingsViewModel`).
+     * Installs that already stored `"en"` count as explicit English
+     * (pre-release, accepted) — no migration rewrites them to null.
+     */
+    val language: Flow<String?> = read { it[KEY_LANGUAGE] }
 
-    fun setLanguage(tag: String) = write { it[KEY_LANGUAGE] = tag }
+    /** Persists an explicit choice, or clears it back to System when null (D-022). */
+    fun setLanguage(tag: String?) = write {
+        if (tag == null) it.remove(KEY_LANGUAGE) else it[KEY_LANGUAGE] = tag
+    }
 
     /** One-shot read of the auto-sync flag. */
     suspend fun readAutoSyncLocation(): Boolean = autoSyncLocation.first()
@@ -188,8 +201,6 @@ class AppSettingsRepository(context: Context) {
     }
 
     companion object {
-        const val DEFAULT_LANGUAGE = "en"
-
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_UNIT_SYSTEM = stringPreferencesKey("unit_system")
         private val KEY_AUTO_SYNC_LOCATION = booleanPreferencesKey("auto_sync_location")

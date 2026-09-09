@@ -488,7 +488,8 @@ private fun rememberOnboardingPages(strings: OnboardingStrings, lang: DisplayLan
     val id = lang == DisplayLanguage.ID
     return listOf(
         OnboardingPage(
-            iconRes = R.drawable.ic_puzzle_piece,
+            // Official logo (D-023): transparent variant, shape intact.
+            iconRes = R.drawable.ic_quake_logo,
             title = if (id) "Selamat datang di Aplikasi QuakeAlert." else "Welcome to QuakeAlert App.",
             description = if (id) {
                 "QuakeAlert adalah sistem peringatan dini gempa bumi berbasis " +

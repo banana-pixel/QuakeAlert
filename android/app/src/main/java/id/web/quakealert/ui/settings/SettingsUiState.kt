@@ -4,30 +4,36 @@ import androidx.compose.runtime.Immutable
 import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.domain.resolveDisplayLanguage
+import java.util.Locale
 
 /**
  * Selectable app languages shown in the "Language" segmented control (Figma node
- * 1:912). Mirrors the "EN / ID" pills.
+ * 1:912). Mirrors the "System / EN / ID" pills (D-022).
  *
  * @param tag the BCP-47 tag persisted by [AppSettingsRepository.setLanguage], kept
  *   separate from [label] so the stored value stays a language tag rather than a
- *   piece of UI text.
+ *   piece of UI text. Null means System (no stored choice): the display language
+ *   follows the device locale. The SYSTEM label is fixed English like "EN"/"ID".
  */
-enum class AppLanguage(val label: String, val tag: String) {
+enum class AppLanguage(val label: String, val tag: String?) {
+    SYSTEM("System", null),
     EN("EN", "en"),
     ID("ID", "id");
 
     companion object {
-        /** The entry for [tag], defaulting to [EN] for anything unrecognised. */
-        fun fromTag(tag: String): AppLanguage =
-            entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) } ?: EN
+        /**
+         * The entry for [tag]: null means System, unknown tags fall back to [EN]
+         * (D-022; pre-release installs that stored "en" stay explicit English).
+         */
+        fun fromTag(tag: String?): AppLanguage =
+            if (tag == null) SYSTEM
+            else entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) } ?: EN
     }
 
     /** Render-language twin of this preference (see [DisplayLanguage]). */
-    fun toDisplay(): DisplayLanguage = when (this) {
-        EN -> DisplayLanguage.EN
-        ID -> DisplayLanguage.ID
-    }
+    fun toDisplay(system: Locale = Locale.getDefault()): DisplayLanguage =
+        resolveDisplayLanguage(tag, system)
 }
 
 /**
@@ -113,7 +119,7 @@ data class SettingsUiState(
     val showResetDialog: Boolean = false,
     val pendingNotificationsDisable: Boolean = false,
     val lightMode: Boolean = false,
-    val language: AppLanguage = AppLanguage.EN,
+    val language: AppLanguage = AppLanguage.SYSTEM,
     val unitSystem: UnitSystem = UnitSystem.METRIC,
     val appCredit: String = "QuakeAlert App by @banana-pixel",
     val appVersion: String = "v 1.0.1 (Beta)",

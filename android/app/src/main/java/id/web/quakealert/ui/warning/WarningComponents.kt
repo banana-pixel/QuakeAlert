@@ -490,8 +490,10 @@ fun RecentSeismicActivityCard(
 
         QuakeMap(
             focus = focus,
-            // Top-start: this card draws no overlays of its own, and the top edge
-            // sits furthest from the stats panel below.
+            // D-024: one dot per counted event, from the same page as the count.
+            markers = activity.dots,
+            // Top-start: the stats panel below owns the bottom edge, and the top
+            // edge sits furthest from it.
             attributionAlignment = Alignment.TopStart,
             // Clipped, not outlined, for the same reason as the event detail map:
             // the tiles are the card's edge.

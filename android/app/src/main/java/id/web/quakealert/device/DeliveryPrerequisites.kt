@@ -1,11 +1,8 @@
 package id.web.quakealert.device
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.PowerManager
-import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 
 /**
@@ -24,13 +21,19 @@ import androidx.core.content.getSystemService
 /**
  * Whether the OS currently allows this app to post notifications.
  *
- * True below API 33, where the grant did not exist. Distinct from the user's own
- * alert switch: this says the app *may* post, that one says they *want* it.
+ * The runtime `POST_NOTIFICATIONS` grant plus the app-level toggle
+ * ([NotificationManagerCompat.areNotificationsEnabled]): an in-app grant dialog
+ * only pauses the activity, and a toggle flipped in system Settings never
+ * callbacks the app, so callers re-read this on every resume. Channel-level
+ * degradation stays diagnostic-only per `AlertPresentationHealth` and never
+ * gates (D-021).
+ *
+ * True below API 33, where the runtime grant did not exist, via
+ * `areNotificationsEnabled`. Distinct from the user's own alert switch: this
+ * says the app *may* post, that one says they *want* it.
  */
 fun Context.canPostNotifications(): Boolean =
-    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-        PackageManager.PERMISSION_GRANTED
+    NotificationManagerCompat.from(this).areNotificationsEnabled()
 
 /**
  * Whether the app is exempt from battery optimisation.

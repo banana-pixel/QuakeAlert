@@ -1,21 +1,19 @@
 package id.web.quakealert.service
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import id.web.quakealert.R
 import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.intensityValueLabel
+import id.web.quakealert.device.canPostNotifications
 import id.web.quakealert.domain.ActiveAlertBoard
 import id.web.quakealert.domain.AlertDecision
 import id.web.quakealert.domain.DisplayLanguage
@@ -149,7 +147,8 @@ object WarningNotifier {
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_alert_triangle)
+            // Official logo, transparent variant whole (D-023).
+            .setSmallIcon(R.drawable.ic_quake_logo)
             // A drill says so in the shade as well as on the screen. Only ever
             // reachable on a debug build (the mapper drops an is_test frame
             // otherwise), so this branch cannot change what a real user is told.
@@ -283,12 +282,8 @@ object WarningNotifier {
     private fun alertTitleId(message: WsAlertMessage): String =
         if (message.isTest) "UJI - latihan gempa bumi" else "Gempa bumi terdeteksi"
 
-    private fun canPost(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+    /** Single source is [canPostNotifications] (D-021): runtime grant + app-level toggle. */
+    private fun canPost(context: Context): Boolean = context.canPostNotifications()
 
     private fun canUseFullScreen(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true

@@ -8,8 +8,9 @@ import java.util.Locale
  * Lives in domain (not ui.settings) so every copy function — including the
  * pure ones asserted without Android ([AlertLifecycleCopy], [ProtectionStatus])
  * — can take it as a parameter without importing UI state. The settings
- * [id.web.quakealert.ui.settings.AppLanguage] maps 1:1 onto this; the two enums
- * stay separate because one is a persisted preference and the other is a
+ * [id.web.quakealert.ui.settings.AppLanguage] maps onto this (EN/ID 1:1,
+ * SYSTEM resolves via [resolveDisplayLanguage] with a null override); the two
+ * enums stay separate because one is a persisted preference and the other is a
  * render parameter, and conflating them would make "which language is stored"
  * and "which language is shown" the same question.
  */

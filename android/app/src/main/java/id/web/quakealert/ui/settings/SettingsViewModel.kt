@@ -1,6 +1,9 @@
 package id.web.quakealert.ui.settings
 
 import android.app.Application
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -282,10 +285,29 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     /**
      * Selects the app language. Persisted so the choice survives a restart, and
      * applied to user copy throughout the app (see [DisplayLanguage]).
+     *
+     * Null (System) clears the stored tag so the device locale decides (D-022);
+     * an explicit choice is additionally mirrored to the system per-app language
+     * page via framework `LocaleManager` on API 33+ (version-guarded, in-app
+     * only below 33, no new dependency). A mirror failure only logs: the
+     * in-app resolution is the authority.
      */
     fun onLanguageSelected(language: AppLanguage) {
         repository.setLanguage(language.tag)
         _uiState.update { it.copy(language = language) }
+        mirrorToSystemLocales(language.tag)
+    }
+
+    private fun mirrorToSystemLocales(tag: String?) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        try {
+            val context = getApplication<Application>()
+            val localeManager = context.getSystemService(LocaleManager::class.java) ?: return
+            val locales = if (tag == null) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
+            localeManager.setApplicationLocales(locales)
+        } catch (e: Exception) {
+            Log.w(TAG, "mirror app locales failed", e)
+        }
     }
 
     /** Selects the distance unit system, shared with History and Sensors. */

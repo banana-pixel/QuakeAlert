@@ -1,20 +1,18 @@
 package id.web.quakealert.service
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import id.web.quakealert.MainActivity
 import id.web.quakealert.R
+import id.web.quakealert.device.canPostNotifications
 import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.OperatorUpdate
 
@@ -108,9 +106,8 @@ object UpdatesNotifier {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            // Deliberately not ic_alert_triangle: the shade icon is the first thing
-            // read, and the triangle is the app's alert mark.
-            .setSmallIcon(R.drawable.ic_info_circle)
+            // Official logo, transparent variant whole (D-023).
+            .setSmallIcon(R.drawable.ic_quake_logo)
             .setContentTitle(update.title.ifBlank { updateFallbackTitle(lang) })
             .setContentText(update.body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(update.body))
@@ -129,10 +126,6 @@ object UpdatesNotifier {
         return true
     }
 
-    private fun canPost(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+    /** Single source is [canPostNotifications] (D-021): runtime grant + app-level toggle. */
+    private fun canPost(context: Context): Boolean = context.canPostNotifications()
 }

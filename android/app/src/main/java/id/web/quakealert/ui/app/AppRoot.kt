@@ -14,7 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.ui.addsensor.AddSensorViewModel
@@ -43,13 +43,16 @@ fun AppRoot(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Every foreground is a chance for the stored position to have gone stale, and the
+    // Every resume is a chance for the stored position to have gone stale, and the
     // process-start check alone misses an app that was simply left in the background.
     // Placed on the root rather than in a tab so it covers onboarding too, and nothing
-    // is needed on the way out.
-    LifecycleStartEffect(Unit) {
+    // is needed on the way out. ON_RESUME (not ON_START): the runtime-permission
+    // dialog only pauses the activity, so an ON_START-only read keeps a stale
+    // notificationsPermitted=false that the next collector emission re-posts as
+    // "blocked" (D-021).
+    LifecycleResumeEffect(Unit) {
         viewModel.onAppForegrounded()
-        onStopOrDispose { }
+        onPauseOrDispose { }
     }
 
     Box(

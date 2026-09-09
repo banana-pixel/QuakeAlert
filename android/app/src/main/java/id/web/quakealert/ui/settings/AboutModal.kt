@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -22,14 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.web.quakealert.R
@@ -38,9 +35,6 @@ import id.web.quakealert.ui.common.QuakeModalHeader
 import id.web.quakealert.ui.theme.AboutActionDonateFill
 import id.web.quakealert.ui.theme.AboutActionEmailFill
 import id.web.quakealert.ui.theme.AboutActionGithubFill
-import id.web.quakealert.ui.theme.AboutLogoCoreFill
-import id.web.quakealert.ui.theme.AboutLogoHaloFill
-import id.web.quakealert.ui.theme.AboutLogoRingFill
 import id.web.quakealert.ui.theme.AboutModalGradient
 import id.web.quakealert.ui.theme.BorderLight
 import id.web.quakealert.ui.theme.CardBorder
@@ -48,7 +42,6 @@ import id.web.quakealert.ui.theme.ChipLabel
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.ModalBodyText
 import id.web.quakealert.ui.theme.QuakeAlertTheme
-import id.web.quakealert.ui.theme.TextPrimary
 
 /**
  * External destinations opened from the About overlay's action buttons. Kept in
@@ -177,14 +170,9 @@ fun AboutModal(
 }
 
 /**
- * Central logo badge (Figma node 4:670). The design ships a raster logo here; it
- * is rebuilt from Compose primitives as three concentric cyan discs of rising
- * alpha (halo → ring → core) wrapping the shared `ic_recording_wave` seismograph
- * glyph, which keeps the badge resolution-independent and tied to the palette.
- *
- * Figma's `0 4px 30px rgba(0,0,0,0.25)` drop shadow is intentionally dropped: on
- * the near-black card a dark blur is invisible, and the alpha-stepped rings
- * already supply the glow it was there to imply.
+ * Central logo badge (Figma node 4:670). Official QuakeAlert logo
+ * (`R.drawable.ic_quake_logo`, transparent variant, D-023) drawn rounded via
+ * `clip(RoundedCornerShape)`. Shape and motif verbatim from `docs/brand/`.
  */
 @Composable
 private fun AboutLogoBadge(modifier: Modifier = Modifier) {
@@ -194,52 +182,13 @@ private fun AboutLogoBadge(modifier: Modifier = Modifier) {
             .height(Dimens.AboutModalLogoSize),
         contentAlignment = Alignment.Center
     ) {
-        ConcentricDisc(size = Dimens.AboutModalLogoSize, fill = AboutLogoHaloFill) {
-            ConcentricDisc(size = Dimens.AboutModalLogoRingSize, fill = AboutLogoRingFill) {
-                ConcentricDisc(
-                    size = Dimens.AboutModalLogoCoreSize,
-                    fill = AboutLogoCoreFill,
-                    bordered = true
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_recording_wave),
-                        contentDescription = null,
-                        colorFilter = ColorFilter.tint(TextPrimary),
-                        modifier = Modifier.size(Dimens.AboutModalLogoGlyphSize)
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * One ring of [AboutLogoBadge]: a clipped circle of [size] filled with [fill],
- * centering its [content]. [bordered] adds the white-30% hairline the innermost
- * core disc carries.
- */
-@Composable
-private fun ConcentricDisc(
-    size: Dp,
-    fill: Color,
-    modifier: Modifier = Modifier,
-    bordered: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    val base = modifier
-        .size(size)
-        .clip(CircleShape)
-        .background(fill, CircleShape)
-
-    Box(
-        modifier = if (bordered) {
-            base.border(Dimens.BorderThin, BorderLight, CircleShape)
-        } else {
-            base
-        },
-        contentAlignment = Alignment.Center
-    ) {
-        content()
+        Image(
+            painter = painterResource(id = R.drawable.ic_quake_logo),
+            contentDescription = null,
+            modifier = Modifier
+                .size(Dimens.AboutModalLogoSize)
+                .clip(RoundedCornerShape(Dimens.RadiusCard))
+        )
     }
 }
 

@@ -1,6 +1,9 @@
 package id.web.quakealert.ui.warning
 
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.domain.EarthquakeEvent
+import id.web.quakealert.domain.EventStatus
+import id.web.quakealert.ui.common.MapMarkerKind
 import id.web.quakealert.ui.history.MmiSeverity
 import id.web.quakealert.ui.history.QuakeHistoryItem
 import org.junit.Assert.assertEquals
@@ -8,6 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 
 /**
  * Covers the Warning screen's state contract: the read the composables make without
@@ -245,6 +249,47 @@ class WarningUiStateTest {
         assertEquals("Unavailable offline", activity.strongestValue())
     }
 
+    // --- event dots (D-024) ----------------------------------------------------
+
+    @Test
+    fun `each counted event plots one EVENT dot at its centroid`() {
+        val events = listOf(
+            quakeEvent("evt-1", -6.9, 107.6),
+            quakeEvent("evt-2", -7.1, 107.9)
+        )
+
+        val dots = events.toEventDots()
+
+        assertEquals(2, dots.size)
+        assertEquals("evt-1", dots[0].id)
+        assertEquals(-6.9, dots[0].latitude, 0.0)
+        assertEquals(107.6, dots[0].longitude, 0.0)
+        assertEquals("evt-2", dots[1].id)
+        assertTrue(dots.all { it.kind == MapMarkerKind.EVENT })
+    }
+
+    @Test
+    fun `no events plots nothing`() {
+        assertTrue(emptyList<EarthquakeEvent>().toEventDots().isEmpty())
+        // Honest-empty states carry no dots either: nothing was counted.
+        assertTrue(RecentSeismicActivity().dots.isEmpty())
+        assertTrue(measuredActivity(eventCount = 0).dots.isEmpty())
+    }
+
+    @Test
+    fun `a full page plots every counted event and the count already admits the cap`() {
+        val events = (1..100).map { quakeEvent("evt-$it", -6.9, 107.6) }
+
+        val dots = events.toEventDots()
+
+        assertEquals(100, dots.size)
+        assertEquals(100, dots.map { it.id }.distinct().size)
+        val activity = measuredActivity(eventCount = 100, isCountCapped = true)
+            .copy(dots = dots)
+        assertEquals("100+ events", activity.countValue())
+        assertEquals(100, activity.dots.size)
+    }
+
     private fun measuredActivity(
         eventCount: Int,
         isCountCapped: Boolean = false
@@ -257,6 +302,21 @@ class WarningUiStateTest {
         strongest = "V (strong), 61.5 gal".takeIf { eventCount > 0 },
         latitude = -6.91750,
         longitude = 107.61910
+    )
+
+    private fun quakeEvent(id: String, latitude: Double, longitude: Double) = EarthquakeEvent(
+        eventId = id,
+        status = EventStatus.RESOLVED,
+        pgaGal = 61.5,
+        mmi = "V",
+        intensityLabel = "strong",
+        latitude = latitude,
+        longitude = longitude,
+        depthKm = null,
+        locationName = "Bandung, West Java, ID",
+        triggeredNodesCount = 3,
+        createdAt = Instant.EPOCH,
+        resolvedAt = null
     )
 
     private val details = QuakeHistoryItem(

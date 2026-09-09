@@ -30,6 +30,7 @@ import id.web.quakealert.ui.theme.MapAttributionText
 import id.web.quakealert.ui.theme.AccentBlue
 import id.web.quakealert.ui.theme.MapSurfaceFallback
 import id.web.quakealert.ui.theme.MicroCaption
+import id.web.quakealert.ui.theme.MmiOrange
 import id.web.quakealert.ui.theme.StatusOfflineDot
 import id.web.quakealert.ui.theme.StatusOnlineDot
 import id.web.quakealert.ui.theme.TextPrimary
@@ -83,8 +84,9 @@ data class MapFocus(
  * dot cannot be painted one way on the Sensors map and another way in Settings.
  *
  * Declaration order is paint order (see [toCircleLayer]), so it is not arbitrary:
- * where dots overlap, a reporting station wins over a dead one, and the tapped
- * station and the device position win over both.
+ * where dots overlap, a reporting station wins over a dead one, a plotted event
+ * (D-024) wins over both stations, and the tapped station and the device position
+ * win over everything.
  */
 enum class MapMarkerKind {
     /** A provisioned station that is not reporting. */
@@ -92,6 +94,13 @@ enum class MapMarkerKind {
 
     /** A station the server currently counts as reporting. */
     STATION_ONLINE,
+
+    /**
+     * A recorded earthquake event plotted on the Recent Seismic Activity card
+     * (D-024). Single orange colour, distinct from the station greens/reds and
+     * from the blue/white selection and device dots; no intensity grading.
+     */
+    EVENT,
 
     /** The station whose row the user tapped; drawn larger and on top. */
     SELECTED,
@@ -270,6 +279,11 @@ private fun MapMarkerKind.toCircleLayer(): CircleLayer {
         }
         MapMarkerKind.STATION_OFFLINE -> {
             fill = StatusOfflineDot; radius = 5f
+            strokeColor = MapSurfaceFallback; strokeWidth = 1.5f
+        }
+        // A counted event (D-024): one orange dot per event backing the count.
+        MapMarkerKind.EVENT -> {
+            fill = MmiOrange; radius = 6f
             strokeColor = MapSurfaceFallback; strokeWidth = 1.5f
         }
         // The tapped station: same hue as its status would give it is not enough to

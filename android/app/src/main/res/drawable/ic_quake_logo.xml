@@ -3,9 +3,11 @@
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <!-- Launcher foreground = official transparent logo variant (D-023).
-        Same geometry as ic_quake_logo.xml: motif verbatim from docs/brand,
-        sized to the 65% safe-zone geometry. Monochrome reuses this layer. -->
+    <!-- Official QuakeAlert logo, transparent variant (docs/brand/quakealerticontr.svg, D-023).
+        Shape and motif verbatim; only sizing adapted: the motif uses the 88-423px
+        (65%) geometry shared by both brand files so it sits inside the 72dp adaptive
+        safe zone with ~18dp margins (see docs/brand/README.md compatibility note).
+        All strokes white 30px round cap/join, no fill, no gradient, no text. -->
     <path
         android:fillColor="#00000000"
         android:pathData="M173.589046,122.73973H338.410954A50.849316,50.849316 0 0 1 389.26027,173.589046V338.410954A50.849316,50.849316 0 0 1 338.410954,389.26027H173.589046A50.849316,50.849316 0 0 1 122.73973,338.410954V173.589046A50.849316,50.849316 0 0 1 173.589046,122.73973Z"

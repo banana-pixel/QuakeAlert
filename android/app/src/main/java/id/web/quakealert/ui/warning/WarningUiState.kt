@@ -5,9 +5,12 @@ import androidx.compose.runtime.Immutable
 import id.web.quakealert.R
 import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.domain.EarthquakeEvent
 import id.web.quakealert.domain.EmergencyNumber
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.ui.common.ErrorCopy
+import id.web.quakealert.ui.common.MapMarker
+import id.web.quakealert.ui.common.MapMarkerKind
 import id.web.quakealert.ui.history.QuakeHistoryItem
 
 /**
@@ -95,6 +98,10 @@ data class SeismicActivityBanner(
  *   position has ever been synced — this card is about activity *where the user is*,
  *   so with no fix there is nothing honest to centre on.
  * @param longitude device longitude; see [latitude].
+ * @param dots one plotted dot per counted event (D-024), built from the same page
+ *   that backs [eventCount] — no new request. Empty when there is nothing honest
+ *   to plot (zero events, offline, or no position). A full page already reads
+ *   "N+" in the count, which covers the dots' limit — no new strings.
  */
 /**
  * Why [RecentSeismicActivity]'s numbers may be missing. Three cases rather than a
@@ -116,7 +123,8 @@ data class RecentSeismicActivity(
     val mostRecent: String? = null,
     val strongest: String? = null,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val dots: List<MapMarker> = emptyList()
 ) {
 
     /** "3 events" / "20+ events" / "1 event" / "No events" — measured cases only. */
@@ -245,6 +253,24 @@ data class RecentSeismicActivity(
         private const val NEEDS_POSITION = "Needs your location"
         private const val UNAVAILABLE_VALUE = "Unavailable offline"
     }
+}
+
+/**
+ * Maps the page backing a [RecentSeismicActivity] count to its plotted dots
+ * (D-024): one [MapMarkerKind.EVENT] dot per recorded event, stable by
+ * `eventId`, single colour with no intensity grading.
+ *
+ * Pure so it stays JVM-testable like `SensorsUiState.mapMarkers`: the caller
+ * hands over exactly the page the count was read from, so dots never outnumber
+ * the count and a full page's "N+" already covers the limit.
+ */
+fun List<EarthquakeEvent>.toEventDots(): List<MapMarker> = map { event ->
+    MapMarker(
+        id = event.eventId,
+        latitude = event.latitude,
+        longitude = event.longitude,
+        kind = MapMarkerKind.EVENT
+    )
 }
 
 /**

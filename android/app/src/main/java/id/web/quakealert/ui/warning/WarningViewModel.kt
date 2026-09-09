@@ -400,7 +400,9 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
                 "${it.intensityValueLabel(locale)}, ${QuakeFormat.pga(it.pgaGal)}"
             },
             latitude = center.latitude,
-            longitude = center.longitude
+            longitude = center.longitude,
+            // D-024: one dot per counted event, from this same page — no new request.
+            dots = events.toEventDots()
         )
     }
 

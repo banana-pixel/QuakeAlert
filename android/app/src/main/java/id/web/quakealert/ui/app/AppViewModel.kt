@@ -107,7 +107,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Re-checks position staleness whenever the app comes to the foreground.
      *
-     * Called from [AppRoot] on every `ON_START`, not once at construction, because a
+     * Called from [AppRoot] on every `ON_RESUME`, not once at construction, because a
      * process that is never killed never re-checked: leave the app backgrounded across
      * a flight and the position it targets alerts with stays where you took off from
      * until Android happens to reclaim the process.
@@ -171,25 +171,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 // status, reading "Earthquake protection disabled" — the shade line is
                 // the one surface that speaks while nothing is running, and silence
                 // there would look like the app died rather than like a choice. Only
-                // the status-notification toggle itself clears it.
+                // the status-notification toggle itself clears it (D-025): it rides
+                // along as the triple's third element so switching it off fires the
+                // collector even when nothing else changed, and a restart while off
+                // self-heals by clearing instead of re-posting.
                 val lang = resolveDisplayLanguage(prefs.languageTag)
-                ProtectionStatus(
-                    alertsEnabled = prefs.alertsEnabled,
-                    notificationsPermitted = system.notificationsPermitted,
-                    autoSyncEnabled = prefs.autoSyncEnabled,
-                    batteryUnrestricted = system.batteryUnrestricted,
-                    lastSyncLabel = prefs.lastSyncAtMs?.let { relativeLabel(it, lang) },
-                    lastAlertLabel = lastAlert?.let {
-                        "${it.summary}, ${relativeLabel(it.atMs, lang)}"
-                    },
-                    radiusLabel = unitSystem.value.formatDistance(
-                        SafetyPolicy.ALERT_RADIUS_KM
-                    )
-                ) to lang
+                Triple(
+                    ProtectionStatus(
+                        alertsEnabled = prefs.alertsEnabled,
+                        notificationsPermitted = system.notificationsPermitted,
+                        autoSyncEnabled = prefs.autoSyncEnabled,
+                        batteryUnrestricted = system.batteryUnrestricted,
+                        lastSyncLabel = prefs.lastSyncAtMs?.let { relativeLabel(it, lang) },
+                        lastAlertLabel = lastAlert?.let {
+                            "${it.summary}, ${relativeLabel(it.atMs, lang)}"
+                        },
+                        radiusLabel = unitSystem.value.formatDistance(
+                            SafetyPolicy.ALERT_RADIUS_KM
+                        )
+                    ),
+                    lang,
+                    prefs.enabled
+                )
             }
                 .distinctUntilChanged()
-                .collect { (status, lang) ->
-                    StatusNotifier.notify(context, status, lang)
+                .collect { (status, lang, enabled) ->
+                    if (enabled) {
+                        StatusNotifier.notify(context, status, lang)
+                    } else {
+                        StatusNotifier.clear(context)
+                    }
                 }
         }
     }
