@@ -127,7 +127,8 @@ fun QuakeEmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     secondaryActionLabel: String? = null,
-    onSecondaryAction: (() -> Unit)? = null
+    onSecondaryAction: (() -> Unit)? = null,
+    fillViewport: Boolean = true
 ) {
     val primary: (@Composable () -> Unit)? = if (actionLabel != null && onAction != null) {
         { StateAction(label = actionLabel, onClick = onAction) }
@@ -158,6 +159,7 @@ fun QuakeEmptyState(
         message = message,
         subtitle = subtitle,
         modifier = modifier,
+        fillViewport = fillViewport,
         action = when {
             primary != null && secondary != null -> {
                 {
@@ -203,7 +205,8 @@ fun QuakeErrorState(
     modifier: Modifier = Modifier,
     onResetFilters: (() -> Unit)? = null,
     retryLabel: String = "Retry",
-    resetFiltersLabel: String = "Reset Filters"
+    resetFiltersLabel: String = "Reset Filters",
+    fillViewport: Boolean = true
 ) {
     StateBlock(
         icon = R.drawable.ic_alert_triangle_state,
@@ -211,6 +214,7 @@ fun QuakeErrorState(
         message = copy.title,
         subtitle = copy.message,
         modifier = modifier,
+        fillViewport = fillViewport,
         action = when (copy.action) {
             ErrorAction.RETRY -> {
                 { StateAction(label = retryLabel, onClick = onRetry) }
@@ -385,13 +389,17 @@ private fun StateBlock(
     message: String,
     subtitle: String?,
     modifier: Modifier = Modifier,
+    fillViewport: Boolean = true,
     action: (@Composable () -> Unit)? = null
 ) {
     val cardShape = RoundedCornerShape(Dimens.RadiusCard)
 
     Box(
         modifier = modifier
-            .fillMaxSize()
+            // Dialogs (Updates) wrap their content: filling the viewport there
+            // inflates the window instead of centering the card. Tabs keep the
+            // fill so the card centers on the screen.
+            .then(if (fillViewport) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .padding(horizontal = Dimens.StateBlockPadding),
         contentAlignment = Alignment.Center
     ) {

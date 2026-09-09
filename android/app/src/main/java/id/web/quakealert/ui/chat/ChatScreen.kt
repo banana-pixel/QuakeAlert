@@ -107,7 +107,7 @@ fun ChatScreen(
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
         // --- Static header: title + channel card -----------------------------
-        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates, lang = lang)
 
         ChatChannelCard(
             channel = uiState.channel,

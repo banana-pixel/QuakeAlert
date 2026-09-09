@@ -18,12 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import id.web.quakealert.R
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.EmergencyContacts
 import id.web.quakealert.domain.EmergencyNumber
 import id.web.quakealert.ui.common.QuakeModalHeader
@@ -61,7 +60,8 @@ import id.web.quakealert.ui.theme.TextSecondary
 fun EmergencyInfoModalDialog(
     info: EmergencyInfoState,
     onDial: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -71,6 +71,7 @@ fun EmergencyInfoModalDialog(
             info = info,
             onDial = onDial,
             onDismiss = onDismiss,
+            lang = lang,
             modifier = Modifier.padding(Dimens.ScreenHorizontalPadding)
         )
     }
@@ -90,9 +91,11 @@ fun EmergencyInfoModal(
     info: EmergencyInfoState,
     onDial: (String) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusCard)
+    val strings = emergencyStrings(lang)
 
     Column(
         modifier = modifier
@@ -104,47 +107,47 @@ fun EmergencyInfoModal(
             .padding(Dimens.ModalPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.SettingCardContentGap)
     ) {
-        QuakeModalHeader(onDismiss = onDismiss, title = stringResource(R.string.emergency_title))
+        QuakeModalHeader(onDismiss = onDismiss, title = strings.title)
 
-        SectionTitle(stringResource(R.string.emergency_during_title))
+        SectionTitle(strings.duringTitle)
         EmergencyStep(
-            title = stringResource(R.string.emergency_step_drop_title),
-            detail = stringResource(R.string.emergency_step_drop_detail)
+            title = strings.dropTitle,
+            detail = strings.dropDetail
         )
         EmergencyStep(
-            title = stringResource(R.string.emergency_step_cover_title),
-            detail = stringResource(R.string.emergency_step_cover_detail)
+            title = strings.coverTitle,
+            detail = strings.coverDetail
         )
         EmergencyStep(
-            title = stringResource(R.string.emergency_step_hold_title),
-            detail = stringResource(R.string.emergency_step_hold_detail)
+            title = strings.holdTitle,
+            detail = strings.holdDetail
         )
 
-        SectionTitle(stringResource(R.string.emergency_after_title))
-        Text(text = stringResource(R.string.emergency_after_aftershocks), style = CardSubtitle, color = TextSecondary)
-        Text(text = stringResource(R.string.emergency_after_gas), style = CardSubtitle, color = TextSecondary)
-        Text(text = stringResource(R.string.emergency_after_exit), style = CardSubtitle, color = TextSecondary)
-        Text(text = stringResource(R.string.emergency_after_injuries), style = CardSubtitle, color = TextSecondary)
+        SectionTitle(strings.afterTitle)
+        Text(text = strings.aftershocks, style = CardSubtitle, color = TextSecondary)
+        Text(text = strings.gas, style = CardSubtitle, color = TextSecondary)
+        Text(text = strings.exit, style = CardSubtitle, color = TextSecondary)
+        Text(text = strings.injuries, style = CardSubtitle, color = TextSecondary)
 
-        SectionTitle(stringResource(R.string.emergency_contacts_title))
+        SectionTitle(strings.contactsTitle)
         info.numbers.forEach { number ->
-            EmergencyNumberRow(number = number, onDial = onDial)
+            EmergencyNumberRow(number = number, onDial = onDial, dialAction = strings.dialAction)
         }
-        Text(text = stringResource(R.string.emergency_contacts_note), style = MicroCaption, color = TextSecondary)
+        Text(text = strings.contactsNote, style = MicroCaption, color = TextSecondary)
 
-        SectionTitle(stringResource(R.string.emergency_position_title))
+        SectionTitle(strings.positionTitle)
         if (info.coordinatesLabel != null) {
             // Selectable so the coordinates can be copied into a message when they
             // cannot be read out loud; the rest of the card is not.
             SelectionContainer {
                 Text(text = info.coordinatesLabel, style = CardTitle, color = TextPrimary)
             }
-            Text(text = stringResource(R.string.emergency_position_note), style = MicroCaption, color = TextSecondary)
+            Text(text = strings.positionNote, style = MicroCaption, color = TextSecondary)
         } else {
-            Text(text = stringResource(R.string.emergency_position_unknown), style = CardSubtitle, color = TextSecondary)
+            Text(text = strings.positionUnknown, style = CardSubtitle, color = TextSecondary)
         }
 
-        Text(text = stringResource(R.string.emergency_offline_note), style = MicroCaption, color = TextSecondary)
+        Text(text = strings.offlineNote, style = MicroCaption, color = TextSecondary)
     }
 }
 
@@ -173,9 +176,13 @@ private fun EmergencyStep(title: String, detail: String) {
  * two labels in a row.
  */
 @Composable
-private fun EmergencyNumberRow(number: EmergencyNumber, onDial: (String) -> Unit) {
+private fun EmergencyNumberRow(
+    number: EmergencyNumber,
+    onDial: (String) -> Unit,
+    dialAction: (String) -> String
+) {
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
-    val action = stringResource(R.string.emergency_dial_action, number.number)
+    val action = dialAction(number.number)
 
     Row(
         modifier = Modifier

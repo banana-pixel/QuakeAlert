@@ -14,6 +14,13 @@ enum class OnboardingPageKind {
     /** Notification runtime permission card. */
     NOTIFICATION_PERMISSION,
 
+    /**
+     * Full-screen-intent permission card (API 34+): without it a locked phone
+     * cannot be woken. Opened via system Settings like the battery page —
+     * there is no runtime dialog for this permission.
+     */
+    FULLSCREEN_PERMISSION,
+
     /** Battery-optimization exemption card. */
     BATTERY_OPTIMIZATION,
 

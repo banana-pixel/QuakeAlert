@@ -153,7 +153,7 @@ fun SensorsScreen(
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
         // --- Static header: title + map preview + filter row -----------------
-        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates, lang = lang)
 
         SensorMapCard(
             overview = uiState.overview,
@@ -163,7 +163,7 @@ fun SensorsScreen(
             // camera moves to is the row the user tapped.
             markers = uiState.mapMarkers(),
             focus = uiState.mapFocus(),
-            pillLabel = uiState.mapPillLabel(),
+            pillLabel = uiState.mapPillLabel(lang),
             modifier = Modifier.padding(top = Dimens.HeaderSectionGap)
         )
 

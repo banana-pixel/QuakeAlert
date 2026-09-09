@@ -102,6 +102,7 @@ data class SettingsUiState(
     val notificationPermissionGranted: Boolean = true,
     val locationPermissionGranted: Boolean = true,
     val batteryUnrestricted: Boolean = false,
+    val fullscreenIntentGranted: Boolean = true,
     val inUseAlertWarning: String? = null,
     val isSyncing: Boolean = false,
     val statusMessage: String? = null,
@@ -156,8 +157,8 @@ data class SettingsUiState(
         get() = notificationsEnabled && notificationPermissionGranted
 
     /**
-     * How many of the three delivery prerequisites are satisfied, for the hub's
-     * "2 of 3 ready" summary.
+     * How many of the four delivery prerequisites are satisfied, for the hub's
+     * "3 of 4 ready" summary.
      *
      * Counted rather than reduced to a boolean because partial readiness is the
      * common case and the honest thing to print: an app with notifications but no
@@ -167,7 +168,8 @@ data class SettingsUiState(
         get() = listOf(
             notificationPermissionGranted,
             locationPermissionGranted,
-            batteryUnrestricted
+            batteryUnrestricted,
+            fullscreenIntentGranted
         ).count { it }
 
     /** Total prerequisites the hub lists. */
@@ -177,7 +179,7 @@ data class SettingsUiState(
     val allPermissionsReady: Boolean get() = permissionsReadyCount == PERMISSIONS_TOTAL
 
     private companion object {
-        const val PERMISSIONS_TOTAL = 3
+        const val PERMISSIONS_TOTAL = 4
         const val FIXED_GEOFENCE_FRACTION = 0.8f
     }
 }

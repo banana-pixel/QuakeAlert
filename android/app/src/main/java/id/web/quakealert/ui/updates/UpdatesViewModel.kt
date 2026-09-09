@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -62,10 +63,22 @@ class UpdatesViewModel(application: Application) : AndroidViewModel(application)
     init {
         load()
         observeSocket()
+        observeLanguage()
     }
 
     /** Retry hook for the error state's action. */
     fun refresh() = load()
+
+    /**
+     * Re-renders the list when the app language changes, so a switch in
+     * Settings does not need an app restart: relative ages are baked into the
+     * rows at load time. `drop(1)` skips the value replayed on collection.
+     */
+    private fun observeLanguage() {
+        viewModelScope.launch {
+            displayLang.drop(1).collect { load() }
+        }
+    }
 
     private fun load() {
         _uiState.update { it.copy(isLoading = true, error = null) }
@@ -104,11 +117,11 @@ class UpdatesViewModel(application: Application) : AndroidViewModel(application)
      */
     private fun observeSocket() {
         viewModelScope.launch {
-            val locale = resolveDisplayLanguage(
-                runCatching { repository.language.first() }.getOrNull()
-            ).locale()
             network.webSocketClient.operatorUpdates.collect { incoming ->
                 held = held.mergedWith(incoming)
+                // Resolved per frame, not once per collection: a language switch
+                // while the overlay is open must re-render the ages too.
+                val locale = displayLang.value.locale()
                 _uiState.update {
                     it.copy(updates = held.toUpdateItems(Instant.now(), locale), error = null)
                 }

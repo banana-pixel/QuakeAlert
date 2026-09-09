@@ -29,6 +29,7 @@ data class WarningStrings(
     val moreActive: (count: Int) -> String,
     val soundOn: String,
     val muteAlert: String,
+    val endTest: String,
     val sosOn: String,
     val sosLight: String,
     val noLight: String,
@@ -73,6 +74,7 @@ private fun warningStringsEn(): WarningStrings = WarningStrings(
     moreActive = { count -> "+$count more active" },
     soundOn = "SOUND ON",
     muteAlert = "MUTE ALERT",
+    endTest = "END TEST",
     sosOn = "SOS ON",
     sosLight = "SOS LIGHT",
     noLight = "NO LIGHT",
@@ -111,46 +113,46 @@ private fun warningStringsId(): WarningStrings = WarningStrings(
     seeDetails = "LIHAT DETAIL",
     retryButton = "COBA LAGI",
     emergencyCta = "LANGKAH DARURAT & KONTAK",
-    offlineMessage = "Luring: peringatan dijeda. Panduan di bawah tetap berfungsi tanpa koneksi.",
+    offlineMessage = "Offline: peringatan dijeda. Panduan di bawah tetap berfungsi tanpa koneksi.",
     cardTitle = "Aktivitas Seismik Terkini",
     within = { radius, days -> "Dalam $radius, $days hari terakhir" },
     confirmedEvents = "Kejadian Terkonfirmasi",
     mostRecent = "Terbaru",
     strongest = "Guncangan Terkuat",
-    disclaimer = "Hitungan berasal dari stasiun QuakeAlert sendiri dan bergantung pada berapa banyak yang dekat dengan Anda. " +
-        "Angka itu menggambarkan guncangan yang sudah tercatat. Bukan ramalan apa yang terjadi berikutnya.",
-    drillBadge = "UJI - LATIHAN, BUKAN GEMPA SUNGGUHAN",
+    disclaimer = "Data berasal dari stasiun QuakeAlert sendiri dan bergantung pada berapa banyak yang dekat dengan Anda. " +
+        "Data tersebut menggambarkan guncangan yang sudah tercatat. Bukan prediksi kejadian berikutnya.",
+    drillBadge = "UJI - LATIHAN, BUKAN GEMPA SEBENARNYA",
     alertTitle = "Peringatan Gempa Bumi",
     estimatedIntensity = "Estimasi Intensitas :",
     suggestedActions = "Tindakan yang Disarankan :",
     moreActive = { count -> "+$count aktif lainnya" },
-    soundOn = "SUARA NYALA",
-    muteAlert = "BISUKAN PERINGATAN",
-    sosOn = "SOS NYALA",
+    soundOn = "SUARA AKTIF",
+    muteAlert = "MATIKAN SUARA",
+    endTest = "AKHIRI TES",
+    sosOn = "SOS AKTIF",
     sosLight = "LAMPU SOS",
     noLight = "TANPA LAMPU",
-    statusTitle = "Status Proteksi",
+    statusTitle = "Status Perlindungan",
     automatic = "Otomatis",
     badgeBlocked = "Diblokir",
     badgeOff = "Dimatikan",
     badgeActive = "Aktif",
     ruleRadiusTitle = { radius -> "Peringatan dalam $radius" },
-    ruleRadiusDetail = "Setiap gempa yang sentroid estimasinya jatuh di dalam jarak " +
-        "ini membunyikan alarm. Radius diatur oleh sistem, nilai yang sama dipakai " +
+    ruleRadiusDetail = "Setiap gempa yang centroid estimasinya jatuh di dalam jarak " +
+        "ini akan membunyikan alarm. Radius diatur oleh sistem, nilai yang sama dipakai " +
         "server untuk memilih siapa yang diberi tahu.",
-    ruleSevereTitle = "Gempa parah mengabaikan jarak",
+    ruleSevereTitle = "Gempa kuat mengabaikan jarak",
     ruleSevereDetail = { pgaGal ->
         "MMI VII ke atas, atau percepatan tanah puncak sebesar " +
-            "$pgaGal gal atau lebih, berbunyi di " +
-            "mana pun Anda berada. Pada ukuran itu tidak ada jarak di mana Anda " +
-            "tidak perlu tahu."
+            "$pgaGal gal atau lebih, alarm akan berbunyi di " +
+            "mana pun Anda berada. Pada kekuatan sebesar itu, Anda perlu tahu di mana pun Anda berada."
     },
-    cannotDeliver = "Peringatan tidak dapat disampaikan",
-    reEnable = "Nyalakan lagi peringatan gempa bumi di Pengaturan.",
+    cannotDeliver = "Peringatan tidak bisa ditampilkan",
+    reEnable = "Nyalakan lagi peringatan gempa di Pengaturan.",
     cannotDeliverDetail = "Notifikasi diblokir di pengaturan sistem. Izinkan untuk " +
-        "QuakeAlert agar peringatan dapat mencapai layar Anda.",
+        "QuakeAlert agar peringatan bisa masuk ke layar Anda.",
     reEnableDetail = "Saklar peringatan gempa ada di layar Pengaturan. " +
-        "Menyalakannya lagi segera memulihkan proteksi.",
+        "Menyalakannya lagi segera memulihkan perlindungan.",
     detailTitle = "Gempa Terkini",
     checkingNetwork = "Memeriksa jaringan peringatan...",
     noGuidance = "Belum Ada Panduan",

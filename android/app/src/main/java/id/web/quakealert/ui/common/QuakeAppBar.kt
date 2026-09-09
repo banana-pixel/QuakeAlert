@@ -2,7 +2,9 @@ package id.web.quakealert.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,12 +14,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -25,9 +28,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.web.quakealert.R
 import id.web.quakealert.data.network.ServerHealth
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.ui.theme.CardBorder
 import id.web.quakealert.ui.theme.ConnectingBadgeFill
 import id.web.quakealert.ui.theme.Dimens
+import id.web.quakealert.ui.theme.FilterInactiveFill
 import id.web.quakealert.ui.theme.HealthyBadgeFill
 import id.web.quakealert.ui.theme.NunitoFontFamily
 import id.web.quakealert.ui.theme.OfflineBadgeFill
@@ -66,7 +71,8 @@ fun QuakeAppBar(
     title: String,
     health: ServerHealth,
     modifier: Modifier = Modifier,
-    onUpdatesClicked: (() -> Unit)? = null
+    onUpdatesClicked: (() -> Unit)? = null,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
     Row(
         modifier = modifier
@@ -86,32 +92,54 @@ fun QuakeAppBar(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (onUpdatesClicked != null) {
-                UpdatesIconButton(onClick = onUpdatesClicked)
+                UpdatesIconButton(
+                    onClick = onUpdatesClicked,
+                    contentDescription = if (lang == DisplayLanguage.ID) {
+                        "Buka pembaruan"
+                    } else {
+                        "Open Updates"
+                    }
+                )
                 // One badge-gap of air between the glyph and the status pill, so the
                 // pair reads as two separate controls rather than one crowded cluster.
                 Spacer(Modifier.width(Dimens.BadgeIconGap))
             }
-            ServerHealthBadge(health = health)
+            ServerHealthBadge(health = health, lang = lang)
         }
     }
 }
 
 /**
- * The Updates entry point in the app bar (Figma node 158-1645): tinted like every other
- * bar glyph. [IconButton] supplies the 48dp minimum touch target Material requires
- * without inflating the visible mark.
+ * The Updates entry point in the app bar (Figma node 158-1645): the same
+ * 30dp rounded-square chrome as the filter sheet button — dark fill, 1dp
+ * stroke, 20dp glyph — so the header's tappable affordance reads as one
+ * family with the badge beside it and the filter control below. Compact
+ * Figma size with no touch-target padding, exactly like its filter twin
+ * (and unlike a Material `IconButton`, whose 48dp minimum is what used to
+ * stretch this row a head taller than the design).
  */
 @Composable
 private fun UpdatesIconButton(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Open Updates"
 ) {
-    IconButton(onClick = onClick, modifier = modifier) {
+    val shape = RoundedCornerShape(Dimens.RadiusSmall)
+    Box(
+        modifier = modifier
+            .size(Dimens.FilterPillHeight)
+            .clip(shape)
+            .background(FilterInactiveFill, shape)
+            .border(Dimens.BorderThin, CardBorder, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(Dimens.CalendarButtonPadding),
+        contentAlignment = Alignment.Center
+    ) {
         Icon(
             painter = painterResource(id = R.drawable.ic_updates_notification),
-            contentDescription = "Open Updates",
+            contentDescription = contentDescription,
             tint = TextPrimary,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(Dimens.FilterTriggerGlyphSize)
         )
     }
 }
@@ -130,23 +158,26 @@ private fun UpdatesIconButton(
 @Composable
 private fun ServerHealthBadge(
     health: ServerHealth,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    lang: DisplayLanguage = DisplayLanguage.EN
 ) {
-    val (fill, glyph, label) = when (health) {
+    val (fill, glyph) = when (health) {
         // Neutral grey, not amber: no verdict yet must not read as a caution.
-        ServerHealth.CHECKING ->
-            Triple(PillFill, R.drawable.ic_globe, "Checking…")
-        ServerHealth.HEALTHY ->
-            Triple(HealthyBadgeFill, R.drawable.ic_globe, "Healthy")
-        ServerHealth.LIMITED ->
-            Triple(ConnectingBadgeFill, R.drawable.ic_globe, "Limited")
-        ServerHealth.OFFLINE ->
-            Triple(OfflineBadgeFill, R.drawable.ic_alert_triangle, "Offline")
+        ServerHealth.CHECKING -> Pair(PillFill, R.drawable.ic_globe)
+        ServerHealth.HEALTHY -> Pair(HealthyBadgeFill, R.drawable.ic_globe)
+        ServerHealth.LIMITED -> Pair(ConnectingBadgeFill, R.drawable.ic_globe)
+        ServerHealth.OFFLINE -> Pair(OfflineBadgeFill, R.drawable.ic_alert_triangle)
+    }
+    val label = health.label(lang)
+    val statusDescription = if (lang == DisplayLanguage.ID) {
+        "Status server: $label"
+    } else {
+        "Server status: $label"
     }
 
     Row(
         modifier = modifier
-            .semantics { contentDescription = "Server status: $label" }
+            .semantics { contentDescription = statusDescription }
             .background(fill, RoundedCornerShape(Dimens.RadiusSmall))
             .border(Dimens.BorderThin, CardBorder, RoundedCornerShape(Dimens.RadiusSmall))
             .padding(
@@ -171,5 +202,26 @@ private fun ServerHealthBadge(
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp
         )
+    }
+}
+
+/**
+ * Badge word in [lang]. Pure so the Indonesian copy stays pinned by unit test;
+ * "Offline" is deliberately the same in both — it is the technical term users say.
+ */
+internal fun ServerHealth.label(lang: DisplayLanguage): String {
+    if (lang == DisplayLanguage.ID) {
+        return when (this) {
+            ServerHealth.CHECKING -> "Memeriksa…"
+            ServerHealth.HEALTHY -> "Normal"
+            ServerHealth.LIMITED -> "Terbatas"
+            ServerHealth.OFFLINE -> "Offline"
+        }
+    }
+    return when (this) {
+        ServerHealth.CHECKING -> "Checking…"
+        ServerHealth.HEALTHY -> "Healthy"
+        ServerHealth.LIMITED -> "Limited"
+        ServerHealth.OFFLINE -> "Offline"
     }
 }

@@ -76,11 +76,11 @@ object UpdatesNotifier {
     }
 
     // Indonesian branch lands in B2.
-    private fun channelNameId(): String = "QuakeAlert Updates"
-    private fun channelDescId(): String = "Announcements from the QuakeAlert operators. Never earthquake alerts."
+    private fun channelNameId(): String = "Update QuakeAlert"
+    private fun channelDescId(): String = "Pengumuman dari operator QuakeAlert. Bukan peringatan gempa."
     private fun updateFallbackTitle(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) updateFallbackTitleId() else "QuakeAlert update"
-    private fun updateFallbackTitleId(): String = "QuakeAlert update"
+    private fun updateFallbackTitleId(): String = "Update QuakeAlert"
 
     /**
      * Posts one announcement.

@@ -122,19 +122,19 @@ private fun addSensorStringsId(): AddSensorStrings = AddSensorStrings(
             AddSensorWizardStep.CREDENTIALS -> "Langkah 2"
             AddSensorWizardStep.WLAN -> "Langkah 3"
             AddSensorWizardStep.FINISHING -> "Langkah 4"
-            AddSensorWizardStep.RATE_LIMIT -> "Galat"
+            AddSensorWizardStep.RATE_LIMIT -> "Error"
         }
     },
     processing = "Memproses, mohon tunggu...",
     configuredPending = "Terkonfigurasi. Sensor Anda menunggu verifikasi.",
-    online = "Sensor Anda daring.",
-    stationId = "ID Stasiun",
-    secretsTitle = "Secret Provisioning",
+    online = "Sensor Anda online.",
+    stationId = "ID stasiun",
+    secretsTitle = "Kredensial sensor",
     checkNow = "Periksa Sekarang",
     rateLimitedBody = "Anda sudah menambah sensor sesering yang diizinkan jaringan untuk saat ini. " +
         "Coba lagi dalam beberapa jam.",
     welcomeTitle = "Selamat datang di Penyiapan Sensor QuakeAlert!",
-    welcomeBody = "Anda akan menambahkan perangkat baru ke Jaringan QuakeAlert, untuk " +
+    welcomeBody = "Anda akan menambahkan perangkat baru ke jaringan QuakeAlert, untuk " +
         "info lebih lanjut Anda dapat mengunjungi Panduan Sensor.\n\nSetelah siap, " +
         "mulai proses penambahan sensor dengan tombol di bawah.",
     detectedCity = "Nama Kota Terdeteksi :",

@@ -181,7 +181,7 @@ fun WarningScreen(
     ) {
         // Rendered once, outside the branch: the header is the one part of the screen
         // the emergency state keeps, unchanged from the resting screen.
-        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates, lang = lang)
 
         when (uiState) {
             is WarningUiState.Idle -> IdleBody(
@@ -257,7 +257,8 @@ fun WarningScreen(
         EmergencyInfoModalDialog(
             info = info,
             onDial = onDial,
-            onDismiss = onEmergencyInfoDismissed
+            onDismiss = onEmergencyInfoDismissed,
+            lang = lang
         )
     }
 }

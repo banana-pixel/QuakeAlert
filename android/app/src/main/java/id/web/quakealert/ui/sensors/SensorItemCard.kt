@@ -162,14 +162,15 @@ private fun ChipColumn(label: String, modifier: Modifier = Modifier) {
     }
 }
 
-// Status pill + header words in the card language (B2). Acuan: "daring/luring".
+// Status pill + header words in the card language (B2). Online/offline stay
+// in English: that is what Indonesian tech users say.
 private fun stationPrefixId(): String = "Stasiun "
 private fun statusOnline(lang: DisplayLanguage): String =
-    if (lang == DisplayLanguage.ID) "Daring" else "Online"
+    if (lang == DisplayLanguage.ID) "Online" else "Online"
 private fun statusPending(lang: DisplayLanguage): String =
     if (lang == DisplayLanguage.ID) "Menunggu" else "Pending"
 private fun statusOffline(lang: DisplayLanguage): String =
-    if (lang == DisplayLanguage.ID) "Luring" else "Offline"
+    if (lang == DisplayLanguage.ID) "Offline" else "Offline"
 
 /** Station header, location and telemetry rows (Figma node 1:1118). */
 @Composable

@@ -219,10 +219,10 @@ data class RecentSeismicActivity(
             eventCount == 0 ->
                 "Tidak ada gempa tercatat di dekat Anda dalam $windowDays hari terakhir"
             mostRecent != null ->
-                "Terbaru: $mostRecent \u00b7 $countShort di dekat sini dalam $windowDays hari"
-            else -> "${countText(DisplayLanguage.ID)} di dekat sini dalam $windowDays hari terakhir"
+                "Terbaru: $mostRecent \u00b7 $countShort di dekat Anda dalam $windowDays hari"
+            else -> "${countText(DisplayLanguage.ID)} di dekat Anda dalam $windowDays hari terakhir"
         }
-        ActivityAvailability.NO_POSITION -> "Sinkronkan lokasi untuk melihat aktivitas di dekat sini"
+        ActivityAvailability.NO_POSITION -> "Sinkronkan lokasi untuk melihat aktivitas di dekat Anda"
         ActivityAvailability.UNAVAILABLE -> "Aktivitas terkini tidak tersedia"
     }
 
@@ -233,8 +233,8 @@ data class RecentSeismicActivity(
     }
 
     // Indonesian branches land in B2.
-    private fun needsPositionId(): String = "Butuh lokasi Anda"
-    private fun unavailableValueId(): String = "Tidak tersedia luring"
+    private fun needsPositionId(): String = "Perlu lokasi Anda"
+    private fun unavailableValueId(): String = "Tidak tersedia saat offline"
 
     companion object {
         /** Copy for the idle banner variants, matching the design (Figma 124:1426). */
@@ -301,9 +301,9 @@ fun suggestedActions(lang: DisplayLanguage = DisplayLanguage.EN): List<Suggested
     )
 }
 
-// Indonesian branch (B2). Acuan BMKG: "Lindungi diri Anda!", "Lindungi Kepala".
+// Indonesian branch (B2). Acuan BMKG: "Menunduk, Lindungi Kepala, Berpegangan".
 private fun suggestedActionsId(): List<SuggestedAction> = listOf(
-    SuggestedAction("drop", R.drawable.ic_action_drop, "Berlindung!"),
+    SuggestedAction("drop", R.drawable.ic_action_drop, "Menunduk!"),
     SuggestedAction("cover", R.drawable.ic_action_cover, "Lindungi Kepala!"),
     SuggestedAction("hold-on", R.drawable.ic_action_hold_on, "Berpegangan!")
 )
@@ -591,7 +591,7 @@ private fun noActiveQuakeTipsId(): List<PreparednessTip> = listOf(
         id = "home",
         icon = R.drawable.ic_prep_home,
         title = "Amankan Barang Berat",
-        description = "Jangkar furnitur tinggi, TV, dan peralatan besar ke dinding agar tidak jatuh."
+        description = "Ikat furnitur tinggi, TV, dan peralatan besar ke dinding agar tidak jatuh."
     )
 )
 

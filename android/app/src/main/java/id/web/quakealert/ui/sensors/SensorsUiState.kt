@@ -276,10 +276,11 @@ fun SensorsUiState.mapFocus(): MapFocus? {
  * place while the camera sits on a station was the whole complaint — the map moved and
  * refused to say where to.
  */
-fun SensorsUiState.mapPillLabel(): String {
+fun SensorsUiState.mapPillLabel(lang: DisplayLanguage = DisplayLanguage.EN): String {
     val selected = sensors.firstOrNull { it.id == selectedStationId } ?: return overview.locationLabel
     if (selected.latitude == null || selected.longitude == null) return overview.locationLabel
-    return "Station ${selected.stationId}"
+    val prefix = if (lang == DisplayLanguage.ID) "Stasiun " else "Station "
+    return "$prefix${selected.stationId}"
 }
 
 /**

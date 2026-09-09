@@ -153,7 +153,7 @@ private fun QuakeHistoryItem.shareTextId(unitSystem: UnitSystem): String = build
     appendLine("PGA (Maks): $pgaLabel")
     appendLine("Stasiun pelapor: $reportingNodesLabel")
     appendLine("Jarak dari saya: ${distanceKm?.let { unitSystem.formatDistance(it) } ?: "tidak diketahui"}")
-    append("Sentroid: $coordinates")
+    append("Centroid: $coordinates")
 }
 
 /**

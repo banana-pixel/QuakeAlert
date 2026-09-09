@@ -86,13 +86,13 @@ object StatusNotifier {
 
     // Indonesian branches (B2). Acuan string sistem: "Pengaturan".
     private fun channelNameId(): String = "Status QuakeAlert"
-    private fun channelDescId(): String = "Ringkasan tenang tentang apakah peringatan dapat mencapai Anda."
+    private fun channelDescId(): String = "Ringkasan senyap yang menunjukkan apakah peringatan bisa masuk ke ponsel Anda."
     private fun openAppLabel(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) openAppLabelId() else "Open QuakeAlert"
     private fun fixInSettingsLabel(lang: DisplayLanguage): String =
         if (lang == DisplayLanguage.ID) fixInSettingsLabelId() else "Fix in settings"
     private fun openAppLabelId(): String = "Buka QuakeAlert"
-    private fun fixInSettingsLabelId(): String = "Perbaiki di pengaturan"
+    private fun fixInSettingsLabelId(): String = "Perbaiki di Pengaturan"
 
     /**
      * Posts (or updates in place) the status notification.

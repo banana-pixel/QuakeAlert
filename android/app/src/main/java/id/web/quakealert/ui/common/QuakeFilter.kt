@@ -76,14 +76,14 @@ enum class QuakeStationStatus(val label: String, val emptyRollSubtitle: String) 
 
     private fun labelId(): String = when (this) {
         ALL -> "Semua stasiun"
-        ONLINE -> "Hanya daring"
-        OFFLINE -> "Hanya luring"
+        ONLINE -> "Hanya online"
+        OFFLINE -> "Hanya offline"
     }
 
     private fun emptyRollSubtitleId(): String = when (this) {
         ALL -> ""
-        ONLINE -> "Setiap stasiun di daerah ini sedang luring."
-        OFFLINE -> "Setiap stasiun di daerah ini sedang melapor."
+        ONLINE -> "Semua stasiun di area ini sedang offline."
+        OFFLINE -> "Semua stasiun di area ini sedang online."
     }
 }
 
@@ -124,14 +124,14 @@ enum class QuakeIntensity(
         ALL -> "Semua Intensitas"
         FELT -> "Terasa (MMI IV+)"
         MODERATE -> "Sedang (MMI VI+)"
-        SEVERE -> "Parah (MMI VII+)"
+        SEVERE -> "Kuat (MMI VII+)"
     }
 
     private fun descriptionId(): String = when (this) {
         ALL -> "Semua yang direkam jaringan sensor."
         FELT -> "Guncangan ringan, dirasakan kebanyakan orang di dalam ruangan."
         MODERATE -> "Cukup untuk meretakkan plester dan mengayunkan benda gantung."
-        SEVERE -> "Guncangan merusak; sama dengan ambang ganti peringatan."
+        SEVERE -> "Guncangan merusak; sama dengan ambang batas peringatan."
     }
 
     /**

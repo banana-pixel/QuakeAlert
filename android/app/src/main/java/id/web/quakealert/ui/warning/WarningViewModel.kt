@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -181,6 +182,7 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
     init {
         load()
         observeAlerts()
+        observeLanguage()
     }
 
     /**
@@ -189,6 +191,21 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      */
     fun onRetry() {
         load()
+    }
+
+    /**
+     * Re-renders the banner, section title and tips when the app language
+     * changes, so a switch in Settings does not need an app restart. Never
+     * touches an [WarningUiState.ActiveAlert]: a language switch mid-shaking
+     * must not take the emergency screen down.
+     * `drop(1)` skips the value replayed on collection.
+     */
+    private fun observeLanguage() {
+        viewModelScope.launch {
+            displayLang.drop(1).collect {
+                if (_uiState.value is WarningUiState.Idle) load()
+            }
+        }
     }
 
     /**
@@ -784,7 +801,10 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
      */
     fun onEmergencyClicked() {
         val info = EmergencyInfoState(
-            numbers = EmergencyContacts.forCountry(DeviceCountry.resolve(getApplication())),
+            numbers = EmergencyContacts.forCountry(
+                DeviceCountry.resolve(getApplication()),
+                displayLang.value
+            ),
             coordinatesLabel = lastKnownLocation?.let {
                 QuakeFormat.coordinates(it.latitude, it.longitude)
             }

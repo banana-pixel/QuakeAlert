@@ -54,16 +54,16 @@ private fun filterStringsId(): FilterStrings = FilterStrings(
     intensityGroup = "Intensitas Guncangan",
     radiusGroup = "Radius Pencarian",
     radiusNote = { alertKm ->
-        "Hanya berlaku untuk pil \"Dekat\". Peringatan darurat selalu memakai " +
-            "radius tetap $alertKm km dan tidak dapat diubah."
+        "Hanya berlaku untuk filter \"Dekat\". Peringatan darurat selalu memakai " +
+            "radius tetap $alertKm km dan tidak bisa diubah."
     },
     sensorsWithin = { maxLabel ->
-        "Sensor didaftar dalam $maxLabel. " +
-            "Itu jarak terjauh yang dapat dicari tab itu."
+        "Sensor ditampilkan dalam $maxLabel. " +
+            "Itu jarak terjauh yang bisa dicari."
     },
     timeGroup = "Rentang Waktu",
     stationGroup = "Status Stasiun",
-    stationNote = "Stasiun luring tetap di daftar kecuali Anda persempit di sini.",
+    stationNote = "Stasiun offline tetap di daftar kecuali Anda memfilternya di sini.",
     reset = "Atur Ulang",
     apply = "Terapkan",
     filter = "Filter",

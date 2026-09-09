@@ -28,10 +28,9 @@ import kotlin.math.roundToInt
  * Posts the emergency notification that wakes the device, and hands it the
  * full-screen intent to [WarningActivity].
  *
- * Separate from [id.web.quakealert.ui.onboarding.TestAlertNotifier] and on its own
- * channel: the test alert is a dismissible demonstration, this one is insistent,
- * and a user who mutes the channel carrying "your test worked" must not thereby
- * mute real earthquake warnings.
+ * Separate from the siren demo dialog (which only plays the tone in-app):
+ * the local drill test raises through this very notifier as a marked
+ * `is_test` event, and this one is insistent where a demo is dismissible.
  *
  * The caller applies [id.web.quakealert.domain.AlertGate] before reaching here —
  * this class only reports the [AlertDecision] it was given.
@@ -279,7 +278,7 @@ object WarningNotifier {
     private fun bodyTextId(message: WsAlertMessage, distanceKm: Int?): String {
         val where = message.locationName.takeIf { it.isNotBlank() } ?: "daerah Anda"
         val proximity = distanceKm?.let { "$it km dari Anda" } ?: "jarak tidak diketahui"
-        return "Intensitas ${message.mmi} di dekat $where ($proximity). Segera berlindung di tempat yang aman."
+        return "Intensitas ${message.mmi} di dekat $where ($proximity). Menunduk, lindungi kepala, berpegangan."
     }
     private fun alertTitleId(message: WsAlertMessage): String =
         if (message.isTest) "UJI - latihan gempa bumi" else "Gempa bumi terdeteksi"

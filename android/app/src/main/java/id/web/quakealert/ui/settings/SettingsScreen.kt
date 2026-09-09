@@ -49,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.device.LOCATION_PERMISSIONS
 import id.web.quakealert.device.hasLocationPermission
+import id.web.quakealert.device.openFullscreenIntentSettings
 import id.web.quakealert.domain.SafetyPolicy
 import id.web.quakealert.data.network.ServerHealth
 import id.web.quakealert.ui.common.QuakeAppBar
@@ -183,6 +184,7 @@ fun SettingsRoute(
         onOpenUpdates = onOpenUpdates,
         onBatterySettings = { context.openBatteryOptimizationSettings() },
         onFixNotifications = { context.openNotificationSettings() },
+        onFixFullscreen = { context.openFullscreenIntentSettings() },
         // The same launcher "Sync Now" uses: granting the permission and taking a
         // first fix are one action, and a grant that leaves the position unset would
         // still show the checklist's own consequence.
@@ -261,8 +263,9 @@ private fun Context.openBatteryOptimizationSettings() {
  *     user's to make.
  *  3. "Alert & Notification": the alert switch (which also surfaces a revoked OS
  *     notification permission), "Test Alert Sound", and the "Delivery Checklist" —
- *     the three system prerequisites (notifications, location, Doze exemption)
- *     grouped in one panel because they fail as a set, not one at a time.
+ *     the four system prerequisites (notifications, location, Doze exemption,
+ *     lock-screen wake) grouped in one panel because they fail as a set, not one
+ *     at a time.
  *  4. "Account & Privacy": the anonymous pseudonym and `user_id`, both copyable,
  *     with a reroll and an irreversible profile reset behind a confirmation.
  *  5. "Appearance & Look": "Light Mode (Beta)" and the "Units" / "Language"
@@ -287,6 +290,7 @@ fun SettingsScreen(
     onOpenUpdates: () -> Unit,
     onBatterySettings: () -> Unit,
     onFixNotifications: () -> Unit,
+    onFixFullscreen: () -> Unit,
     onFixLocation: () -> Unit,
     onCopyValue: (String) -> Unit,
     onRerollPseudonym: () -> Unit,
@@ -310,7 +314,12 @@ fun SettingsScreen(
             .fillMaxSize()
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
-        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(
+            title = strings.appBar,
+            health = health,
+            onUpdatesClicked = onOpenUpdates,
+            lang = uiState.language.toDisplay()
+        )
 
         Column(
             modifier = Modifier
@@ -485,12 +494,15 @@ fun SettingsScreen(
                         notificationGranted = uiState.notificationPermissionGranted,
                         locationGranted = uiState.locationPermissionGranted,
                         batteryUnrestricted = uiState.batteryUnrestricted,
+                        fullscreenGranted = uiState.fullscreenIntentGranted,
                         onFixNotifications = onFixNotifications,
                         onFixLocation = onFixLocation,
                         onFixBattery = onBatterySettings,
+                        onFixFullscreen = onFixFullscreen,
                         notificationsTitle = strings.permNotifications,
                         locationTitle = strings.permLocation,
                         backgroundTitle = strings.permBackground,
+                        fullscreenTitle = strings.permFullscreen,
                         allowedLabel = strings.allowed,
                         unrestrictedLabel = strings.unrestricted,
                         tapToAllowLabel = strings.tapToAllow,
@@ -747,6 +759,7 @@ private fun SettingsScreenPreview() {
             onAutoSyncToggled = {},
             onSyncLocationNow = {},
             onFixNotifications = {},
+            onFixFullscreen = {},
             onFixLocation = {},
             onNotificationsToggled = {},
             onNotificationsDisableConfirmed = {},

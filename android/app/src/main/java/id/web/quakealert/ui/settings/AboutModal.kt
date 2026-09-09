@@ -121,7 +121,8 @@ fun AboutModalDialog(
             onGithubClick = onGithubClick,
             onEmailClick = onEmailClick,
             onDonateClick = onDonateClick,
-            lang = lang
+            lang = lang,
+            modifier = Modifier.padding(Dimens.ScreenHorizontalPadding)
         )
     }
 }

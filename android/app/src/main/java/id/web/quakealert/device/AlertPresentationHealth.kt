@@ -31,8 +31,8 @@ import id.web.quakealert.domain.DisplayLanguage
  *    requires HIGH), or an explicitly silent sound. Observed on-device
  *    (dumpsys): a fresh channel resolves `sound` to the system default URI,
  *    while the 2026-08-31 `setSound(null, null)` channel showed null — so
- *    null sound here means explicitly silenced, not "default". Only the
- *    nullness is recorded, never the URI (no PII in diagnostics).
+ * null sound here means explicitly silenced, not "default". Only the
+ * nullness is recorded, never the URI (no PII in diagnostics).
  */
 
 /** Why in-use presentation is degraded. Empty means healthy. */
@@ -111,6 +111,22 @@ fun Context.alertPresentationHealth(): Set<PresentationDegradation> =
         headsUpEnabledGlobally = isHeadsUpEnabledGlobally(),
         channel = readEmergencyChannel()
     )
+
+/**
+ * Whether the OS lets the emergency notification wake the lock screen.
+ *
+ * True below API 34 (no such permission exists there). On failure the healthy
+ * direction is assumed: a diagnostic must not nag about a condition it could
+ * not read. Consumed by the onboarding fullscreen page; the raise path makes
+ * its own opposite assumption ([id.web.quakealert.service.WarningNotifier]
+ * falls back to heads-up when unsure), because there a wrong guess means a
+ * lockscreen alarm that never comes.
+ */
+fun Context.canUseFullScreenIntentCompat(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+    val manager = getSystemService<NotificationManager>() ?: return true
+    return runCatching { manager.canUseFullScreenIntent() }.getOrDefault(true)
+}
 
 /**
  * User-facing warning copy for a degraded result, null when healthy (so callers

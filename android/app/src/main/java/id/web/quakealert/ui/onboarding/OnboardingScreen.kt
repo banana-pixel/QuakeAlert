@@ -54,7 +54,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import id.web.quakealert.R
 import id.web.quakealert.data.network.QuakeNetwork
+import id.web.quakealert.device.canUseFullScreenIntentCompat
+import id.web.quakealert.device.openFullscreenIntentSettings
 import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.service.AlertRaiser
 import id.web.quakealert.ui.common.TestAlertSoundDialog
 import id.web.quakealert.ui.common.QuakePageIndicator
 import id.web.quakealert.ui.common.QuakePrimaryButton
@@ -132,6 +135,9 @@ fun OnboardingScreen(
     var batteryUnrestricted by remember {
         mutableStateOf(isIgnoringBatteryOptimizations(context))
     }
+    var fullscreenGranted by remember {
+        mutableStateOf(context.canUseFullScreenIntentCompat())
+    }
 
     val notificationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -159,6 +165,7 @@ fun OnboardingScreen(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         batteryUnrestricted = isIgnoringBatteryOptimizations(context)
+        fullscreenGranted = context.canUseFullScreenIntentCompat()
     }
 
     val requestNotification: () -> Unit = {
@@ -182,6 +189,13 @@ fun OnboardingScreen(
         openBatteryOptimizationSettings(context, settingsLauncher::launch)
     }
 
+    // Full-screen intent has no runtime dialog (unlike POST_NOTIFICATIONS):
+    // the only path is the app's notification settings screen, like the
+    // battery exemption above — hence the settings launcher for the return.
+    val requestFullscreen: () -> Unit = {
+        openFullscreenSettings(context, settingsLauncher::launch)
+    }
+
     // Local to the screen: the modal owns its own playback, so there is nothing
     // about it for onboarding state to hold. Hosted here rather than inside
     // TestAlertControls so it survives the page recomposing under a swipe.
@@ -191,14 +205,17 @@ fun OnboardingScreen(
     }
 
     val fireTestAlert: () -> Unit = {
-        val shown = TestAlertNotifier.showTestAlert(context, lang)
-        if (!shown) {
-            Toast.makeText(
-                context,
-                strings.toastEnableFirst,
-                Toast.LENGTH_SHORT
-            ).show()
-            requestNotification()
+        coroutineScope.launch {
+            when (AlertRaiser.runLocalTest(context)) {
+                AlertRaiser.LocalTestOutcome.RAN -> Unit
+                AlertRaiser.LocalTestOutcome.SWITCH_OFF -> {
+                    Toast.makeText(context, strings.enableAlertsFirst, Toast.LENGTH_SHORT).show()
+                }
+                AlertRaiser.LocalTestOutcome.NO_PERMISSION -> {
+                    Toast.makeText(context, strings.toastEnableFirst, Toast.LENGTH_SHORT).show()
+                    requestNotification()
+                }
+            }
         }
     }
 
@@ -232,9 +249,11 @@ fun OnboardingScreen(
                     notificationGranted = notificationGranted,
                     locationGranted = locationGranted,
                     batteryUnrestricted = batteryUnrestricted,
+                    fullscreenGranted = fullscreenGranted,
                     onRequestNotification = requestNotification,
                     onRequestLocation = requestLocation,
                     onRequestBattery = requestBattery,
+                    onRequestFullscreen = requestFullscreen,
                     onTestAlert = fireTestAlert,
                     onTestAlertSound = { showTestAlertSound = true },
                     strings = strings,
@@ -318,9 +337,11 @@ fun OnboardingPageItem(
     notificationGranted: Boolean,
     locationGranted: Boolean,
     batteryUnrestricted: Boolean,
+    fullscreenGranted: Boolean = true,
     onRequestNotification: () -> Unit,
     onRequestLocation: () -> Unit,
     onRequestBattery: () -> Unit,
+    onRequestFullscreen: () -> Unit = {},
     onTestAlert: () -> Unit,
     onTestAlertSound: () -> Unit,
     modifier: Modifier = Modifier,
@@ -396,6 +417,14 @@ fun OnboardingPageItem(
                     onClick = onRequestBattery
                 )
 
+                OnboardingPageKind.FULLSCREEN_PERMISSION -> PermissionCard(
+                    title = page.cardTitle,
+                    isGranted = fullscreenGranted,
+                    grantedLabel = page.grantedLabel,
+                    tapToAllowLabel = strings.tapToAllow,
+                    onClick = onRequestFullscreen
+                )
+
                 OnboardingPageKind.LOCATION_PERMISSION -> PermissionCard(
                     title = page.cardTitle,
                     isGranted = locationGranted,
@@ -413,6 +442,24 @@ fun OnboardingPageItem(
                 else -> Unit
             }
         }
+    }
+}
+
+/**
+ * Opens the "Manage full screen intents" system page, where the
+ * full-screen-intent toggle lives — there is no runtime dialog for this
+ * permission. Falls back to the app's notification settings on a device
+ * without the dedicated page (pre-API 34).
+ */
+private fun openFullscreenSettings(
+    context: Context,
+    launch: (Intent) -> Unit
+) {
+    // Resolved synchronously (not via the launcher) because only the
+    // fallback needs launching: the dedicated page, when present, is opened
+    // directly like every other system screen from this flow.
+    if (!context.openFullscreenIntentSettings()) {
+        launch(Intent(Settings.ACTION_SETTINGS))
     }
 }
 
@@ -486,6 +533,18 @@ private fun rememberOnboardingPages(strings: OnboardingStrings, lang: DisplayLan
             },
             kind = OnboardingPageKind.NOTIFICATION_PERMISSION,
             cardTitle = if (id) "Izinkan Notifikasi" else "Allow Notification",
+            grantedLabel = strings.allowed
+        ),
+        OnboardingPage(
+            iconRes = R.drawable.ic_fullscreen_permission,
+            title = if (id) "Mohon izinkan peringatan layar penuh." else "Please allow full-screen alerts.",
+            description = if (id) {
+                "Agar peringatan gempa dapat membangunkan ponsel ini saat terkunci."
+            } else {
+                "So earthquake warnings can wake this phone when it is locked."
+            },
+            kind = OnboardingPageKind.FULLSCREEN_PERMISSION,
+            cardTitle = if (id) "Izinkan Layar Penuh" else "Allow Full-Screen Alerts",
             grantedLabel = strings.allowed
         ),
         OnboardingPage(

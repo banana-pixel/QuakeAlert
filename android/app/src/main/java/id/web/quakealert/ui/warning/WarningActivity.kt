@@ -22,9 +22,11 @@ import id.web.quakealert.device.TorchController
 import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.domain.AlertType
+import id.web.quakealert.service.WarningNotifier
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.QuakeAlertTheme
 import id.web.quakealert.ui.theme.OnboardingBackgroundBrush
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -66,6 +68,7 @@ class WarningActivity : ComponentActivity() {
         state = intent.toActiveAlert()
         siren.start()
         observeStandDown()
+        if (state.isTest) armTestAutoEnd()
 
         setContent {
             QuakeAlertTheme {
@@ -79,6 +82,7 @@ class WarningActivity : ComponentActivity() {
                         state = state,
                         onMuteClick = ::onMuteClick,
                         onSosLightClick = ::onSosLightClick,
+                        onEndTestClick = ::onEndTestClicked.takeIf { state.isTest },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -165,8 +169,34 @@ class WarningActivity : ComponentActivity() {
         state = state.copy(isMuted = muted)
     }
 
-    private fun onSosLightClick() {
-        if (state.isSosLightOn) {
+    /**
+     * Ends a drill test from the "AKHIRI TES" / "END TEST" control: clears the
+     * exact test event's notification and board slot, then closes this screen.
+     * Only reachable when the shown event is a test (the control renders
+     * exclusively for `isTest`), so a real alert can never take this path.
+     */
+    private fun onEndTestClicked() {
+        WarningNotifier.clear(this, state.eventId)
+        finish()
+    }
+
+    /**
+     * Safety timeout for a drill test: the same cleanup as the manual control,
+     * fired once after [TEST_AUTO_END_MS]. A server resolve will never arrive
+     * for a synthetic event, so an un-ended test must not linger past its
+     * exercise. Scoped to the Activity lifecycle: dying with the screen is the
+     * correct semantic, and the manual control cancels nothing — whichever
+     * fires first wins, the second is a no-op clear plus a finish of an
+     * already-finishing screen.
+     */
+    private fun armTestAutoEnd() {
+        lifecycleScope.launch {
+            delay(TEST_AUTO_END_MS)
+            if (state.isTest) onEndTestClicked()
+        }
+    }
+
+    private fun onSosLightClick() {        if (state.isSosLightOn) {
             torch.stop()
             state = state.copy(isSosLightOn = false, isSosLightUnavailable = false)
             return
@@ -217,6 +247,13 @@ class WarningActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "WarningActivity"
+        /**
+         * Safety timeout for a drill test (one minute): long enough to verify
+         * the lock-screen wake, siren and controls, short enough that a
+         * forgotten test cleans itself up. Manual "AKHIRI TES" takes the same
+         * path sooner.
+         */
+        const val TEST_AUTO_END_MS = 60_000L
         private const val EXTRA_EVENT_ID = "event_id"
         private const val EXTRA_INTENSITY = "intensity_value"
         private const val EXTRA_DISTANCE_KM = "distance_km"

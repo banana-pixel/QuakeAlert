@@ -79,7 +79,8 @@ fun ActiveAlertCard(
     onMuteClick: () -> Unit,
     onSosLightClick: () -> Unit,
     modifier: Modifier = Modifier,
-    lang: DisplayLanguage = DisplayLanguage.EN
+    lang: DisplayLanguage = DisplayLanguage.EN,
+    onEndTestClick: (() -> Unit)? = null
 ) {
     val strings = remember(lang) { warningStrings(lang) }
     Column(
@@ -132,6 +133,53 @@ fun ActiveAlertCard(
             onMuteClick = onMuteClick,
             onSosLightClick = onSosLightClick
         )
+
+        // Test-only exit, below the hardware controls. A server resolve will
+        // never arrive for a synthetic event, so without this the test card
+        // could never be stood down by the user. Gated on both the flag and a
+        // non-null handler: real alerts never render it, and the in-app drill
+        // card (which passes no handler) is untouched.
+        if (state.isTest && onEndTestClick != null) {
+            EndTestControl(label = strings.endTest, onClick = onEndTestClick)
+        }
+    }
+}
+
+/**
+ * Test-only full-width exit control ("AKHIRI TES" / "END TEST").
+ *
+ * Same capsule chrome as [MuteControl] (idle fill, 2dp stroke, radius, label
+ * style), no icon: it ends the exercise rather than driving hardware, and a
+ * distinct glyph would suggest otherwise.
+ */
+@Composable
+private fun EndTestControl(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .minimumInteractiveComponentSize()
+            .background(
+                color = EmergencyControlFillIdle,
+                shape = RoundedCornerShape(Dimens.EmergencyControlRadius)
+            )
+            .border(
+                width = Dimens.EmergencyControlBorderWidth,
+                color = EmergencyControlBorder,
+                shape = RoundedCornerShape(Dimens.EmergencyControlRadius)
+            )
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .padding(
+                horizontal = Dimens.EmergencyMutePaddingHorizontal,
+                vertical = Dimens.EmergencyMutePaddingVertical
+            ),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = EmergencyControlLabel)
     }
 }
 

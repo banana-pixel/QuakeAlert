@@ -53,6 +53,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -104,7 +105,7 @@ enum class MainDestination(
         HISTORY -> "Riwayat"
         SENSORS -> "Sensor"
         WARNING -> "Peringatan"
-        CHAT -> "Obrolan"
+        CHAT -> "Chat"
         SETTINGS -> "Pengaturan"
     }
 }
@@ -382,7 +383,10 @@ private fun NavItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = contentColor
+            color = contentColor,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

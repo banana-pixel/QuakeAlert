@@ -38,7 +38,7 @@ private fun chatStringsEn(): ChatStrings = ChatStrings(
 )
 
 private fun chatStringsId(): ChatStrings = ChatStrings(
-    appBar = "Obrolan",
+    appBar = "Chat",
     loading = "Memuat pesan...",
     loadingOlder = "Memuat pesan lama...",
     emptyTitle = "Belum ada pesan",

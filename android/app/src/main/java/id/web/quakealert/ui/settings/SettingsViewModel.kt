@@ -12,16 +12,18 @@ import id.web.quakealert.data.network.mapper.QuakeFormat
 import id.web.quakealert.data.users.LocationSyncResult
 import id.web.quakealert.device.alertPresentationHealth
 import id.web.quakealert.device.canPostNotifications
+import id.web.quakealert.device.canUseFullScreenIntentCompat
 import id.web.quakealert.device.hasLocationPermission
 import id.web.quakealert.device.isBatteryUnrestricted
 import id.web.quakealert.device.warningCopy
 import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.SafetyPolicy
+import id.web.quakealert.service.AlertRaiser
 import id.web.quakealert.ui.common.errorCopy
-import id.web.quakealert.ui.onboarding.TestAlertNotifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -85,7 +87,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
         viewModelScope.launch {
             repository.language.collect { tag ->
-                _uiState.update { it.copy(language = AppLanguage.fromTag(tag)) }
+                val lang = AppLanguage.fromTag(tag)
+                // Re-rendered, not just relabelled: the "last sync" pill bakes
+                // the relative age ("2 minutes ago") at format time, so a
+                // language switch must recompute it from the stored epoch.
+                val at = runCatching { repository.lastSyncAtMs.first() }.getOrNull()
+                _uiState.update {
+                    it.copy(
+                        language = lang,
+                        lastSyncLabel = at?.toRelativeLabel(lang.toDisplay())
+                    )
+                }
             }
         }
     }
@@ -130,6 +142,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 notificationPermissionGranted = context.canPostNotifications(),
                 locationPermissionGranted = context.hasLocationPermission(),
                 batteryUnrestricted = context.isBatteryUnrestricted(),
+                fullscreenIntentGranted = context.canUseFullScreenIntentCompat(),
                 inUseAlertWarning = presentationHealth.warningCopy(it.language.toDisplay())
             )
         }
@@ -185,25 +198,34 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * "Test Notification" — posts one local alert so the user can see for themselves
-     * that a notification reaches their screen.
-     *
-     * The same [TestAlertNotifier] the onboarding control uses, so both places prove
-     * the same thing on the same channel. It returns false when `POST_NOTIFICATIONS`
-     * is missing, which is reported here rather than swallowed: a button that does
-     * nothing visible is indistinguishable from a broken alert pipeline, which is the
-     * one thing this control exists to rule out.
+     * "Uji Peringatan Gempa" — runs a synthetic drill through the same raise
+     * pipeline a server drill travels (validity, dedup, gate, emergency
+     * notification, full-screen activity, D-019 logging). Only the event
+     * source differs. The drill itself is the feedback, so a run posts
+     * nothing; refusals are reported instead — a button that does nothing
+     * visible is indistinguishable from a broken alert pipeline.
      */
     fun onTestNotification() {
         val lang = _uiState.value.language.toDisplay()
-        if (TestAlertNotifier.showTestAlert(getApplication(), lang)) return
-        post(
-            if (lang == DisplayLanguage.ID) {
-                "Izinkan notifikasi di pengaturan sistem untuk menguji peringatan"
-            } else {
-                "Allow notifications in system settings to test alerts"
+        viewModelScope.launch {
+            when (AlertRaiser.runLocalTest(getApplication())) {
+                AlertRaiser.LocalTestOutcome.RAN -> Unit
+                AlertRaiser.LocalTestOutcome.SWITCH_OFF -> post(
+                    if (lang == DisplayLanguage.ID) {
+                        "Nyalakan peringatan gempa dulu untuk menjalankan uji latihan."
+                    } else {
+                        "Turn on earthquake alerts first to run the drill test."
+                    }
+                )
+                AlertRaiser.LocalTestOutcome.NO_PERMISSION -> post(
+                    if (lang == DisplayLanguage.ID) {
+                        "Izinkan notifikasi di pengaturan sistem untuk menguji peringatan"
+                    } else {
+                        "Allow notifications in system settings to test alerts"
+                    }
+                )
             }
-        )
+        }
     }
 
     /**
@@ -393,8 +415,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // Indonesian branches (B2).
     private fun toMessageIdUpdated(): String = "Lokasi diperbarui"
     private fun toMessageIdUnchanged(): String = "Lokasi tidak berubah. Anda belum berpindah."
-    private fun toMessageIdPermission(): String = "Izin lokasi diperlukan untuk sinkron"
-    private fun toMessageIdNoFix(): String = "Tidak mendapat titik lokasi. Coba lagi di luar ruangan."
+    private fun toMessageIdPermission(): String = "Izin lokasi diperlukan untuk sinkronisasi"
+    private fun toMessageIdNoFix(): String = "Tidak mendapatkan lokasi. Coba lagi di luar ruangan."
 
     private companion object {
         const val TAG = "SettingsViewModel"

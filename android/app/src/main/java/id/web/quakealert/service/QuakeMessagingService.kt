@@ -7,10 +7,6 @@ import id.web.quakealert.data.AppSettingsRepository
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.data.network.mapper.toOperatorUpdateOrNull
 import id.web.quakealert.data.network.mapper.toWsAlertMessageOrNull
-import id.web.quakealert.domain.AlertGate
-import id.web.quakealert.domain.AlertType
-import id.web.quakealert.domain.RaiseOutcomeLog
-import id.web.quakealert.domain.WsAlertMessage
 import id.web.quakealert.domain.resolveDisplayLanguage
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -84,73 +80,12 @@ class QuakeMessagingService : FirebaseMessagingService() {
             return
         }
 
-        // An all-clear takes the notification down and needs no gate: the user is
-        // being told something ended, and being told that too far away is harmless.
-        if (message.type == AlertType.EVENT_RESOLVED) {
-            network.alertDedup.markIfNew(message)
-            WarningNotifier.clear(applicationContext, message.eventId)
-            // CANCELLED and RESOLVED share this wire type and differ only in
-            // event_state (the type enum is frozen so an un-updated install still
-            // clears its alarm); both take the notification down, and only the wording
-            // the app shows on return differs.
-            Log.i(TAG, "push stand-down ${message.eventId}: ${message.eventState}")
-            return
-        }
-
-        // Advisories are 1–2 unconfirmed nodes. They never wake the device — the app
-        // shows them as a banner when it is open. Escalating them here would train
-        // users to dismiss the real thing.
-        //
-        // Since server Phase 3 an advisory is not published to FCM at all, so this is
-        // now a safety net rather than a live branch. It stays: what makes an
-        // advisory banner-only is this check, not the server's send list, and a
-        // configuration change on one deployment must not be able to turn an
-        // unconfirmed tremor into a full-screen alarm.
-        if (message.type == AlertType.EARTHQUAKE_ADVISORY) return
-
-        if (!message.isActionable()) {
-            Log.i(TAG, RaiseOutcomeLog.expired(message.eventId, message.validityMs > 0))
-            return
-        }
-
-        if (!network.alertDedup.markIfNew(message)) {
-            Log.i(TAG, "push alert ${message.eventId} already handled; dropped")
-            return
-        }
-
+        // The raise itself lives in AlertRaiser, shared with the local drill
+        // test: parsing is push-specific, everything after it is not.
         network.applicationScope.launch {
-            if (!settings.notificationsEnabledOrDefault()) {
-                Log.i(TAG, "user disabled alert notifications; not raising")
-                return@launch
-            }
-
-            val decision = AlertGate.decide(
-                userLocation = network.sessionStore.readUserLocation(),
-                centroidLat = message.centroidLat,
-                centroidLon = message.centroidLon,
-                mmi = message.mmi,
-                pgaGal = message.pgaGal
-            )
-
-            if (!decision.shouldAlarm) {
-                // D-019: event_id + gate reason only. The previous wording logged
-                // the rounded distance, which is location-derived and now
-                // forbidden on the raise path; the reason enum already says why.
-                Log.i(TAG, RaiseOutcomeLog.gatedOut(message.eventId, decision.reason))
-                return@launch
-            }
-
-            WarningNotifier.notify(
-                applicationContext,
-                message,
-                decision,
-                resolveDisplayLanguage(runCatching { settings.language.first() }.getOrNull())
-            )
+            AlertRaiser.raiseAlertFrame(applicationContext, message)
         }
     }
-
-    private suspend fun AppSettingsRepository.notificationsEnabledOrDefault(): Boolean =
-        runCatching { notificationsEnabled.first() }.getOrDefault(true)
 
     private companion object {
         const val TAG = "QuakeMessaging"

@@ -155,6 +155,20 @@ class AppSettingsRepository(context: Context) {
         it[KEY_LAST_ALERT_SUMMARY] = summary
     }
 
+    /**
+     * Event id of the most recent local drill test, or null when none has run.
+     *
+     * A new test clears this id first, so a previous test's notification can
+     * never accumulate in the shade: without a server `EVENT_RESOLVED` coming
+     * for synthetic ids, the next test is the only reliable sweeper.
+     */
+    val lastLocalTestEventId: Flow<String?> = read { it[KEY_LAST_LOCAL_TEST_EVENT_ID] }
+
+    fun setLastLocalTestEventId(eventId: String?) = write {
+        if (eventId.isNullOrBlank()) it.remove(KEY_LAST_LOCAL_TEST_EVENT_ID)
+        else it[KEY_LAST_LOCAL_TEST_EVENT_ID] = eventId
+    }
+
     /** UI language tag. Inert placeholder — only `en` ships today. */
     val language: Flow<String> = read { it[KEY_LANGUAGE] ?: DEFAULT_LANGUAGE }
 
@@ -186,6 +200,7 @@ class AppSettingsRepository(context: Context) {
         private val KEY_STATUS_NOTIFICATION = booleanPreferencesKey("status_notification")
         private val KEY_LAST_ALERT_AT_MS = longPreferencesKey("last_alert_at_ms")
         private val KEY_LAST_ALERT_SUMMARY = stringPreferencesKey("last_alert_summary")
+        private val KEY_LAST_LOCAL_TEST_EVENT_ID = stringPreferencesKey("last_local_test_event_id")
     }
 }
 

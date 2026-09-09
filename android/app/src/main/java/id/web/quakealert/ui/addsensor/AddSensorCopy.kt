@@ -31,10 +31,10 @@ internal fun AddSensorWizardStep.headline(lang: DisplayLanguage = DisplayLanguag
 internal fun AddSensorWizardStep.headlineId(): String = when (this) {
     AddSensorWizardStep.WELCOME -> ""
     AddSensorWizardStep.LOCATION -> "Di mana sensor ini dipasang?"
-    AddSensorWizardStep.CREDENTIALS -> "ID Stasiun dan Inisialisasi Kredensial"
+    AddSensorWizardStep.CREDENTIALS -> "ID stasiun dan kredensial"
     AddSensorWizardStep.WLAN -> "Pengaturan WLAN"
-    AddSensorWizardStep.FINISHING -> "Penyelesaian"
-    AddSensorWizardStep.RATE_LIMIT -> "Tidak dapat menambah sensor"
+    AddSensorWizardStep.FINISHING -> "Selesai"
+    AddSensorWizardStep.RATE_LIMIT -> "Tidak bisa menambah sensor"
 }
 
 internal fun AddSensorWizardStep.headlineEn(): String = when (this) {
@@ -58,16 +58,16 @@ internal fun AddSensorWizardStep.helperTextId(): String = when (this) {
             "atau menggeser pin beberapa meter demi privasi. Posisi tepat memberi " +
             "akurasi deteksi terbaik."
     AddSensorWizardStep.CREDENTIALS ->
-        "Tanda tangan unik di dalam sensor ini. Setiap data yang dikirim " +
+        "Signature unik di dalam sensor ini. Setiap data yang dikirim " +
             "ditandatangani dengannya, sehingga QuakeAlert tahu data benar-benar " +
             "berasal dari perangkat Anda, bukan dari penyusup.\n\nDitampilkan " +
-            "sekarang karena tidak dapat dilihat lagi setelah penyiapan."
+            "sekarang karena tidak bisa dilihat lagi setelah penyiapan."
     AddSensorWizardStep.WLAN ->
         "Jika jaringan tidak muncul, dekatkan sensor ke router. Pastikan kata " +
-            "sandi benar, karena tidak dapat diubah lagi."
+            "sandi benar, karena tidak bisa diubah lagi."
     AddSensorWizardStep.FINISHING ->
-        "Terima kasih atas kontribusi Anda untuk Jaringan QuakeAlert. Setelah " +
-            "langkah ini, sensor Anda berlabel menunggu selama beberapa hari. " +
+        "Terima kasih atas kontribusi Anda untuk jaringan QuakeAlert. Setelah " +
+            "langkah ini, sensor Anda berstatus menunggu selama beberapa hari. " +
             "Untuk informasi lebih lanjut, lihat Bantuan Sensor."
     AddSensorWizardStep.RATE_LIMIT -> ""
 }
@@ -119,8 +119,8 @@ internal fun failureCopy(failure: WizardFailure, lang: DisplayLanguage = Display
 // Indonesian branch (B2).
 internal fun failureCopyId(failure: WizardFailure): ErrorCopy = when (failure) {
     WizardFailure.OFFLINE -> ErrorCopy(
-        title = "Anda sedang luring",
-        message = "QuakeAlert tidak dapat menjangkau jaringan peringatan untuk " +
+        title = "Anda sedang offline",
+        message = "QuakeAlert tidak dapat menghubungi jaringan peringatan untuk " +
             "mendaftarkan sensor ini. Sambungkan kembali, lalu coba lagi.",
         action = ErrorAction.RETRY
     )
@@ -140,7 +140,7 @@ internal fun failureCopyId(failure: WizardFailure): ErrorCopy = when (failure) {
     )
 
     WizardFailure.SENSOR_NOT_ANSWERING -> ErrorCopy(
-        title = "Sensor tidak menjawab",
+        title = "Sensor tidak merespons",
         message = "Sensor tidak merespons. Pastikan menyala dan dekat dengan " +
             "ponsel Anda, lalu coba lagi.",
         action = ErrorAction.RETRY
@@ -162,16 +162,16 @@ internal fun failureCopyId(failure: WizardFailure): ErrorCopy = when (failure) {
     )
 
     WizardFailure.LOCATION_UNAVAILABLE -> ErrorCopy(
-        title = "Lokasi Anda tidak didapat",
+        title = "Gagal mendapatkan lokasi Anda",
         message = "QuakeAlert tidak dapat membaca posisi Anda. Pastikan izin " +
             "lokasi diberikan untuk QuakeAlert, atau letakkan pin di peta sendiri.",
         action = ErrorAction.RETRY
     )
 
     WizardFailure.PLACE_NAME_MISSING -> ErrorCopy(
-        title = "Tempat ini belum bernama",
+        title = "Nama tempat belum diisi",
         message = "Tidak ditemukan nama tempat untuk pin ini. Ketuk nama tempat " +
-            "di atas peta dan ketik satu nama.",
+            "di atas peta dan ketikkan sebuah nama.",
         action = ErrorAction.NONE
     )
 
@@ -257,10 +257,10 @@ internal fun DetailsError.message(lang: DisplayLanguage = DisplayLanguage.EN): S
 internal fun DetailsError.messageId(): String = when (this) {
     DetailsError.NAME_REQUIRED -> "Masukkan nama tempat untuk sensor ini."
     DetailsError.NAME_TOO_LONG ->
-        "Nama tempat itu terlalu panjang. Maksimal ${SensorNameRules.MAX_LENGTH} karakter."
+        "Nama tempat terlalu panjang. Maksimal ${SensorNameRules.MAX_LENGTH} karakter."
     DetailsError.NAME_HAS_NODE_ID ->
         "Gunakan nama tempat di sini. ID sensor ditambahkan otomatis."
-    DetailsError.NAME_NOT_PLACE_LIKE -> "Itu tidak terlihat seperti nama tempat."
+    DetailsError.NAME_NOT_PLACE_LIKE -> "Nama ini tidak terlihat seperti nama tempat."
     DetailsError.POSITION_MISSING -> "Geser peta untuk menempatkan sensor dulu."
 }
 
@@ -280,9 +280,9 @@ internal fun LinkError.message(lang: DisplayLanguage = DisplayLanguage.EN): Stri
 
 // Indonesian branch (B2).
 internal fun LinkError.messageId(): String = when (this) {
-    LinkError.SSID_REQUIRED -> "Pilih jaringan yang harus diikuti sensor."
+    LinkError.SSID_REQUIRED -> "Pilih jaringan Wi-Fi untuk sensor ini."
     LinkError.PASSWORD_TOO_SHORT ->
-        "Kata sandi itu lebih panjang dari yang dapat disimpan sensor. " +
+        "Kata sandi terlalu panjang untuk disimpan sensor. " +
             "Maksimal ${WifiRules.MAX_PASSWORD_LENGTH} karakter."
 }
 

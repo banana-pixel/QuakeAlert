@@ -191,7 +191,7 @@ fun HistoryScreen(
             .padding(horizontal = Dimens.ScreenHorizontalPadding)
     ) {
         // --- Static header ---------------------------------------------------
-        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates)
+        QuakeAppBar(title = strings.appBar, health = health, onUpdatesClicked = onOpenUpdates, lang = lang)
 
         QuakeFilterRow(
             filter = uiState.filter,

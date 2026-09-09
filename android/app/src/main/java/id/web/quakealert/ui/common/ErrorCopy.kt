@@ -74,8 +74,8 @@ private fun errorCopyId(throwable: Throwable, isNarrowed: Boolean): ErrorCopy = 
         throwable is SocketTimeoutException ||
         throwable is SSLException ||
         throwable is IOException -> ErrorCopy(
-        title = "Anda sedang luring",
-        message = "QuakeAlert tidak dapat menjangkau jaringan peringatan. Data tersimpan Anda tetap ditampilkan.",
+        title = "Anda sedang offline",
+        message = "QuakeAlert tidak dapat menghubungi jaringan peringatan. Data tersimpan Anda tetap ditampilkan.",
         action = ErrorAction.RETRY
     )
 
@@ -88,7 +88,7 @@ private fun errorCopyId(throwable: Throwable, isNarrowed: Boolean): ErrorCopy = 
 
 private fun apiErrorCopyId(failure: ApiException, isNarrowed: Boolean): ErrorCopy = when {
     failure.isUnauthenticated -> ErrorCopy(
-        title = "Sesi masuk kedaluwarsa",
+        title = "Sesi login kedaluwarsa",
         message = "QuakeAlert tidak dapat memastikan perangkat ini ke jaringan peringatan. " +
             "Data tersimpan Anda tetap ditampilkan.",
         action = ErrorAction.RETRY

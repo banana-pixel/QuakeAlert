@@ -330,11 +330,11 @@ fun AboutCard(
 }
 
 /**
- * The permissions hub's body: the three system prerequisites an alert has to clear
+ * The permissions hub's body: the four system prerequisites an alert has to clear
  * before it can reach the user, each with its live grant state and a tap that fixes
  * it (Settings "Alert & Notification" section).
  *
- * Grouped into one panel rather than left as three unrelated rows because they fail
+ * Grouped into one panel rather than left as four unrelated rows because they fail
  * as a set: notifications allowed but location denied means every alert is discarded
  * by distance before it is shown, and a user reading a single green row has no way to
  * know that. The summary line above them counts what is ready, so a partial state
@@ -343,29 +343,36 @@ fun AboutCard(
  * Each row is a glyph, a name and its state, the same shape the onboarding
  * [id.web.quakealert.ui.onboarding.PermissionCard] uses. The reasons each permission
  * matters are not repeated here: onboarding already makes that case at the moment the
- * user is deciding, and three paragraphs of consequence turned a checklist meant to
+ * user is deciding, and paragraphs of consequence turned a checklist meant to
  * be scanned in a second into the longest card on the screen.
  *
  * @param notificationGranted the OS `POST_NOTIFICATIONS` grant.
  * @param locationGranted whether a position can be read at all.
  * @param batteryUnrestricted whether Doze is exempted for this app.
+ * @param fullscreenGranted whether the OS lets the emergency notification wake
+ *   the lock screen (API 34+ full-screen intent).
  * @param onFixNotifications opens the app's notification settings.
  * @param onFixLocation requests (or, after a terminal decline, points at) the
  *   location permission.
  * @param onFixBattery opens the battery-optimisation screen.
+ * @param onFixFullscreen opens the "Manage full screen intents" system page
+ *   (falling back to the app's notification settings pre-API 34).
  */
 @Composable
 fun PermissionsHubCardBody(
     notificationGranted: Boolean,
     locationGranted: Boolean,
     batteryUnrestricted: Boolean,
+    fullscreenGranted: Boolean,
     onFixNotifications: () -> Unit,
     onFixLocation: () -> Unit,
     onFixBattery: () -> Unit,
+    onFixFullscreen: () -> Unit,
     modifier: Modifier = Modifier,
     notificationsTitle: String = "Notifications",
     locationTitle: String = "Precise Location",
     backgroundTitle: String = "Background Delivery",
+    fullscreenTitle: String = "Full-Screen Alerts",
     allowedLabel: String = "Allowed",
     unrestrictedLabel: String = "Unrestricted",
     tapToAllowLabel: String = "Tap to allow"
@@ -397,6 +404,14 @@ fun PermissionsHubCardBody(
             grantedLabel = unrestrictedLabel,
             tapToAllowLabel = tapToAllowLabel,
             onFix = onFixBattery
+        )
+        PermissionHubRow(
+            iconRes = R.drawable.ic_fullscreen_permission,
+            title = fullscreenTitle,
+            granted = fullscreenGranted,
+            grantedLabel = allowedLabel,
+            tapToAllowLabel = tapToAllowLabel,
+            onFix = onFixFullscreen
         )
     }
 }

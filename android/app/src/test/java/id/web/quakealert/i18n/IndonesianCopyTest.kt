@@ -2,10 +2,12 @@ package id.web.quakealert.i18n
 
 import id.web.quakealert.data.UnitSystem
 import id.web.quakealert.data.network.ApiException
+import id.web.quakealert.data.network.ServerHealth
 import id.web.quakealert.data.network.mapper.QuakeFormat
 import id.web.quakealert.domain.ChatChannel
 import id.web.quakealert.domain.ChatChannelKind
 import id.web.quakealert.domain.DisplayLanguage
+import id.web.quakealert.domain.EmergencyContacts
 import id.web.quakealert.domain.EventState
 import id.web.quakealert.domain.ProtectionStatus
 import id.web.quakealert.domain.standDownCopyFor
@@ -25,6 +27,7 @@ import id.web.quakealert.ui.common.QuakeStationStatus
 import id.web.quakealert.ui.common.QuakeTimeWindow
 import id.web.quakealert.ui.common.errorCopy
 import id.web.quakealert.ui.common.filterStrings
+import id.web.quakealert.ui.common.label
 import id.web.quakealert.ui.common.stateStrings
 import id.web.quakealert.ui.history.MmiSeverity
 import id.web.quakealert.ui.history.distanceLabel
@@ -37,6 +40,7 @@ import id.web.quakealert.ui.updates.updatesStrings
 import id.web.quakealert.ui.warning.ActivityAvailability
 import id.web.quakealert.ui.warning.RecentSeismicActivity
 import id.web.quakealert.ui.warning.activeQuakeTips
+import id.web.quakealert.ui.warning.emergencyStrings
 import id.web.quakealert.ui.warning.noActiveQuakeTips
 import id.web.quakealert.ui.warning.suggestedActions
 import id.web.quakealert.ui.warning.warningStrings
@@ -97,9 +101,9 @@ class IndonesianCopyTest {
     @Test
     fun `error copy speaks Indonesian`() {
         val offline = errorCopy(IOException("x"), lang = ID)
-        assertEquals("Anda sedang luring", offline.title)
+        assertEquals("Anda sedang offline", offline.title)
         val unauth = errorCopy(ApiException(401, "UNAUTHENTICATED", "x"), lang = ID)
-        assertEquals("Sesi masuk kedaluwarsa", unauth.title)
+        assertEquals("Sesi login kedaluwarsa", unauth.title)
         val throttled = errorCopy(ApiException(429, "RATE_LIMITED", "x"), lang = ID)
         assertEquals("Terlalu banyak permintaan", throttled.title)
         listOf(offline, unauth, throttled).forEach {
@@ -111,9 +115,9 @@ class IndonesianCopyTest {
     @Test
     fun `wizard copy is Indonesian`() {
         assertEquals("Di mana sensor ini dipasang?", AddSensorWizardStep.LOCATION.headline(ID))
-        assertEquals("Tidak dapat menambah sensor", AddSensorWizardStep.RATE_LIMIT.headline(ID))
+        assertEquals("Tidak bisa menambah sensor", AddSensorWizardStep.RATE_LIMIT.headline(ID))
         assertEquals(
-            "Pilih jaringan yang harus diikuti sensor.",
+            "Pilih jaringan Wi-Fi untuk sensor ini.",
             LinkError.SSID_REQUIRED.message(ID)
         )
         assertEquals(
@@ -121,7 +125,7 @@ class IndonesianCopyTest {
             DetailsError.NAME_REQUIRED.message(ID)
         )
         val failure = failureCopy(WizardFailure.OFFLINE, ID)
-        assertEquals("Anda sedang luring", failure.title)
+        assertEquals("Anda sedang offline", failure.title)
     }
 
     @Test
@@ -170,7 +174,7 @@ class IndonesianCopyTest {
         assertEquals("Kapan saja", QuakeTimeWindow.ALL.label(ID))
         assertEquals("Semua stasiun", QuakeStationStatus.ALL.label(ID))
         assertEquals(
-            "Setiap stasiun di daerah ini sedang luring.",
+            "Semua stasiun di area ini sedang offline.",
             QuakeStationStatus.ONLINE.emptyRollSubtitle(ID)
         )
     }
@@ -180,7 +184,8 @@ class IndonesianCopyTest {
         val holders: List<Pair<String, List<String>>> = listOf(
             "settings" to settingsStrings(ID).let {
                 listOf(
-                    it.appBar, it.syncNow, it.alerts, it.testNotification, it.units,
+                    it.appBar, it.syncNow, it.alerts, it.testNotification,
+                    it.testNotificationDetail, it.units, it.permFullscreen,
                     it.language, it.disableTitle, it.disableBody, it.turnOff, it.cancel,
                     it.resetTitle, it.resetBody, it.reset, it.tapToAllow, it.moreAboutUs
                 )
@@ -197,13 +202,17 @@ class IndonesianCopyTest {
                 listOf(it.title, it.loading, it.emptyTitle, it.emptySubtitle)
             },
             "onboarding" to onboardingStrings(ID).let {
-                listOf(it.back, it.next, it.getStarted, it.testNotification, it.readyPara1)
+                listOf(
+                    it.back, it.next, it.getStarted, it.testNotification,
+                    it.testNotificationDetail, it.enableAlertsFirst, it.readyPara1
+                )
             },
             "warning" to warningStrings(ID).let {
                 listOf(
                     it.appBar, it.seeDetails, it.alertTitle, it.estimatedIntensity,
                     it.suggestedActions, it.emergencyCta, it.offlineMessage, it.cardTitle,
-                    it.statusTitle, it.detailTitle, it.checkingNetwork, it.drillBadge
+                    it.statusTitle, it.detailTitle, it.checkingNetwork, it.drillBadge,
+                    it.endTest
                 )
             },
             "filter" to filterStrings(ID).let {
@@ -219,8 +228,16 @@ class IndonesianCopyTest {
         // Glossary pins.
         assertEquals("Riwayat", historyStrings(ID).appBar)
         assertEquals("Peringatan", warningStrings(ID).appBar)
-        assertEquals("Obrolan", chatStrings(ID).appBar)
+        assertEquals("Chat", chatStrings(ID).appBar)
         assertEquals("Pengaturan", settingsStrings(ID).appBar)
+        // Drill-test entry points name the earthquake alert, not a generic ping.
+        assertEquals("Uji Peringatan Gempa", settingsStrings(ID).testNotification)
+        assertEquals("Test Earthquake Alert", settingsStrings(EN).testNotification)
+        assertEquals("Uji Peringatan Gempa", onboardingStrings(ID).testNotification)
+        assertEquals("AKHIRI TES", warningStrings(ID).endTest)
+        assertEquals("END TEST", warningStrings(EN).endTest)
+        assertEquals("Peringatan Layar Penuh", settingsStrings(ID).permFullscreen)
+        assertEquals("Full-Screen Alerts", settingsStrings(EN).permFullscreen)
     }
 
     @Test
@@ -232,7 +249,7 @@ class IndonesianCopyTest {
         assertEquals("Tidak Ada Gempa Terkini", quiet.bannerTitle(ID))
         val unmeasured = RecentSeismicActivity()
         assertEquals("Tidak Ada Gempa Aktif", unmeasured.bannerTitle(ID))
-        assertEquals("Butuh lokasi Anda", unmeasured.countValue(ID))
+        assertEquals("Perlu lokasi Anda", unmeasured.countValue(ID))
         assertEquals(
             "Tidak ada kejadian",
             unmeasured.copy(availability = ActivityAvailability.MEASURED).countValue(ID)
@@ -256,9 +273,43 @@ class IndonesianCopyTest {
         val global = ChatChannel(id = "global", kind = ChatChannelKind.GLOBAL, displayName = "Global")
         assertEquals("Semua pengguna QuakeAlert", global.toChannelInfo(false, ID).subtitle)
         val actions = suggestedActions(ID).map { it.label }
-        assertEquals(listOf("Berlindung!", "Lindungi Kepala!", "Berpegangan!"), actions)
+        assertEquals(listOf("Menunduk!", "Lindungi Kepala!", "Berpegangan!"), actions)
         val tips = (activeQuakeTips(ID) + noActiveQuakeTips(ID)).flatMap { listOf(it.title, it.description) }
         tips.forEach { assertNoEmDash("tips", it) }
+    }
+
+    @Test
+    fun `server badge speaks Indonesian`() {
+        assertEquals("Normal", ServerHealth.HEALTHY.label(ID))
+        assertEquals("Terbatas", ServerHealth.LIMITED.label(ID))
+        assertEquals("Memeriksa…", ServerHealth.CHECKING.label(ID))
+        assertEquals("Offline", ServerHealth.OFFLINE.label(ID))
+        assertEquals("Healthy", ServerHealth.HEALTHY.label(EN))
+    }
+
+    @Test
+    fun `emergency overlay follows the in-app language`() {
+        val id = emergencyStrings(ID)
+        assertEquals("Langkah Darurat & Kontak", id.title)
+        assertEquals("1. Menunduk", id.dropTitle)
+        assertEquals("Hubungi 112", id.dialAction("112"))
+        listOf(
+            id.title, id.duringTitle, id.dropTitle, id.dropDetail,
+            id.coverTitle, id.coverDetail, id.holdTitle, id.holdDetail,
+            id.afterTitle, id.aftershocks, id.gas, id.exit, id.injuries,
+            id.contactsTitle, id.contactsNote, id.dialAction("112"),
+            id.positionTitle, id.positionNote, id.positionUnknown, id.offlineNote
+        ).forEach { assertNoEmDash("emergency", it) }
+        val numbers = EmergencyContacts.forCountry("ID", ID)
+        assertEquals(
+            listOf("112", "110", "113", "118", "115"),
+            numbers.map { it.number }
+        )
+        assertEquals("Darurat (semua jaringan)", numbers.first().label)
+        assertEquals(
+            listOf("Darurat (semua jaringan)", "Polisi", "Pemadam kebakaran", "Ambulans", "SAR (Basarnas)"),
+            numbers.map { it.label }
+        )
     }
 
     @Test

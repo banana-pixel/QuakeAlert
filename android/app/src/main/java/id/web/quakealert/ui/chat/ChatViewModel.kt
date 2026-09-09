@@ -93,6 +93,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         observeSocket()
         observeConnectivity()
         observeRegion()
+        observeLanguage()
     }
 
     /** Retries whatever failed, from the error card's "Retry" action. */
@@ -452,6 +453,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val lang = displayLang.value
         val items = toChatListItems(entries = entries, sendStates = sendStates, locale = lang.locale())
         _uiState.update { it.copy(items = items) }
+    }
+
+    /**
+     * Re-renders the header, notice and date separators when the app language
+     * changes, so a switch in Settings does not need an app restart. No
+     * network: the domain rows are already held, only the rendering changes.
+     * `drop(1)` skips the value replayed on collection.
+     */
+    private fun observeLanguage() {
+        viewModelScope.launch {
+            displayLang.drop(1).collect { lang ->
+                channels.firstOrNull { it.id == activeChannelId }?.let { active ->
+                    _uiState.update {
+                        it.copy(
+                            channel = active.toChannelInfo(
+                                canSwitch = channels.size > 1,
+                                lang = lang
+                            ),
+                            notice = noticeFor(channels, lang)
+                        )
+                    }
+                }
+                publish()
+            }
+        }
     }
 
     /**

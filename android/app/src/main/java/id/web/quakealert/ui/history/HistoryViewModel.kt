@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -83,6 +84,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     init {
         load()
         observeConnectivity()
+        observeLanguage()
     }
 
     /**
@@ -108,6 +110,21 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
      */
     fun onRetry() {
         load()
+    }
+
+    /**
+     * Re-renders the feed when the app language changes, so a switch in Settings
+     * does not need an app restart: dates, relative ages and node counts are
+     * baked into the rows at load time.
+     *
+     * As a refresh rather than a load — the rows stay on screen under the
+     * indicator instead of flashing a skeleton for a change no request caused.
+     * `drop(1)` skips the value replayed on collection: startup is not a change.
+     */
+    private fun observeLanguage() {
+        viewModelScope.launch {
+            displayLang.drop(1).collect { load(isRefresh = true) }
+        }
     }
 
     /**

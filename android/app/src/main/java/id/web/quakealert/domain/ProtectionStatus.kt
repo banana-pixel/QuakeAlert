@@ -51,10 +51,10 @@ data class ProtectionStatus(
     // Indonesian branch (B2). Acuan: string sistem Android ("Pengaturan").
     private fun headlineId(): String = when {
         !notificationsPermitted -> "Peringatan diblokir oleh pengaturan sistem"
-        !alertsEnabled -> "Proteksi gempa bumi nonaktif"
+        !alertsEnabled -> "Peringatan gempa nonaktif"
         lastSyncLabel == null -> "Memantau, tetapi lokasi Anda belum diatur"
         !batteryUnrestricted -> "Memantau, tetapi peringatan bisa terlambat"
-        else -> "Proteksi gempa bumi aktif"
+        else -> "Perlindungan gempa aktif"
     }
 
     private fun headlineEn(): String = when {
@@ -84,25 +84,25 @@ data class ProtectionStatus(
     // Indonesian branch (B2).
     private fun linesId(): List<String> = buildList {
         if (!notificationsPermitted) {
-            add("Notifikasi diblokir di pengaturan sistem, sehingga peringatan tidak dapat tiba.")
+            add("Notifikasi diblokir di pengaturan sistem, sehingga peringatan tidak bisa masuk.")
         }
-        if (!alertsEnabled) add("Peringatan gempa bumi dimatikan. Nyalakan lagi di Pengaturan.")
+        if (!alertsEnabled) add("Peringatan gempa dimatikan. Nyalakan lagi di Pengaturan.")
         if (lastSyncLabel == null) {
             add(
                 if (autoSyncEnabled) {
-                    "Lokasi Anda belum tersinkron, sehingga peringatan tidak dapat dibidik."
+                    "Lokasi Anda belum disinkronkan, sehingga peringatan tidak bisa disesuaikan dengan posisi Anda."
                 } else {
-                    "Lokasi Anda belum tersinkron dan sinkron otomatis mati."
+                    "Lokasi Anda belum disinkronkan dan sinkronisasi otomatis nonaktif."
                 }
             )
         } else if (!autoSyncEnabled) {
-            add("Sinkron otomatis mati. Lokasi Anda dari $lastSyncLabel.")
+            add("Sinkronisasi otomatis nonaktif. Lokasi Anda dari $lastSyncLabel.")
         }
         if (!batteryUnrestricted) {
-            add("Optimasi baterai menyala, sehingga peringatan bisa tertahan.")
+            add("Optimasi baterai aktif, sehingga peringatan bisa tertahan.")
         }
         if (deliverable && lastSyncLabel != null && batteryUnrestricted) {
-            add("Memantau dalam $radiusLabel dari Anda.")
+            add("Memantau radius $radiusLabel dari lokasi Anda.")
         }
         add(lastAlertLabel?.let { "Peringatan terakhir: $it" } ?: "Belum ada peringatan sejak Anda memasang QuakeAlert.")
     }

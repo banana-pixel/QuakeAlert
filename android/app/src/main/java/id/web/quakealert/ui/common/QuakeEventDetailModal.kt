@@ -464,7 +464,7 @@ private fun SpatialInfoCard(
                 .background(EventDetailDividerColor)
         )
 
-        SpatialInfoRow(label = if (lang == DisplayLanguage.ID) "Koordinat (Sentroid)" else "Coordinates (Centroid)", value = event.coordinates)
+        SpatialInfoRow(label = if (lang == DisplayLanguage.ID) "Koordinat (Centroid)" else "Coordinates (Centroid)", value = event.coordinates)
     }
 }
 

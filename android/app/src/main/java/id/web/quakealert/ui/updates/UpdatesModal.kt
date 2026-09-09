@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,7 +65,8 @@ fun UpdatesModalDialog(
             uiState = uiState,
             strings = updatesStrings(lang),
             onDismiss = onDismiss,
-            onRetry = viewModel::refresh
+            onRetry = viewModel::refresh,
+            modifier = Modifier.padding(Dimens.ScreenHorizontalPadding)
         )
     }
 }
@@ -115,13 +117,16 @@ fun UpdatesModal(
                 copy = uiState.error,
                 onRetry = onRetry,
                 retryLabel = strings.retry,
-                resetFiltersLabel = strings.resetFilters
+                resetFiltersLabel = strings.resetFilters,
+                // Dialog wraps content: no viewport to fill (see StateBlock).
+                fillViewport = false
             )
 
             uiState.isEmpty -> QuakeEmptyState(
                 icon = R.drawable.ic_info_circle,
                 message = strings.emptyTitle,
-                subtitle = strings.emptySubtitle
+                subtitle = strings.emptySubtitle,
+                fillViewport = false
             )
 
             else -> LazyColumn(

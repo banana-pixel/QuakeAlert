@@ -53,8 +53,8 @@ private fun stateStringsId(): StateStrings = StateStrings(
     noCoverageSub = "Jaringan sensor QuakeAlert belum mencakup daerah ini.",
     widenRadius = "Perluas Radius Pencarian",
     orAddSensor = "Atau Tambah Sensor Anda Sendiri",
-    noPosition = "Lokasi Belum Tersinkron",
-    noPositionSub = "QuakeAlert membutuhkan lokasi Anda sebelum dapat menunjukkan apa yang dekat.",
+    noPosition = "Lokasi Belum Disinkronkan",
+    noPositionSub = "QuakeAlert membutuhkan lokasi Anda sebelum bisa menampilkan kejadian di dekat Anda.",
     syncLocation = "Sinkronkan Lokasi",
     noStationsMatch = "Tidak Ada Stasiun yang Cocok"
 )

@@ -27,7 +27,9 @@ data class EmergencyNumber(val label: String, val number: String)
  * network is gone, which is the same moment a lookup would fail.
  *
  * Labels stay in Kotlin because the *number* is data, not translatable copy; only the
- * words around them belong in `strings.xml`.
+ * words around them belong in `strings.xml`. The role labels do follow the app
+ * language ([forCountry]'s [lang]): "Police" means nothing to a reader who asked
+ * for Indonesian, while the digits themselves never change.
  */
 object EmergencyContacts {
 
@@ -39,15 +41,28 @@ object EmergencyContacts {
      *
      * @param countryIso ISO-3166-1 alpha-2, case-insensitive, or null when the device
      *   could not say — from a SIM-less phone, or an unregistered network.
+     * @param lang which language the role labels render in. Only the Indonesian
+     *   table and the universal entry are translated: service names abroad stay in
+     *   English rather than guessed.
      */
-    fun forCountry(countryIso: String?): List<EmergencyNumber> {
-        val universal = EmergencyNumber(label = "Emergency (any network)", number = UNIVERSAL_NUMBER)
+    fun forCountry(
+        countryIso: String?,
+        lang: DisplayLanguage = DisplayLanguage.EN
+    ): List<EmergencyNumber> {
+        val indonesian = lang == DisplayLanguage.ID
+        val universal = EmergencyNumber(
+            label = if (indonesian) "Darurat (semua jaringan)" else "Emergency (any network)",
+            number = UNIVERSAL_NUMBER
+        )
         val local = countryIso
             ?.trim()
             ?.takeIf { it.length == 2 }
             ?.uppercase()
             ?.let { TABLE[it] }
             .orEmpty()
+            .map { entry ->
+                if (indonesian) entry.indonesian() else entry
+            }
         // A country whose own emergency number *is* 112 must not print it twice.
         return listOf(universal) + local.filterNot { it.number == UNIVERSAL_NUMBER }
     }
@@ -65,8 +80,7 @@ object EmergencyContacts {
             EmergencyNumber("Fire", "113"),
             EmergencyNumber("Ambulance", "118"),
             EmergencyNumber("Search and rescue (Basarnas)", "115")
-        ),
-        "US" to listOf(EmergencyNumber("Emergency", "911")),
+        ),        "US" to listOf(EmergencyNumber("Emergency", "911")),
         "CA" to listOf(EmergencyNumber("Emergency", "911")),
         "MX" to listOf(EmergencyNumber("Emergency", "911")),
         "PH" to listOf(EmergencyNumber("Emergency", "911")),
@@ -108,4 +122,20 @@ object EmergencyContacts {
         ),
         "TR" to listOf(EmergencyNumber("Emergency", "112"))
     )
+
+    /**
+     * Indonesian role labels, keyed by number. Only numbers in the Indonesian
+     * table are covered — anything else keeps its English label rather than
+     * being guessed at.
+     */
+    private val INDONESIAN_LABELS: Map<String, String> = mapOf(
+        "110" to "Polisi",
+        "113" to "Pemadam kebakaran",
+        "118" to "Ambulans",
+        "115" to "SAR (Basarnas)"
+    )
+
+    /** Same entry with its role label in Indonesian, or unchanged when unknown. */
+    private fun EmergencyNumber.indonesian(): EmergencyNumber =
+        INDONESIAN_LABELS[number]?.let { copy(label = it) } ?: this
 }
