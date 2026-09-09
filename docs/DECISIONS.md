@@ -926,6 +926,34 @@ per event_id.
 
 ---
 
+### D-021 — The status notification re-reads OS grants on every resume; "may post" means runtime grant plus app-level toggle
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-NOTIF-SYNC
+
+`AppRoot` refreshes `AppViewModel.systemState` on every resume (`LifecycleResumeEffect`), not only ON_START: the runtime-permission dialog never stops the activity, so an ON_START-only read keeps a stale `notificationsPermitted=false` that the next collector emission re-posts as "blocked". `canPostNotifications()` (`device/DeliveryPrerequisites.kt`) means the `POST_NOTIFICATIONS` grant plus the app-level toggle (`NotificationManagerCompat.areNotificationsEnabled()`), replacing the bare `checkSelfPermission`. Channel-level degradation stays diagnostic-only per the `AlertPresentationHealth` precedent and never gates. Consumers (`AlertRaiser`, `AppViewModel`, `SettingsViewModel`, `WarningViewModel`) inherit the corrected meaning unchanged. Verification is manual (in-app grant flips status without backgrounding; app-level toggle off/on flips blocked/active) plus the unit suite and lint green; no new JVM-testable surface (Context-dependent).
+
+---
+
+### D-022 — The app language defaults to System: Indonesian devices read Indonesian, everything else English
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-LANG-SYSTEM
+
+No stored language (null) means System: `resolveDisplayLanguage(null)` follows `Locale.getDefault()` (Indonesian → ID, anything else → EN), with English as the last resort. `AppSettingsRepository.language` becomes `Flow<String?>` (the `"en"` default is removed); an explicit user choice still wins and is mirrored to the system per-app language page via framework `LocaleManager.setApplicationLocales()` on API 33+ (version-guarded; in-app only below 33, no new dependency). `AppLanguage` gains a SYSTEM entry (null tag); unknown tags still fall back to EN. Installs that already stored `"en"` count as explicit English (pre-release, accepted). Background surfaces (`AlertRaiser`, `QuakeMessagingService`, `BackgroundAlertBridge`) already resolve through the same function, so no mixed-language screen is possible. Verification: Indonesian locale → ID automatically; other locales → EN; changing the device language is followed after recreate; an explicit choice is never overridden; unit suite and lint green.
+
+---
+
+### D-023 — The official logo (transparent variant, shape intact) replaces placeholders in launcher, About, onboarding, and notification icons
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-ICON-SVG, `docs/brand/`
+
+The transparent logo variant replaces the Android Studio placeholders throughout: launcher (foreground = transparent variant, background = the red variant's diagonal `#2c0c23`→`#82283a` gradient as its own layer, monochrome = transparent variant, plus re-exported `mipmap-*` WebP for API<26), `AboutLogoBadge` (`AboutModal.kt`) via `Image` + `clip(RoundedCornerShape)`, the onboarding `ic_puzzle_piece` (`OnboardingScreen.kt:491`), and the small icons of `StatusNotifier`, `UpdatesNotifier`, and `WarningNotifier`. Shape and motif are never altered; only minor sizing/stroke adjustments are allowed. Verification is visual on-device (round/squircle launcher masks, rounded About logo, onboarding, notification shade) plus the unit suite and lint green.
+
+---
+
+### D-024 — RecentSeismicActivity carries the plotted events; the card draws one dot per counted event
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-SEA-DOTS
+
+`RecentSeismicActivity` gains the plotted events (`dots: List<MapMarker>`, built from the same page that backs the count — no new request, up to `ACTIVITY_PAGE_LIMIT`), and `RecentSeismicActivityCard` passes them to `QuakeMap`. A new `MapMarkerKind.EVENT` in a color distinct from stations; single color for now, no intensity grading. When the page is full the count already reads "100+", which covers the dots' limit — no new strings. Zero events, offline, or no position plots nothing, preserving the existing honest-empty behaviour. Verification: unit tests for the mapping and the cap, visual check (N events → N dots within radius; empty → clean map), plus the unit suite and lint green.
+
+---
+
 ### Governance correction G1 (owner-approved 2026-09-07; nothing above is rewritten)
 Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read as
 "U-001 … U-009 remain unresolved; U-010 … U-013 see D-017 … D-020": U-010 answered
