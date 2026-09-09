@@ -100,9 +100,9 @@ fun QuakeAppBar(
                         "Open Updates"
                     }
                 )
-                // One badge-gap of air between the glyph and the status pill, so the
-                // pair reads as two separate controls rather than one crowded cluster.
-                Spacer(Modifier.width(Dimens.BadgeIconGap))
+                // Same gap as the All/Near pill pair, so the header's right
+                // cluster reads at the same rhythm as the filter row below it.
+                Spacer(Modifier.width(Dimens.FilterRowGap))
             }
             ServerHealthBadge(health = health, lang = lang)
         }
@@ -110,13 +110,13 @@ fun QuakeAppBar(
 }
 
 /**
- * The Updates entry point in the app bar (Figma node 158-1645): the same
- * 30dp rounded-square chrome as the filter sheet button — dark fill, 1dp
- * stroke, 20dp glyph — so the header's tappable affordance reads as one
- * family with the badge beside it and the filter control below. Compact
- * Figma size with no touch-target padding, exactly like its filter twin
- * (and unlike a Material `IconButton`, whose 48dp minimum is what used to
- * stretch this row a head taller than the design).
+ * The Updates entry point in the app bar (Figma node 158-1645): the filter
+ * sheet button's chrome (dark fill, 1dp stroke, radius, 20dp glyph) with the
+ * status badge's box model, so it renders at the badge's height and the pair
+ * reads as one proportional cluster. Hug size with no touch-target padding,
+ * exactly like its filter twin (and unlike a Material `IconButton`, whose
+ * 48dp minimum is what used to stretch this row a head taller than the
+ * design).
  */
 @Composable
 private fun UpdatesIconButton(
@@ -127,12 +127,17 @@ private fun UpdatesIconButton(
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
     Box(
         modifier = modifier
-            .size(Dimens.FilterPillHeight)
             .clip(shape)
             .background(FilterInactiveFill, shape)
             .border(Dimens.BorderThin, CardBorder, shape)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(Dimens.CalendarButtonPadding),
+            // Same box model as the status badge beside it (5dp horizontal,
+            // 4dp vertical around a ~20dp-tall content row), so the two render
+            // at the same height instead of merely similar ones.
+            .padding(
+                horizontal = Dimens.BadgePaddingHorizontal,
+                vertical = Dimens.BadgePaddingVertical
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
