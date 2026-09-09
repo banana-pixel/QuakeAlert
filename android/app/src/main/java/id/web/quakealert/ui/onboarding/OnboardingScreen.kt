@@ -476,12 +476,12 @@ private fun openFullscreenSettings(
     context: Context,
     launch: (Intent) -> Unit
 ) {
-    // Resolved synchronously (not via the launcher) because only the
-    // fallback needs launching: the dedicated page, when present, is opened
-    // directly like every other system screen from this flow.
-    if (!context.openFullscreenIntentSettings()) {
-        launch(Intent(Settings.ACTION_SETTINGS))
-    }
+    // D-026: both the dedicated page and the fallback go through the settings
+    // launcher so its return callback re-reads the grant (like battery above).
+    // Opening the dedicated page via direct startActivity bypassed the
+    // launcher and left the remember'ed pill stale until an unrelated
+    // recomposition (page swipe).
+    context.openFullscreenIntentSettings(launch)
 }
 
 /**

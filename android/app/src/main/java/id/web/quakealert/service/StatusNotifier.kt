@@ -126,8 +126,10 @@ object StatusNotifier {
             NotificationCompat.Action.Builder(0, fixInSettingsLabel(lang), appNotificationSettings(context)).build()
         }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            // Official logo, transparent variant whole (D-023).
-            .setSmallIcon(R.drawable.ic_quake_logo)
+            // Small-icon optical variant (D-029): same motif, expanded to fill
+            // the status-bar glyph. Launcher/About/onboarding keep the whole
+            // transparent variant (D-023).
+            .setSmallIcon(R.drawable.ic_notification_small)
             .setContentTitle(status.headline(lang))
             .setContentText(status.lines(lang).first())
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

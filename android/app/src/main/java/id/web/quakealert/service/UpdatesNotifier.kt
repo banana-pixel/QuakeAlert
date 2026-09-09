@@ -106,8 +106,10 @@ object UpdatesNotifier {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            // Official logo, transparent variant whole (D-023).
-            .setSmallIcon(R.drawable.ic_quake_logo)
+            // Small-icon optical variant (D-029): same motif, expanded to fill
+            // the status-bar glyph. Launcher/About/onboarding keep the whole
+            // transparent variant (D-023).
+            .setSmallIcon(R.drawable.ic_notification_small)
             .setContentTitle(update.title.ifBlank { updateFallbackTitle(lang) })
             .setContentText(update.body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(update.body))

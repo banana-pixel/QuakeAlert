@@ -141,14 +141,19 @@ object WarningNotifier {
                 locationName = message.locationName,
                 distanceKm = distanceKm,
                 isTest = message.isTest,
-                activeCount = board.extraActiveCount()
+                activeCount = board.extraActiveCount(),
+                // D-030: the chrome language is frozen with the snapshot, like the
+                // intensity label and location above — see WarningActivity.
+                langTag = lang.tag
             ),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            // Official logo, transparent variant whole (D-023).
-            .setSmallIcon(R.drawable.ic_quake_logo)
+            // Small-icon optical variant (D-029): same motif, expanded to fill
+            // the status-bar glyph. Launcher/About/onboarding keep the whole
+            // transparent variant (D-023).
+            .setSmallIcon(R.drawable.ic_notification_small)
             // A drill says so in the shade as well as on the screen. Only ever
             // reachable on a debug build (the mapper drops an is_test frame
             // otherwise), so this branch cannot change what a real user is told.

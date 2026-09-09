@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import id.web.quakealert.device.AlertSiren
 import id.web.quakealert.device.TorchController
+import id.web.quakealert.domain.DisplayLanguage
 import id.web.quakealert.domain.RaiseOutcomeLog
 import id.web.quakealert.data.network.QuakeNetwork
 import id.web.quakealert.domain.AlertType
@@ -60,12 +61,23 @@ class WarningActivity : ComponentActivity() {
         locationName = ""
     ))
 
+    /**
+     * Chrome language for the card (D-030). Frozen from the raising intent's
+     * `EXTRA_LANG`, like the intensity label and location it sits beside — the
+     * screen is one coherent snapshot of what the raiser decided to show, so a
+     * mid-alert language switch does not re-render it. Absent or unrecognised
+     * (a pre-change PendingIntent, or anything forged) degrades to EN, the same
+     * default every warning component already carries.
+     */
+    private var lang by mutableStateOf(DisplayLanguage.EN)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
         enableEdgeToEdge()
 
         state = intent.toActiveAlert()
+        lang = intent.alertLang()
         siren.start()
         observeStandDown()
         if (state.isTest) armTestAutoEnd()
@@ -83,6 +95,7 @@ class WarningActivity : ComponentActivity() {
                         onMuteClick = ::onMuteClick,
                         onSosLightClick = ::onSosLightClick,
                         onEndTestClick = ::onEndTestClicked.takeIf { state.isTest },
+                        lang = lang,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -105,6 +118,7 @@ class WarningActivity : ComponentActivity() {
         setIntent(intent)
         val board = QuakeNetwork.from(applicationContext).activeAlerts
         val next = intent.toActiveAlert()
+        lang = intent.alertLang()
         if (next.eventId.isNotBlank()) {
             val slot = board.upsert(next.eventId, sounded = true)
             if (slot.collapsedId != null) {
@@ -245,6 +259,13 @@ class WarningActivity : ComponentActivity() {
         extraActiveCount = getIntExtra(EXTRA_ACTIVE_COUNT, 0).coerceAtLeast(0)
     )
 
+    /**
+     * Chrome language frozen from the raising intent (D-030). Absent or
+     * unrecognised degrades to EN — the pre-change behaviour — never to a mix.
+     */
+    private fun Intent.alertLang(): DisplayLanguage =
+        DisplayLanguage.fromTagOrNull(getStringExtra(EXTRA_LANG)) ?: DisplayLanguage.EN
+
     companion object {
         private const val TAG = "WarningActivity"
         /**
@@ -260,6 +281,7 @@ class WarningActivity : ComponentActivity() {
         private const val EXTRA_LOCATION_NAME = "location_name"
         private const val EXTRA_IS_TEST = "is_test"
         private const val EXTRA_ACTIVE_COUNT = "active_count"
+        private const val EXTRA_LANG = "lang_tag"
         private const val UNKNOWN_DISTANCE = -1
 
         /**
@@ -271,6 +293,8 @@ class WarningActivity : ComponentActivity() {
          *
          * @param isTest marks a drill, which adds the "TEST" badge to the card. Only
          *   ever true on a debug build; see [WarningUiState.ActiveAlert.isTest].
+         * @param langTag the chrome language tag frozen at raise time (D-030);
+         *   null degrades to EN in [alertLang].
          */
         fun intent(
             context: Context,
@@ -279,7 +303,8 @@ class WarningActivity : ComponentActivity() {
             locationName: String,
             distanceKm: Int?,
             isTest: Boolean = false,
-            activeCount: Int = 0
+            activeCount: Int = 0,
+            langTag: String? = null
         ): Intent = Intent(context, WarningActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra(EXTRA_EVENT_ID, eventId)
@@ -288,6 +313,7 @@ class WarningActivity : ComponentActivity() {
             putExtra(EXTRA_DISTANCE_KM, distanceKm ?: UNKNOWN_DISTANCE)
             putExtra(EXTRA_IS_TEST, isTest)
             putExtra(EXTRA_ACTIVE_COUNT, activeCount.coerceAtLeast(0))
+            putExtra(EXTRA_LANG, langTag)
         }
     }
 }

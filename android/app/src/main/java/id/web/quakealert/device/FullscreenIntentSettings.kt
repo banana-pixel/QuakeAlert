@@ -21,17 +21,27 @@ import android.provider.Settings
  * may use full-screen intents there), so the app's notification settings is
  * the honest fallback. Returns false when nothing could be opened, so the
  * caller can say so instead of silently doing nothing.
+ *
+ * The [launch] overload (D-026) routes the dedicated page through the caller's
+ * settings launcher so its return callback fires and the onboarding pill
+ * re-reads the grant on return, like the battery page already does. The
+ * no-arg overload keeps the direct-`startActivity` behaviour for callers with
+ * no launcher (e.g. the Settings checklist row, which refreshes on resume).
  */
-fun Context.openFullscreenIntentSettings(): Boolean {
+fun Context.openFullscreenIntentSettings(): Boolean =
+    openFullscreenIntentSettings({ startActivity(it) })
+
+fun Context.openFullscreenIntentSettings(launch: (Intent) -> Unit): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         val manage = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
             data = Uri.fromParts("package", packageName, null)
         }
         if (manage.resolveActivity(packageManager) != null) {
-            if (runCatching { startActivity(manage) }.isSuccess) return true
+            if (runCatching { launch(manage) }.isSuccess) return true
+            // else fall through to the fallback below, as before
         }
     }
     val fallback = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
         .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-    return runCatching { startActivity(fallback) }.isSuccess
+    return runCatching { launch(fallback) }.isSuccess
 }

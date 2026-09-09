@@ -7,4 +7,15 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!--
+      Window base shown while an activity is (re)created, before Compose draws
+      its first frame. Same value as BackgroundGradientBottom (ui/theme/Color.kt)
+      so the empty window blends into the app's dark surfaces instead of
+      flashing a contrasting system default — e.g. across the Activity
+      recreation that LocaleManager.setApplicationLocales() triggers on a
+      language change (D-028). Kept as its own token (not @color/black) so the
+      purpose survives and the value tracks the app background, not a palette.
+    -->
+    <color name="app_window_background">#FF000000</color>
 </resources>

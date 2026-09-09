@@ -390,7 +390,7 @@ fun PermissionsHubCardBody(
             onFix = onFixNotifications
         )
         PermissionHubRow(
-            iconRes = R.drawable.ic_pin_location,
+            iconRes = R.drawable.ic_location_permission,
             title = locationTitle,
             granted = locationGranted,
             grantedLabel = allowedLabel,

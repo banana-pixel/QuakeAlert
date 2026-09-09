@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.web.quakealert.data.UnitSystem
+import id.web.quakealert.ProjectLinks
 import id.web.quakealert.device.LOCATION_PERMISSIONS
 import id.web.quakealert.device.hasLocationPermission
 import id.web.quakealert.device.openFullscreenIntentSettings
@@ -199,7 +200,7 @@ fun SettingsRoute(
         onUnitSelected = viewModel::onUnitSelected,
         onMoreAboutUs = viewModel::onMoreAboutUs,
         onAboutDismissed = viewModel::onAboutDismissed,
-        onGithubClick = { openLink(AboutLinks.GITHUB_PAGES) },
+        onGithubClick = { openLink(ProjectLinks.REPO_URL) },
         onEmailClick = { openLink(AboutLinks.EMAIL) },
         onDonateClick = { openLink(AboutLinks.DONATE) },
         scrollState = scrollState,

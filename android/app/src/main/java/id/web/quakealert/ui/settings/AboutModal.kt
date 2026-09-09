@@ -44,18 +44,17 @@ import id.web.quakealert.ui.theme.ModalBodyText
 import id.web.quakealert.ui.theme.QuakeAlertTheme
 
 /**
- * External destinations opened from the About overlay's action buttons. Kept in
- * one place so the URLs are not scattered across the UI layer.
+ * About-specific external destinations (contact, support). Project URLs
+ * (repository, profile, published site) live in [ProjectLinks] instead, so the
+ * two pages that link at GitHub can never disagree again.
  */
 object AboutLinks {
-    /** Project GitHub Pages site — "GitHub Pages" action. */
-    const val GITHUB_PAGES = "https://banana-pixel.github.io/QuakeAlert-App/"
 
     /** Author contact — "Email" action. Pre-fills a subject line. */
     const val EMAIL = "mailto:wiratara006@gmail.com?subject=QuakeAlert%20Feedback"
 
-    /** Support the project — "Donate" action. */
-    const val DONATE = "https://github.com/sponsors/banana-pixel"
+    /** Support the project via Saweria — "Donate" action. */
+    const val DONATE = "https://saweria.co/bananapixel"
 }
 
 /** Mission statement (Figma node 4:672, first paragraph). */
@@ -93,7 +92,7 @@ private const val ABOUT_ATTRIBUTION = "by @banana-pixel (Vito Wiratara)"
  * [Dimens.ScreenHorizontalPadding] rather than Material's narrower dialog width.
  *
  * @param onDismiss invoked by the close button, back press or an outside tap.
- * @param onGithubClick invoked by the "GitHub Pages" action.
+ * @param onGithubClick invoked by the "GitHub" action.
  * @param onEmailClick invoked by the "Email" action.
  * @param onDonateClick invoked by the "Donate" action.
  */
@@ -128,7 +127,7 @@ fun AboutModalDialog(
  *     circular close (X) button trailing.
  *  2. Logo badge — concentric glowing discs around the seismograph glyph.
  *  3. Body copy — mission, feedback note and the author attribution.
- *  4. Actions — "GitHub Pages" + "Email" on one row, full-width "Donate" below.
+ *  4. Actions — "GitHub" + "Email" on one row, full-width "Donate" below.
  *
  * The card scrolls internally so the copy stays reachable on short viewports
  * (landscape, large font scales) instead of being clipped by the dialog window.
@@ -219,7 +218,7 @@ private fun AboutModalBody(lang: DisplayLanguage = DisplayLanguage.EN, modifier:
 }
 
 /**
- * Bottom action block (Figma node 4:673): "GitHub Pages" and "Email" share a row
+ * Bottom action block (Figma node 4:673): "GitHub" and "Email" share a row
  * as equal halves, with the full-width "Donate" button beneath. Rows and the
  * in-row gap both use the design's 20dp spacing.
  */
@@ -231,7 +230,8 @@ private fun AboutModalActions(
     modifier: Modifier = Modifier,
     lang: DisplayLanguage = DisplayLanguage.EN
 ) {
-    val githubLabel = "GitHub Pages"
+    // "GitHub" is a proper noun: identical in both languages, so no new strings.
+    val githubLabel = "GitHub"
     val emailLabel = "Email"
     val donateLabel = if (lang == DisplayLanguage.ID) "Donasi" else "Donate"
     Column(

@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -38,13 +39,13 @@ import id.web.quakealert.ui.theme.CardTitle
 import id.web.quakealert.ui.theme.ChipLabel
 import id.web.quakealert.ui.theme.Dimens
 import id.web.quakealert.ui.theme.EmergencyCtaBorder
-import id.web.quakealert.ui.theme.EmergencyCtaFill
 import id.web.quakealert.ui.theme.EventDetailModalGradient
 import id.web.quakealert.ui.theme.FilterActiveFill
 import id.web.quakealert.ui.theme.FilterInactiveFill
 import id.web.quakealert.ui.theme.MmiOrange
 import id.web.quakealert.ui.theme.QuakeAlertTheme
 import id.web.quakealert.ui.theme.SectionTitle
+import id.web.quakealert.ui.theme.WizardConfirmActionFill
 
 /**
  * The filter sheet behind the [QuakeFilterRow] trigger (Figma node 1:709 covers
@@ -175,11 +176,13 @@ fun QuakeFilterDialog(
                 FilterDialogAction(
                     label = strings.reset,
                     onClick = onReset,
+                    primary = false,
                     modifier = Modifier.weight(1f)
                 )
                 FilterDialogAction(
                     label = strings.apply,
                     onClick = { onApply(draft) },
+                    primary = true,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -296,11 +299,20 @@ private fun OptionPillRow(
 /**
  * "Reset" / "Apply" capsule, on the shared overlay-action chrome
  * ([Dimens.ModalActionHeight] + 2dp stroke) the Details overlay uses.
+ *
+ * Two weights, one geometry (D-031, primary fill amended by D-033): the
+ * committing action ([primary]) carries the wizard family's confirming green so
+ * it reads as the way forward, while Reset — which only discards an
+ * uncommitted, session-only draft — is a ghost holding the same stroke, so the
+ * pair keeps one shape and the hierarchy comes from weight rather than from two
+ * competing colours. The wine-red emergency fill stays reserved for emergency
+ * contexts, not for a reversible housekeeping tap.
  */
 @Composable
 private fun FilterDialogAction(
     label: String,
     onClick: () -> Unit,
+    primary: Boolean,
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(Dimens.RadiusSmall)
@@ -308,7 +320,7 @@ private fun FilterDialogAction(
         modifier = modifier
             .height(Dimens.ModalActionHeight)
             .clip(shape)
-            .background(EmergencyCtaFill, shape)
+            .background(if (primary) WizardConfirmActionFill else Color.Transparent, shape)
             .border(Dimens.BorderMedium, EmergencyCtaBorder, shape)
             .clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center

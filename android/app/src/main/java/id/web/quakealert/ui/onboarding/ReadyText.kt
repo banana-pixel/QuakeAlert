@@ -16,15 +16,10 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.web.quakealert.ProjectLinks
 import id.web.quakealert.ui.theme.NunitoFontFamily
 import id.web.quakealert.ui.theme.TextLink
 import id.web.quakealert.ui.theme.TextSecondary
-
-/** Project repository — opened from the "GitHub" bug-report link. */
-private const val GITHUB_REPO_URL = "https://github.com/banana-pixel/QuakeAlert-App"
-
-/** Author profile — opened from the "@banana-pixel" credit link. */
-private const val GITHUB_PROFILE_URL = "https://github.com/banana-pixel"
 
 /**
  * Closing copy for Onboarding Page 7 (Figma node 1:453), split into three
@@ -77,7 +72,7 @@ fun ReadyText(strings: OnboardingStrings, modifier: Modifier = Modifier) {
         Text(
             text = buildAnnotatedString {
                 withStyle(bodyStyle) { append(strings.readyReport) }
-                withLink(LinkAnnotation.Url(url = GITHUB_REPO_URL, styles = linkStyle)) {
+                withLink(LinkAnnotation.Url(url = ProjectLinks.REPO_URL, styles = linkStyle)) {
                     append(strings.readyHere)
                 }
                 withStyle(bodyStyle) { append(strings.readySuffix) }
@@ -90,7 +85,7 @@ fun ReadyText(strings: OnboardingStrings, modifier: Modifier = Modifier) {
         Text(
             text = buildAnnotatedString {
                 withStyle(bodyStyle) { append(strings.readyBy) }
-                withLink(LinkAnnotation.Url(url = GITHUB_PROFILE_URL, styles = linkStyle)) {
+                withLink(LinkAnnotation.Url(url = ProjectLinks.PROFILE_URL, styles = linkStyle)) {
                     append("@banana-pixel")
                 }
             },

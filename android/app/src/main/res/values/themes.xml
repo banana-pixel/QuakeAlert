@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.QuakeAlert" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      D-028: base the empty window on the app's own dark background so the gap
+      during Activity (re)creation reads as a still frame rather than a flash.
+      Covers MainActivity and WarningActivity alike; both paint opaque Compose
+      content over it on the first frame, so it is visible only in the gap.
+    -->
+    <style name="Theme.QuakeAlert" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/app_window_background</item>
+    </style>
 </resources>
