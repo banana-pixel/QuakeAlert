@@ -361,11 +361,32 @@ fun OnboardingPageItem(
             // Illustrations are full-colour vector art; render them untinted
             // (Image, not Icon) so every page shows its original artwork
             // consistently instead of a single flat tint.
-            Image(
-                painter = painterResource(id = page.iconRes),
-                contentDescription = page.title,
-                modifier = Modifier.size(150.dp)
-            )
+            // Figma node 1:341 (page 2) places cpu-chip-01 + globe-05 side by
+            // side (150px each, gap 10px).
+            if (page.secondaryIconRes != null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(id = page.iconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(150.dp)
+                    )
+                    Image(
+                        painter = painterResource(id = page.secondaryIconRes),
+                        contentDescription = page.title,
+                        modifier = Modifier.size(150.dp)
+                    )
+                }
+            } else {
+                Image(
+                    painter = painterResource(id = page.iconRes),
+                    contentDescription = page.title,
+                    modifier = Modifier.size(150.dp)
+                )
+            }
         }
 
         Column(
@@ -505,6 +526,7 @@ private fun rememberOnboardingPages(strings: OnboardingStrings, lang: DisplayLan
         ),
         OnboardingPage(
             iconRes = R.drawable.ic_sensor_chip,
+            secondaryIconRes = R.drawable.ic_globe_05,
             title = if (id) {
                 "Berdasarkan Sensor murah yang dapat dipasang di seluruh dunia."
             } else {

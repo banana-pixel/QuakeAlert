@@ -51,6 +51,7 @@ enum class OnboardingPageKind {
  */
 data class OnboardingPage(
     @param:DrawableRes val iconRes: Int,
+    @param:DrawableRes val secondaryIconRes: Int? = null,
     val title: String,
     val description: String,
     val actionText: String? = null,
