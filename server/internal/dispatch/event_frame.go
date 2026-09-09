@@ -56,3 +56,78 @@ func (d *Dispatcher) DispatchEventFrame(ctx context.Context, msg *AlertMessage, 
 		wsClients: wsCount, fcmConfigured: d.fcm != nil,
 	})
 }
+
+// TrustedLocalRadiusKm adalah radius peringatan lokal Admin Node (D-036
+// PROPOSED): token dalam 20 km dari centroid menerima frame trusted_local.
+// Konstanta sendiri, bukan parameter, dengan alasan yang sama seperti
+// AlertRadiusKm — dan NILAINYA berbeda dengan sengaja: peringatan otoritas
+// satu-node tidak boleh menjangkau sejauh peringatan terkonfirmasi jaringan.
+const TrustedLocalRadiusKm = 20
+
+// DispatchTrustedLocalEventFrame adalah jalur emisi peringatan lokal Admin
+// Node: SATU frame EARTHQUAKE_ALERT bertanda trusted_local, disiarkan ke
+// WebSocket seperti setiap frame, lalu dikirim FCM hanya ke token dalam
+// TrustedLocalRadiusKm.
+//
+// Berbeda dari dispatchFCM dalam tepat dua hal, dan keduanya disengaja:
+//   - radius token 20 km (bukan AlertRadiusKm), dan
+//   - TANPA fallback GeoTopic dalam keadaan apa pun — termasuk severe,
+//     termasuk guard-nonaktif, termasuk tanpa token. Tanpa token berarti
+//     AudienceNone (nol yang teramati bila FCM dikonfigurasi).
+//
+// singleNodeGeoTopicGuard TIDAK disentuh: jalur ini tidak pernah menyentuh
+// GeoTopic, jadi guard tetap berlaku penuh pada jalur normal. Fungsi ini
+// sinkron (lookup + kirim + catat); pemanggil (Bridge Admin Node) yang
+// menjalankannya di luar jalur publikasi.
+func (d *Dispatcher) DispatchTrustedLocalEventFrame(ctx context.Context, msg *AlertMessage) {
+	if msg == nil {
+		return
+	}
+	if msg.ValidityMs == 0 {
+		msg.ValidityMs = d.resolveAfter.Milliseconds()
+	}
+	// decidedAt sinkron seperti dispatchFCM: waktu keputusan, bukan waktu
+	// pengiriman.
+	decidedAt := time.Now().UnixMilli()
+
+	// WebSocket lebih dulu, seperti setiap frame: klien foreground menerima
+	// peringatan lokal lewat kanal yang sama dengan peringatan lain.
+	wsCount := d.hub.Broadcast(msg)
+
+	if d.fcm == nil {
+		d.recordEmission(msg, ledger.AudienceNone, decidedAt, delivery{wsClients: wsCount})
+		return
+	}
+	data := BuildAlertData(msg)
+	tokens := d.trustedLocalTokens(ctx, msg)
+	if len(tokens) == 0 {
+		d.log.Info("peringatan lokal tanpa audiens: tanpa token dalam 20 km, FCM tidak dikirim",
+			"event_id", msg.EventID, "type", msg.Type, "nodes", msg.NodeCount)
+		d.recordEmission(msg, ledger.AudienceNone, decidedAt, delivery{
+			wsClients: wsCount, fcmConfigured: true,
+		})
+		return
+	}
+	attempted, succeeded := d.sendToTokens(ctx, tokens, data, msg, TrustedLocalRadiusKm)
+	d.recordEmission(msg, ledger.AudienceTokensRadiusLocal, decidedAt, delivery{
+		wsClients: wsCount, fcmAttempted: attempted, fcmSucceeded: succeeded,
+		fcmConfigured: true,
+	})
+}
+
+// trustedLocalTokens mengembalikan token dalam TrustedLocalRadiusKm dari
+// centroid, atau nil bila store tidak mendukung pencarian / query gagal.
+// Kegagalan di sini bukan kegagalan dispatch: pemanggil mencatat AudienceNone
+// — TIDAK ADA fallback topik pada jalur ini, itulah seluruh maksudnya.
+func (d *Dispatcher) trustedLocalTokens(ctx context.Context, msg *AlertMessage) []string {
+	finder, ok := d.saver.(tokenFinder)
+	if !ok {
+		return nil
+	}
+	tokens, err := finder.FCMTokensWithin(ctx, msg.CentroidLat, msg.CentroidLon, TrustedLocalRadiusKm)
+	if err != nil {
+		d.log.Error("gagal cari token FCM lokal", "err", err, "event_id", msg.EventID)
+		return nil
+	}
+	return tokens
+}

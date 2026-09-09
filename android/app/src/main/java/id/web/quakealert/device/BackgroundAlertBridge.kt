@@ -136,12 +136,12 @@ object BackgroundAlertBridge {
             return
         }
 
-        val decision = AlertGate.decide(
-            userLocation = network.sessionStore.readUserLocation(),
-            centroidLat = message.centroidLat,
-            centroidLon = message.centroidLon,
-            mmi = message.mmi,
-            pgaGal = message.pgaGal
+        // One choke point for both gates (AlertGate.decideFor): trusted-local
+        // frames take the 20 km no-override gate, everything else the confirmed
+        // path — the same rule as the FCM path above.
+        val decision = AlertGate.decideFor(
+            message = message,
+            userLocation = network.sessionStore.readUserLocation()
         )
 
         if (!decision.shouldAlarm) {
@@ -165,11 +165,8 @@ object BackgroundAlertBridge {
     internal suspend fun decideForTest(
         network: QuakeNetwork,
         message: WsAlertMessage
-    ): AlertDecision = AlertGate.decide(
-        userLocation = network.sessionStore.readUserLocation(),
-        centroidLat = message.centroidLat,
-        centroidLon = message.centroidLon,
-        mmi = message.mmi,
-        pgaGal = message.pgaGal
+    ): AlertDecision = AlertGate.decideFor(
+        message = message,
+        userLocation = network.sessionStore.readUserLocation()
     )
 }

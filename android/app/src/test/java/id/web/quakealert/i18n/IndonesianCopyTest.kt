@@ -331,6 +331,27 @@ class IndonesianCopyTest {
             )
         )
     }
+
+    @Test
+    fun `local warning copy names itself and its source in both languages`() {
+        val en = warningStrings(EN)
+        assertEquals("Local Warning", en.localWarningTitle)
+        assertEquals("LOCAL WARNING - SINGLE STATION REPORT", en.localWarningBadge)
+        assertEquals("Admin Node", en.localWarningSource)
+
+        val id = warningStrings(ID)
+        assertEquals("Peringatan Lokal", id.localWarningTitle)
+        assertEquals("PERINGATAN LOKAL - LAPORAN SATU STASIUN", id.localWarningBadge)
+        // A proper noun, identical in both languages — like "GitHub" in the
+        // About links — so the source label cannot drift between them.
+        assertEquals("Admin Node", id.localWarningSource)
+
+        listOf(en, id).forEach {
+            assertNoEmDash("localWarning", it.localWarningTitle)
+            assertNoEmDash("localWarning", it.localWarningBadge)
+            assertNoEmDash("localWarning", it.localWarningSource)
+        }
+    }
 }
 
 // Placeholder assertion helpers live beside the copy they pin; the HistoryStrings

@@ -19,6 +19,30 @@ type frameSink interface {
 // tentang state machine — arah impornya hanya satu, event -> dispatch.
 type Bridge struct {
 	sink frameSink
+	// adminSource + adminSink adalah kait peringatan lokal Admin Node (D-036
+	// PROPOSED), dipasang lewat SetAdminNodeHook. Nilai nol berarti
+	// nonaktif: EmitTransition berperilaku persis seperti sebelum kait ada.
+	adminSource AdminNodeSource
+	adminSink   trustedLocalSink
+}
+
+// trustedLocalSink adalah satu-satunya yang dibutuhkan kait admin dari
+// dispatch: kirimkan frame lokal ini lewat jalur token-only. Implementasi:
+// *dispatch.Dispatcher.
+type trustedLocalSink interface {
+	DispatchTrustedLocalEventFrame(ctx context.Context, msg *dispatch.AlertMessage)
+}
+
+// SetAdminNodeHook memasang jalur peringatan lokal: sumber status operator
+// dan sink dispatch lokal. Dipisahkan dari konstruktor seperti SetEmitter —
+// dispatcher dan sumber dibangun pada titik yang berbeda di main.go — dan
+// keduanya harus dipasang bersama: setengah kait tidak pernah berguna.
+func (b *Bridge) SetAdminNodeHook(src AdminNodeSource, sink trustedLocalSink) {
+	if b == nil {
+		return
+	}
+	b.adminSource = src
+	b.adminSink = sink
 }
 
 // NewBridge membuat emitter di atas sink. sink nil menghasilkan Bridge yang
@@ -35,6 +59,10 @@ func (b *Bridge) EmitTransition(ctx context.Context, s Snapshot) {
 		return
 	}
 	b.sink.DispatchEventFrame(ctx, msg, push)
+	// Kait Admin Node (D-036): aditif setelah emisi normal — tidak mengubah
+	// frame di atas, tidak menahannya, dan tidak membaca I/O apa pun secara
+	// sinkron (lihat emitTrustedLocal di admin_node.go).
+	b.emitTrustedLocal(ctx, s)
 }
 
 // FrameFor memetakan satu transisi ke frame yang diumumkannya, mengikuti tabel

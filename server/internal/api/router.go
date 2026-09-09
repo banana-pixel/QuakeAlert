@@ -83,6 +83,12 @@ func (s *Server) Router(wsHandler http.HandlerFunc, log *slog.Logger) http.Handl
 			// false} menarik kembali kepercayaan pada node yang sudah sah.
 			r.Get("/api/v1/admin/nodes/pending", s.HandleListPendingNodes)
 			r.Post("/api/v1/admin/nodes/{stationID}/verify", s.HandleVerifyNode)
+			// Designasi Admin Node (migrasi 000010, D-036 PROPOSED): aksi
+			// eksplisit memakai POST seperti rute admin lain — tidak ada
+			// DELETE di grup ini. designate mensyaratkan node terverifikasi
+			// dan maksimum satu pemegang aktif; revoke idempoten.
+			r.Post("/api/v1/admin/nodes/{stationID}/admin-designate", s.HandleDesignateAdminNode)
+			r.Post("/api/v1/admin/nodes/{stationID}/admin-revoke", s.HandleRevokeAdminNode)
 			// Tracker observability (Phase 3.x — counter query tanpa grep log).
 			r.Get("/api/v1/admin/tracker/stats", s.HandleTrackerStats)
 			r.Get("/api/v1/admin/tracker/near-confirmed", s.HandleTrackerNearConfirmed)

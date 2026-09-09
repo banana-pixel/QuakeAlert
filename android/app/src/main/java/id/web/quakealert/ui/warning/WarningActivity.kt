@@ -254,6 +254,9 @@ class WarningActivity : ComponentActivity() {
         // forged by anything else on the device — raises an ordinary alert rather
         // than a screen that tells the user to ignore it.
         isTest = getBooleanExtra(EXTRA_IS_TEST, false),
+        // Same safe default as isTest: a pre-change PendingIntent, or anything
+        // forged, raises an ordinary alert rather than claiming local trust.
+        isLocalWarning = getBooleanExtra(EXTRA_IS_LOCAL_WARNING, false),
         // Coexisting live events beyond the one shown (D-020); 0 preserves the
         // single-event card exactly.
         extraActiveCount = getIntExtra(EXTRA_ACTIVE_COUNT, 0).coerceAtLeast(0)
@@ -280,6 +283,7 @@ class WarningActivity : ComponentActivity() {
         private const val EXTRA_DISTANCE_KM = "distance_km"
         private const val EXTRA_LOCATION_NAME = "location_name"
         private const val EXTRA_IS_TEST = "is_test"
+        private const val EXTRA_IS_LOCAL_WARNING = "is_local_warning"
         private const val EXTRA_ACTIVE_COUNT = "active_count"
         private const val EXTRA_LANG = "lang_tag"
         private const val UNKNOWN_DISTANCE = -1
@@ -293,6 +297,9 @@ class WarningActivity : ComponentActivity() {
          *
          * @param isTest marks a drill, which adds the "TEST" badge to the card. Only
          *   ever true on a debug build; see [WarningUiState.ActiveAlert.isTest].
+         * @param isLocalWarning marks an Admin Node local warning (D-036), which
+         *   renders the local-warning title and badge. See
+         *   [WarningUiState.ActiveAlert.isLocalWarning].
          * @param langTag the chrome language tag frozen at raise time (D-030);
          *   null degrades to EN in [alertLang].
          */
@@ -303,6 +310,7 @@ class WarningActivity : ComponentActivity() {
             locationName: String,
             distanceKm: Int?,
             isTest: Boolean = false,
+            isLocalWarning: Boolean = false,
             activeCount: Int = 0,
             langTag: String? = null
         ): Intent = Intent(context, WarningActivity::class.java).apply {
@@ -312,6 +320,7 @@ class WarningActivity : ComponentActivity() {
             putExtra(EXTRA_LOCATION_NAME, locationName)
             putExtra(EXTRA_DISTANCE_KM, distanceKm ?: UNKNOWN_DISTANCE)
             putExtra(EXTRA_IS_TEST, isTest)
+            putExtra(EXTRA_IS_LOCAL_WARNING, isLocalWarning)
             putExtra(EXTRA_ACTIVE_COUNT, activeCount.coerceAtLeast(0))
             putExtra(EXTRA_LANG, langTag)
         }

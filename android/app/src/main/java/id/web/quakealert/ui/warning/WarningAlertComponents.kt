@@ -99,7 +99,10 @@ fun ActiveAlertCard(
         AlertHeadline(
             isTest = state.isTest,
             drillBadge = strings.drillBadge,
-            title = strings.alertTitle
+            isLocalWarning = state.isLocalWarning,
+            localWarningBadge = strings.localWarningBadge,
+            localWarningSource = strings.localWarningSource,
+            title = if (state.isLocalWarning) strings.localWarningTitle else strings.alertTitle
         )
 
         IntensityReadout(
@@ -194,11 +197,20 @@ private fun EndTestControl(
  * to run at all. It sits above the headline rather than replacing it so the card
  * still looks like the screen under test; the word "DRILL" spells out what "TEST"
  * means for anyone handed the phone mid-exercise.
+ *
+ * [isLocalWarning] adds the same-chrome "LOCAL WARNING" pill and swaps the
+ * headline to the local-warning title (D-036). Same card, same pipeline, same
+ * siren behaviour — only the copy says what this is: a single station's report,
+ * not a network-confirmed alert. Never combined with [isTest] in practice (a
+ * drill is never local); rendered independently so no precedence is hidden.
  */
 @Composable
 private fun AlertHeadline(
     isTest: Boolean,
     drillBadge: String = "TEST - DRILL, NOT A REAL EARTHQUAKE",
+    isLocalWarning: Boolean = false,
+    localWarningBadge: String = "LOCAL WARNING - SINGLE STATION REPORT",
+    localWarningSource: String = "Admin Node",
     title: String = "Earthquake Alert",
     modifier: Modifier = Modifier
 ) {
@@ -225,6 +237,33 @@ private fun AlertHeadline(
                         horizontal = Dimens.PillPaddingHorizontal,
                         vertical = Dimens.PillPaddingVertical
                     )
+            )
+        }
+        if (isLocalWarning) {
+            Text(
+                text = localWarningBadge,
+                style = EmergencyControlLabel,
+                modifier = Modifier
+                    .background(
+                        SuggestedActionsFill,
+                        RoundedCornerShape(Dimens.EmergencyControlRadius)
+                    )
+                    .border(
+                        width = Dimens.EmergencyControlBorderWidth,
+                        color = EmergencyControlBorder,
+                        shape = RoundedCornerShape(Dimens.EmergencyControlRadius)
+                    )
+                    .padding(
+                        horizontal = Dimens.PillPaddingHorizontal,
+                        vertical = Dimens.PillPaddingVertical
+                    )
+            )
+            // Source label (D-036): whose authority this is. A bare proper noun
+            // needs no translated prefix — "Admin Node" reads the same in both
+            // languages — and it sits directly under the badge it qualifies.
+            Text(
+                text = localWarningSource,
+                style = EmergencyControlLabel
             )
         }
 

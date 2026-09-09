@@ -42,6 +42,10 @@ import kotlinx.serialization.Serializable
  *   (D-018, U-010). 0 means the server did not say (every pre-validity frame):
  *   the domain falls back to the legacy recent window rather than treating the
  *   frame as expired.
+ * @param trustedLocal Admin Node local-warning flag (D-036). False unless the
+ *   server said otherwise: a frame that says nothing is an ordinary warning,
+ *   never a local one. The FCM string form (`"true"`) is normalised to this
+ *   boolean by the FCM mapper; the socket carries it natively.
  */
 @Serializable
 data class WsAlertMessageDto(
@@ -65,5 +69,6 @@ data class WsAlertMessageDto(
     @SerialName("origin_ts") val originTs: Long = 0L,
     @SerialName("origin_ts_source") val originTsSource: String = "",
     @SerialName("independent_cell_count") val independentCellCount: Int = 0,
-    @SerialName("validity_ms") val validityMs: Long = 0L
+    @SerialName("validity_ms") val validityMs: Long = 0L,
+    @SerialName("trusted_local") val trustedLocal: Boolean = false
 )

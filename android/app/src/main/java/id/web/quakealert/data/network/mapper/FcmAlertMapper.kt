@@ -65,6 +65,11 @@ fun Map<String, String>.toWsAlertMessageOrNull(
         // the wire like every other numeric key. Non-positive or unparseable
         // reads as 0 ("server did not say") so the legacy recent window
         // applies — fail loud, never fail silent.
-        validityMs = this["validity_ms"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 0L
+        validityMs = this["validity_ms"]?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: 0L,
+        // Admin Node local-warning flag (D-036). Only the exact string the
+        // server sends counts: "false", "1", "TRUE", a typo, or an absent key
+        // all read as an ordinary warning — mirroring the is_test rule, in the
+        // same fail direction (never claim local trust that was not stated).
+        trustedLocal = this["trusted_local"]?.trim() == "true"
     ).toDomainOrNull(allowTestAlerts = allowTestAlerts)
 }

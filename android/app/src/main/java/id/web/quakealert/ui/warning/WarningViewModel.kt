@@ -490,12 +490,9 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
         lastKnownLocation = userLocation
         activeAlertDetails = message.toHistoryItem(userLocation, locale = locale)
 
-        val decision = AlertGate.decide(
-            userLocation = userLocation,
-            centroidLat = message.centroidLat,
-            centroidLon = message.centroidLon,
-            mmi = message.mmi,
-            pgaGal = message.pgaGal
+        val decision = AlertGate.decideFor(
+            message = message,
+            userLocation = userLocation
         )
 
         if (!decision.shouldAlarm) {
@@ -983,7 +980,8 @@ class WarningViewModel(application: Application) : AndroidViewModel(application)
                 intensityValue = intensityValueLabel(locale),
                 distanceKm = userLocation.distanceKmTo(centroidLat, centroidLon)?.roundToInt(),
                 locationName = locationName,
-                isTest = isTest
+                isTest = isTest,
+                isLocalWarning = trustedLocal
             )
     }
 }

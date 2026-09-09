@@ -79,7 +79,8 @@ fun SensorItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isSelected: Boolean = false,
-    lang: DisplayLanguage = DisplayLanguage.EN
+    lang: DisplayLanguage = DisplayLanguage.EN,
+    adminNodeBadge: String = "Admin Node"
 ) {
     val cardShape = remember { RoundedCornerShape(Dimens.RadiusCard) }
     val fill by animateColorAsState(
@@ -115,7 +116,7 @@ fun SensorItemCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ChipColumn(label = item.chipLabel)
-        DetailsColumn(item = item, lang = lang, modifier = Modifier.weight(1f))
+        DetailsColumn(item = item, lang = lang, adminNodeBadge = adminNodeBadge, modifier = Modifier.weight(1f))
     }
 }
 
@@ -177,6 +178,7 @@ private fun statusOffline(lang: DisplayLanguage): String =
 private fun DetailsColumn(
     item: SensorStationItem,
     lang: DisplayLanguage = DisplayLanguage.EN,
+    adminNodeBadge: String = "Admin Node",
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -219,6 +221,12 @@ private fun DetailsColumn(
                 SensorStatus.OFFLINE -> Triple(statusOffline(lang), StatusOfflineFill, StatusOfflineDot)
             }
             QuakePill(text = label, fill = fill, dotColor = dot)
+            // Operator designation (D-036): beside status and ping, never in
+            // place of them — it says who the operator trusts, not how the
+            // node is doing.
+            if (item.isAdminNode) {
+                QuakePill(text = adminNodeBadge)
+            }
             QuakePill(text = item.telemetry.lastPing)
         }
 

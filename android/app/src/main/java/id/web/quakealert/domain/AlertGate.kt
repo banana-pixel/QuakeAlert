@@ -24,7 +24,18 @@ enum class AlertGateReason {
      * The user's position is unknown, so the distance could not be computed and the
      * gate failed open.
      */
-    LOCATION_UNKNOWN
+    LOCATION_UNKNOWN,
+
+    /**
+     * A trusted-local frame whose centroid is inside
+     * [SafetyPolicy.LOCAL_WARNING_RADIUS_KM]. Separate from [WITHIN_RADIUS] so
+     * the UI and the logs can tell a local warning apart from a confirmed
+     * alert at the same distance.
+     */
+    LOCAL_WITHIN_RADIUS,
+
+    /** A trusted-local frame outside that radius — no alarm, banner only. */
+    LOCAL_OUTSIDE_RADIUS
 }
 
 /**
@@ -123,4 +134,71 @@ object AlertGate {
         mmi: String? = null,
         pgaGal: Double = 0.0
     ): Boolean = decide(userLocation, centroidLat, centroidLon, mmi, pgaGal).shouldAlarm
+
+    /**
+     * The single choke point that picks the gate for a parsed frame.
+     *
+     * A trusted-local frame ([WsAlertMessage.trustedLocal], D-036) is judged by
+     * [decideLocalWarning]; every other frame by [decide]. All three raise
+     * paths (push, foreground socket, background socket bridge) must call this
+     * instead of [decide] directly, so a local warning can never slip onto the
+     * confirmed path — and a confirmed alert can never be narrowed to 20 km —
+     * by a caller that guessed.
+     */
+    fun decideFor(
+        message: WsAlertMessage,
+        userLocation: UserLocation?
+    ): AlertDecision =
+        if (message.trustedLocal) {
+            decideLocalWarning(
+                userLocation = userLocation,
+                centroidLat = message.centroidLat,
+                centroidLon = message.centroidLon
+            )
+        } else {
+            decide(
+                userLocation = userLocation,
+                centroidLat = message.centroidLat,
+                centroidLon = message.centroidLon,
+                mmi = message.mmi,
+                pgaGal = message.pgaGal
+            )
+        }
+
+    /**
+     * Decides whether a trusted-local frame (D-036) should sound the alarm.
+     *
+     * Distance-only, against [SafetyPolicy.LOCAL_WARNING_RADIUS_KM], with
+     * deliberately NO intensity override: a local warning carries
+     * single-station authority, so letting a large PGA escalate it to the
+     * confirmed/severe semantics would claim network confirmation the server
+     * never made. The server already filtered FCM recipients to this radius;
+     * this gate covers what the broadcast socket carried further.
+     *
+     * An unknown position fails open with [AlertGateReason.LOCATION_UNKNOWN],
+     * like [decide]: the decision carries the unknown rather than inventing a
+     * distance, and the UI says so.
+     */
+    fun decideLocalWarning(
+        userLocation: UserLocation?,
+        centroidLat: Double,
+        centroidLon: Double
+    ): AlertDecision {
+        val distanceKm = userLocation.distanceKmTo(centroidLat, centroidLon)
+
+        if (distanceKm == null) {
+            return AlertDecision(
+                shouldAlarm = true,
+                distanceKm = null,
+                reason = AlertGateReason.LOCATION_UNKNOWN
+            )
+        }
+
+        val within = distanceKm <= SafetyPolicy.LOCAL_WARNING_RADIUS_KM
+        return AlertDecision(
+            shouldAlarm = within,
+            distanceKm = distanceKm,
+            reason = if (within) AlertGateReason.LOCAL_WITHIN_RADIUS else AlertGateReason.LOCAL_OUTSIDE_RADIUS
+        )
+    }
 }

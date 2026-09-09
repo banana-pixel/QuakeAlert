@@ -64,7 +64,11 @@ fun WsAlertMessageDto.toDomainOrNull(
         // malformed or non-positive value degrades to 0 ("server did not say")
         // and the legacy recent window applies, because the safe failure
         // direction is raising what may be live, never silencing it.
-        validityMs = validityMs
+        validityMs = validityMs,
+        // Admin Node local-warning flag (D-036). Passed through verbatim: the
+        // DTO already defaulted absence to false, and only an explicit server
+        // "true" (string on FCM, boolean on the socket) arrives as true.
+        trustedLocal = trustedLocal
     )
 }
 

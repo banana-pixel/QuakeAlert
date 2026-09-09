@@ -425,6 +425,19 @@ de-duplication — **not** at-least-once (D-008).
   stated exactly: manual/visual on a single POCO F1 (API 36, debug
   build); no second device, no vendor, no release build, and nothing here
   touches detection, confirmation, or delivery semantics.
+- **D-036 Android client regression on prod-pointed debug build —
+  owner-reported PASS 2026-09-09 (checklist A).** Debug APK
+  (`id.web.quakealert.debug`,
+  `QUAKE_BASE_URL=https://api.quakealert.web.id/`, built from the uncommitted
+  Phase 1–3 tree including the D-036 client, production server NOT upgraded):
+  status/warning loads from prod, the 8-station sensor roll renders with no
+  Admin badge and no crash, history normal, the local drill shows the
+  UJI-LATIHAN badge with AKHIRI TES teardown, ID/EN switch clean,
+  notification toggle off/on behaves. Scope, stated exactly: regression only
+  (owner checklist A) — `trusted_local` frames and `is_admin_node` are absent
+  server-side, so the local-warning card and badge paths are unexercised;
+  FCM drill not applicable (WebSocket-only build, no google-services.json);
+  device model not recorded. D-036 stays PROPOSED.
 
 ## NOT demonstrated
 

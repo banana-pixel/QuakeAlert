@@ -20,6 +20,20 @@
 //	MIN_INDEPENDENT_CELLS, MAX_EVENT_DIAMETER_KM, EVENT_RESOLVE_AFTER_MS,
 //	EVENT_SWEEP_INTERVAL_MS
 //
+// Env designasi Admin Node (opsional; D-036):
+//
+//	ADMIN_NODE_ID               — station_id yang ditunjuk, MENURUT OPERATOR.
+//	                              Kosong berarti fitur mati (tidak ada frame
+//	                              lokal yang dinilai). TIDAK PERNAH dibaca dari
+//	                              baris historis: tidak ada tabel yang mencatat
+//	                              siapa yang ditunjuk.
+//	ADMIN_NODE_VERIFIED         — "true"/"false", wajib diisi bila ADMIN_NODE_ID
+//	                              diisi. Kepercayaan MENURUT OPERATOR saat
+//	                              keputusan historis dibuat.
+//	ADMIN_NODE_HEARTBEAT_AGE_MS — umur last_heartbeat (ms) MENURUT OPERATOR,
+//	                              baku 0 (segar). Seperti parameter lain:
+//	                              diassersi, bukan dipulihkan.
+//
 // Env pelaporan (opsional):
 //
 //	LEDGER_DROPS_KNOWN     — jumlah ledger_drops_total untuk jendela ini, bila
@@ -145,6 +159,17 @@ func profileFromEnv() event.ReplayProfile {
 	p.Options.ResolveAfterMs = envInt("EVENT_RESOLVE_AFTER_MS", p.Options.ResolveAfterMs)
 	p.Options.SweepIntervalMs = envInt("EVENT_SWEEP_INTERVAL_MS", p.Options.SweepIntervalMs)
 	p.DecidedAtToleranceMs = envInt("DECIDED_AT_TOLERANCE_MS", 0)
+	if id := os.Getenv("ADMIN_NODE_ID"); id != "" {
+		verifiedRaw := os.Getenv("ADMIN_NODE_VERIFIED")
+		if verifiedRaw != "true" && verifiedRaw != "false" {
+			die("ADMIN_NODE_ID diisi tetapi ADMIN_NODE_VERIFIED=%q: wajib \"true\"/\"false\" eksplisit", verifiedRaw)
+		}
+		p.AdminNode = &event.ReplayAdminNode{
+			StationID:    id,
+			Verified:     verifiedRaw == "true",
+			HeartbeatAge: time.Duration(envInt("ADMIN_NODE_HEARTBEAT_AGE_MS", 0)) * time.Millisecond,
+		}
+	}
 	return p
 }
 
@@ -182,6 +207,12 @@ func banner(fromTS, toTS int64, p event.ReplayProfile, nObs, nHist int) {
 	fmt.Printf("  EVENT_SWEEP_INTERVAL_MS = %d\n", o.SweepIntervalMs)
 	fmt.Printf("  MIN_PGA_GAL             = %g   (konstanta BINER, bukan env)\n", event.MinPGAGal)
 	fmt.Printf("  MIN_NODES_CONFIRMED     = %d    (konstanta BINER, bukan env)\n", event.MinNodesConfirmed)
+	if p.AdminNode == nil {
+		fmt.Println("  ADMIN_NODE              = - (fitur mati; tidak ada frame lokal yang dinilai)")
+	} else {
+		fmt.Printf("  ADMIN_NODE              = %s verified=%v heartbeat_age=%s (DIASSERSI OPERATOR, bukan dari baris)\n",
+			p.AdminNode.StationID, p.AdminNode.Verified, p.AdminNode.HeartbeatAge)
+	}
 	fmt.Println("--- asumsi lain yang wajib dinyatakan ------------------------------------")
 	fmt.Println("  urutan masuk : DIDEKLARASIKAN received_ts, observation_id.")
 	fmt.Println("                 Handler MQTT produksi berjalan SetOrderMatters(false),")
@@ -222,6 +253,14 @@ func printReplayOnly(res *event.ReplayResult) {
 	for _, f := range res.Frames {
 		fmt.Printf("  %s rev%d %s->%s %s node=%d cells=%d peak=%.4f\n",
 			f.EventID, f.Revision, f.From, f.To, f.Reason, f.NodeCount, f.IndependentCells, f.PeakPGA)
+	}
+	if res.Profile.AdminNode == nil {
+		fmt.Println("admin node      : fitur mati (tanpa designasi operator)")
+		return
+	}
+	fmt.Println("--- keputusan Admin Node per frame (DILAPORKAN, bukan dibandingkan) -------")
+	for _, a := range res.AdminOutcomes {
+		fmt.Printf("  %s rev%d eligible=%v alasan=%s\n", a.EventID, a.Revision, a.Eligible, a.Reason)
 	}
 }
 

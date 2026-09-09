@@ -63,6 +63,15 @@ type fakeRepo struct {
 	verifiedID    string
 	verifiedTo    bool
 
+	// Admin Node (migrasi 000010, D-036 PROPOSED)
+	adminDesignateErr  error
+	adminDesignatedID  string
+	adminRevokeErr     error
+	adminRevokeMissing bool
+	adminRevokedID     string
+	adminHolderID      string
+	adminHolderErr     error
+
 	// Revoke (POST /nodes/revoke)
 	nodeSecret     *store.NodeSecret
 	nodeSecretErr  error
@@ -266,6 +275,29 @@ func (f *fakeRepo) DeleteUnverifiedNode(_ context.Context, stationID string) (bo
 	}
 	f.deletedID = stationID
 	return f.deleteAffected, nil
+}
+
+func (f *fakeRepo) DesignateAdminNode(_ context.Context, stationID string) error {
+	if f.adminDesignateErr != nil {
+		return f.adminDesignateErr
+	}
+	f.adminDesignatedID = stationID
+	return nil
+}
+
+func (f *fakeRepo) RevokeAdminNode(_ context.Context, stationID string) (bool, error) {
+	if f.adminRevokeErr != nil {
+		return false, f.adminRevokeErr
+	}
+	f.adminRevokedID = stationID
+	return !f.adminRevokeMissing, nil
+}
+
+func (f *fakeRepo) GetAdminNodeStationID(_ context.Context) (string, error) {
+	if f.adminHolderErr != nil {
+		return "", f.adminHolderErr
+	}
+	return f.adminHolderID, nil
 }
 
 // fakeDecryptCipher melengkapi fakeCipher dengan Decrypt yang merekonstruksi
@@ -538,6 +570,42 @@ func TestListSensors_NoLocation(t *testing.T) {
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if len(resp.Stations) != 0 {
 		t.Fatalf("stations harus kosong, dapat %d", len(resp.Stations))
+	}
+}
+
+// Lencana Admin Node (D-036) lewat dari store ke respons /sensors apa adanya,
+// dan default false pada kedua sisi — tidak mengubah status maupun
+// active_sensors_count.
+func TestListSensors_AdminNodeBadgePassthrough(t *testing.T) {
+	repo := &fakeRepo{
+		loc: &store.UserLocation{HasLocation: true, Lat: -6.9, Lon: 107.6},
+		sensors: []store.SensorStatus{
+			{StationID: "NODE-A", IsActive: true, Verified: true, SecondsSincePing: 10, IsAdminNode: true},
+			{StationID: "NODE-B", IsActive: true, Verified: true, SecondsSincePing: 10},
+		},
+	}
+	h := newTestServer(repo, NewMemoryRateLimiter())
+	req := authedRequest(http.MethodGet, "/api/v1/sensors", "", testSecret, "u")
+	rec := do(h, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, mau 200", rec.Code)
+	}
+	var resp sensorsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Stations) != 2 {
+		t.Fatalf("stations = %d, mau 2", len(resp.Stations))
+	}
+	if !resp.Stations[0].IsAdminNode {
+		t.Fatal("NODE-A harus membawa is_admin_node=true")
+	}
+	if resp.Stations[1].IsAdminNode {
+		t.Fatal("NODE-B harus membawa is_admin_node=false")
+	}
+	if resp.Stations[0].Status != "Online" || resp.ActiveSensorsCount != 2 {
+		t.Fatalf("lencana tidak boleh mengubah status/hitungan: %+v active=%d",
+			resp.Stations[0], resp.ActiveSensorsCount)
 	}
 }
 

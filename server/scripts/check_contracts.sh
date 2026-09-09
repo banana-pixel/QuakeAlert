@@ -50,8 +50,8 @@ for code in "${codes[@]}"; do
   fi
 done
 
-# 4. Cermin is_test / validity_ms lintas kanal (D-018) ---------------------------------
-for field in is_test validity_ms; do
+# 4. Cermin is_test / validity_ms / trusted_local lintas kanal (D-018, D-036) -----
+for field in is_test validity_ms trusted_local; do
   if grep -q "\"$field\"" contracts/fcm/alert_payload.json; then
     ok "FCM membawa $field"
   else
@@ -68,12 +68,32 @@ if grep -q 'validity_ms' contracts/openapi/openapi.yaml; then
 else
   fail "OpenAPI tidak menyebut validity_ms sama sekali"
 fi
+if grep -q 'trusted_local' contracts/openapi/openapi.yaml; then
+  ok "OpenAPI mendokumentasikan trusted_local"
+else
+  fail "OpenAPI tidak menyebut trusted_local sama sekali"
+fi
 
 # 5. Tidak ada private key yang terlacak ------------------------------------------------
 if git grep -qE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- . ; then
   fail "private key ditemukan di file terlacak"
 else
   ok "tidak ada private key di file terlacak"
+fi
+
+# 6. Semantik trusted_local aditif dan default-aman (D-036, PROPOSED) ------------------
+# FCM: string "true"/"false" (batasan FCM: seluruh nilai data bertipe string),
+# TIDAK boleh required -- ketiadaan berarti peringatan normal.
+if python3 -c "import json,sys; d=json.load(open('contracts/fcm/alert_payload.json')); p=d['properties']['message']['properties']['data']; sys.exit(0 if p['properties'].get('trusted_local',{}).get('type')=='string' and set(p['properties']['trusted_local'].get('enum',[]))=={'true','false'} and 'trusted_local' not in p.get('required',[]) else 1)"; then
+  ok "FCM trusted_local string true/false dan opsional"
+else
+  fail "FCM trusted_local harus string enum [true,false] dan TIDAK required"
+fi
+# MQTT: boolean native, TIDAK boleh required -- ketiadaan berarti peringatan normal.
+if python3 -c "import json,sys; d=json.load(open('contracts/mqtt/alert.schema.json')); sys.exit(0 if d['properties'].get('trusted_local',{}).get('type')=='boolean' and 'trusted_local' not in d.get('required',[]) else 1)"; then
+  ok "MQTT trusted_local boolean dan opsional"
+else
+  fail "MQTT trusted_local harus boolean dan TIDAK required"
 fi
 
 echo "---"

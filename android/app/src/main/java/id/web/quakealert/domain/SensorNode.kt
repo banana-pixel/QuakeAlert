@@ -16,6 +16,9 @@ package id.web.quakealert.domain
  * @param verified operator confirmation (migration 000005): false means the node
  *   renders as Pending — visible, but not trusted infrastructure and never counted
  *   among active sensors.
+ * @param isAdminNode operator designation as Admin Node (D-036): renders the
+ *   "Admin Node" badge on the sensor card. False by default — the badge is
+ *   never granted by absence, like trust.
  * @param lastPing human-readable relative time straight from the server
  *   (e.g. "33s ago") — the server owns this wording so every client agrees.
  * @param rssiDbm signal strength in dBm (negative integer).
@@ -29,6 +32,7 @@ data class SensorNode(
     val longitude: Double,
     val online: Boolean,
     val verified: Boolean = false,
+    val isAdminNode: Boolean = false,
     val lastPing: String?,
     val rssiDbm: Int?,
     val latencyMs: Int?

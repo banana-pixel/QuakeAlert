@@ -164,6 +164,11 @@ type Repo interface {
 	ListBroadcastsForUser(ctx context.Context, userID string, limit int) ([]store.Broadcast, error)
 	ListUnverifiedNodes(ctx context.Context) ([]store.PendingNode, error)
 	SetNodeVerified(ctx context.Context, stationID string, verified bool) (bool, error)
+	// Designasi Admin Node (migrasi 000010, D-036 PROPOSED): menunjuk hanya
+	// berhasil untuk node terverifikasi dan maksimum satu pemegang aktif.
+	DesignateAdminNode(ctx context.Context, stationID string) error
+	RevokeAdminNode(ctx context.Context, stationID string) (bool, error)
+	GetAdminNodeStationID(ctx context.Context) (string, error)
 	DeleteUnverifiedNode(ctx context.Context, stationID string) (bool, error)
 	GetNodeSecret(ctx context.Context, stationID string) (*store.NodeSecret, error)
 	Ping(ctx context.Context) error
@@ -610,6 +615,11 @@ type stationDTO struct {
 	// belum dikonfirmasi operator. Ia tetap tampak di daftar, tetapi tidak
 	// pernah dihitung aktif dan tidak pernah ikut konsensus.
 	Verified bool `json:"verified"`
+	// IsAdminNode (migrasi 000010, D-036 PROPOSED): lencana operator pada
+	// daftar sensor Android. Selalu dikirim (false bila bukan admin) agar
+	// klien lama yang mengabaikan field tak dikenal tetap memparse respons
+	// yang sama; tidak mempengaruhi status maupun active_sensors_count.
+	IsAdminNode bool `json:"is_admin_node"`
 }
 
 type sensorsResponse struct {
@@ -686,6 +696,7 @@ func (s *Server) HandleListSensors(w http.ResponseWriter, r *http.Request) {
 			RSSIdBm:      sc.LastRSSI,
 			LatencyMs:    sc.LastLatencyMs,
 			Verified:     sc.Verified,
+			IsAdminNode:  sc.IsAdminNode,
 		})
 	}
 

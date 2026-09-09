@@ -128,6 +128,10 @@ paths:
         yang dinyatakan pengirim dalam milidetik; klien tidak membunyikan frame
         yang umurnya melebihi durasi ini, dan ketiadaan field berarti jendela
         legacy klien — tidak pernah dibaca sebagai kedaluwarsa.
+        Frame dapat membawa `trusted_local` (D-036, PROPOSED): hanya nilai true
+        berarti peringatan lokal Admin Node dalam radius <=20 km dari node admin
+        yang ditunjuk; false atau ketiadaan berarti peringatan normal -- tidak
+        pernah dibaca sebagai lokal. Bukan pengganti CONFIRMED.
 
 
         Auth memakai Bearer JWT yang sama, dikirim pada header handshake HTTP.
@@ -899,6 +903,118 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/v1/admin/nodes/{stationID}/admin-designate:
+    post:
+      tags: [admin]
+      summary: Menunjuk satu node terverifikasi sebagai Admin Node (D-036, PROPOSED)
+      description: >
+        Aksi eksplisit operator; tidak ada penunjukan otomatis oleh migrasi
+        maupun server. Syarat: station_id berpola benar, baris dikenal,
+        verified = true, dan belum ada node lain yang memegang kapabilitas
+        (maksimum satu pada deployment saat ini). Idempoten: menunjuk ulang
+        pemegang saat ini menjawab 200 tanpa efek. station_id yang salah bentuk
+        atau tidak dikenal menjawab 404 dan tidak pernah menyentuh basis data.
+      operationId: designateAdminNode
+      security:
+        - adminKey: []
+      parameters:
+        - name: stationID
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^NODE-[0-9A-F]{8}$'
+      responses:
+        '200':
+          description: Node ditunjuk sebagai Admin Node
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  station_id:
+                    type: string
+                    example: NODE-163A149F
+                  is_admin_node:
+                    type: boolean
+                    example: true
+        '401':
+          description: Header X-Admin-Key tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: station_id salah bentuk atau tidak dikenal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: NODE_NOT_FOUND
+                message: station_id tidak ditemukan
+        '409':
+          description: Node belum terverifikasi, atau sudah ada Admin Node lain
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: ADMIN_NODE_EXISTS
+                message: sudah ada Admin Node aktif
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/admin/nodes/{stationID}/admin-revoke:
+    post:
+      tags: [admin]
+      summary: Mencabut kapabilitas Admin Node satu node (D-036, PROPOSED)
+      description: >
+        Idempoten: mencabut node yang memang bukan admin tetap menjawab 200
+        dengan is_admin_node=false. station_id yang salah bentuk atau tidak
+        dikenal menjawab 404 dan tidak pernah menyentuh basis data.
+      operationId: revokeAdminNode
+      security:
+        - adminKey: []
+      parameters:
+        - name: stationID
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^NODE-[0-9A-F]{8}$'
+      responses:
+        '200':
+          description: Kapabilitas Admin Node dicabut
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  station_id:
+                    type: string
+                    example: NODE-163A149F
+                  is_admin_node:
+                    type: boolean
+                    example: false
+        '401':
+          description: Header X-Admin-Key tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: station_id salah bentuk atau tidak dikenal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: NODE_NOT_FOUND
+                message: station_id tidak ditemukan
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/v1/admin/tracker/stats:
     get:
       tags: [admin]
@@ -1244,7 +1360,8 @@ components:
             SECRET_MISMATCH, NODE_NOT_FOUND, NODE_VERIFIED — serta, khusus
             endpoint admin tracker saat tracker nonaktif, TRACKER_DISABLED;
             khusus chat, PERMISSION_DENIED; khusus drill saat dependensi
-            belum siap, UNAVAILABLE.
+            belum siap, UNAVAILABLE; khusus designate/revoke Admin Node
+            (D-036, PROPOSED), NODE_NOT_VERIFIED, ADMIN_NODE_EXISTS.
           enum:
             - INVALID_ARGUMENT
             - UNAUTHENTICATED
@@ -1257,6 +1374,8 @@ components:
             - TRACKER_DISABLED
             - PERMISSION_DENIED
             - UNAVAILABLE
+            - NODE_NOT_VERIFIED
+            - ADMIN_NODE_EXISTS
           example: INVALID_ARGUMENT
         message:
           type: string
@@ -1428,6 +1547,13 @@ components:
         latency_ms:
           type: integer
           example: 2
+        is_admin_node:
+          type: boolean
+          description: >
+            Lencana operator Admin Node (migrasi 000010, D-036 PROPOSED).
+            OPSIONAL dan aditif: false/absen berarti node biasa. Tidak
+            mempengaruhi status maupun active_sensors_count.
+          example: false
 
     RerollResponse:
       type: object

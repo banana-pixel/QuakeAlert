@@ -40,6 +40,9 @@ data class SensorTelemetry(
  * @param stationId station identifier suffix (e.g. "NODE-163A149F").
  * @param location human-readable placement (e.g. "Cimahi, West Java, ID").
  * @param chipLabel sensor module label rendered inside the chip badge (e.g. "MPU 6050").
+ * @param isAdminNode operator designation as Admin Node (D-036): renders the
+ *   "Admin Node" badge pill beside the status row. False by default — the badge
+ *   is never granted by absence.
  * @param status online/offline connectivity.
  * @param telemetry live metric pills.
  * @param latitude WGS84 latitude of the station, or null when the server holds no
@@ -55,6 +58,7 @@ data class SensorStationItem(
     val stationId: String,
     val location: String,
     val chipLabel: String,
+    val isAdminNode: Boolean = false,
     val status: SensorStatus,
     val telemetry: SensorTelemetry,
     val latitude: Double? = null,

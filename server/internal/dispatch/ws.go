@@ -73,6 +73,12 @@ type AlertMessage struct {
 	// 0 berarti "server tidak menyatakan" dan klien memakai jendela legacy-nya
 	// — tidak pernah dibaca sebagai kedaluwarsa.
 	ValidityMs int64 `json:"validity_ms,omitempty"` // durasi ms; 0 = tidak dinyatakan
+
+	// TrustedLocal menandai peringatan lokal Admin Node (D-036 PROPOSED).
+	// omitempty seperti seluruh field aditif: frame normal tidak menumbuhkan
+	// kunci ini (payload lama byte-identik), dan ketiadaannya berarti
+	// peringatan biasa — tidak pernah dibaca sebagai lokal.
+	TrustedLocal bool `json:"trusted_local,omitempty"`
 }
 
 // chatBufferCeiling menjaga separuh buffer per-klien tetap kosong untuk alert.

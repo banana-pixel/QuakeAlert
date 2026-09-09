@@ -424,9 +424,17 @@ func (s *Store) PurgeAbandonedPendingNodes(ctx context.Context, olderThan time.D
 // SetNodeVerified mengubah status verifikasi node. Mengembalikan false bila
 // station_id tidak dikenal — pemanggil API memetakannya ke 404, bukan 500,
 // karena ID yang salah adalah kesalahan operator yang dapat ditindaklanjuti.
+//
+// Menarik verifikasi (verified=false) OTOMATIS mencabut kapabilitas Admin Node
+// (is_admin_node = FALSE) dalam statement yang sama (D-036): kepercayaan yang
+// dicabut tidak boleh meninggalkan lencana admin pada node yang buktinya sudah
+// tidak dipercaya. Arah sebaliknya tidak retroaktif — memverifikasi node tidak
+// menyentuh is_admin_node, designate tetap eksplisit lewat DesignateAdminNode.
 func (s *Store) SetNodeVerified(ctx context.Context, stationID string, verified bool) (bool, error) {
 	tag, err := s.pool.Exec(ctx,
-		`UPDATE iot_nodes SET verified = $2 WHERE station_id = $1`, stationID, verified)
+		`UPDATE iot_nodes SET verified = $2,
+			is_admin_node = CASE WHEN $2 THEN is_admin_node ELSE FALSE END
+			WHERE station_id = $1`, stationID, verified)
 	if err != nil {
 		return false, fmt.Errorf("update node verified: %w", err)
 	}
@@ -451,6 +459,10 @@ type SensorStatus struct {
 	// SecondsSincePing = detik sejak last_heartbeat; dipakai untuk status
 	// Online/Offline & label "Ns ago".
 	SecondsSincePing int64
+	// IsAdminNode (migrasi 000010, D-036 PROPOSED): lencana operator pada
+	// daftar sensor. Hanya penanda — tidak mengubah status Online/Offline/
+	// Pending maupun active_sensors_count.
+	IsAdminNode bool
 }
 
 // ListSensorsWithin mengembalikan sensor dalam radius rangeKm dari (lat, lon)
@@ -462,6 +474,7 @@ func (s *Store) ListSensorsWithin(ctx context.Context, lat, lon float64, rangeKm
 		       ST_Y(location::geometry) AS lat,
 		       ST_X(location::geometry) AS lon,
 		       is_active, verified, last_rssi, last_latency_ms,
+		       is_admin_node,
 		       EXTRACT(EPOCH FROM (NOW() - last_heartbeat))::bigint AS secs_since_ping
 		FROM iot_nodes
 		WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
@@ -478,7 +491,7 @@ func (s *Store) ListSensorsWithin(ctx context.Context, lat, lon float64, rangeKm
 		if err := rows.Scan(
 			&s.StationID, &s.SensorModel, &s.LocationName,
 			&s.Lat, &s.Lon, &s.IsActive, &s.Verified, &s.LastRSSI, &s.LastLatencyMs,
-			&s.SecondsSincePing,
+			&s.IsAdminNode, &s.SecondsSincePing,
 		); err != nil {
 			return nil, fmt.Errorf("scan sensor: %w", err)
 		}

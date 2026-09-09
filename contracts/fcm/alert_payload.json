@@ -125,6 +125,11 @@
               "description": "Masa berlaku frame yang dinyatakan PENGIRIM (D-018, U-010), sebagai durasi dalam milidetik (string desimal, batasan FCM). Klien TIDAK BOLEH membunyikan frame yang umurnya (jam perangkat minus timestamp) melebihi durasi ini. OPSIONAL dan aditif seperti is_test: server lama tidak mengirimnya, dan ketiadaan field berarti jendela legacy klien yang berlaku — TIDAK PERNAH dibaca sebagai \"kedaluwarsa\". Nilai rusak/tidak terurai wajib diperlakukan sebagai absen (jendela legacy), karena arah gagal yang aman adalah membunyikan yang mungkin-hidup, bukan membungkam yang mungkin-hidup.",
               "pattern": "^[0-9]+$",
               "examples": ["90000"]
+            },
+            "trusted_local": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "description": "Penanda peringatan lokal Admin Node (D-036, PROPOSED). OPSIONAL dan aditif: hanya string literal \"true\" berarti peringatan lokal tepercaya dalam radius <=20 km dari node admin yang ditunjuk; \"false\" atau ketiadaan field berarti peringatan normal -- TIDAK PERNAH dibaca sebagai lokal. Klien WAJIB memperlakukan nilai apa pun selain \"true\" (termasuk absen) sebagai peringatan normal, karena arah gagal yang aman adalah menampilkan peringatan biasa, bukan mengklaim kepercayaan lokal yang tidak ada. Field ini bukan bukti dan bukan pengganti CONFIRMED; tidak membawa koordinat sensor maupun lokasi pengguna."
             }
           }
         },

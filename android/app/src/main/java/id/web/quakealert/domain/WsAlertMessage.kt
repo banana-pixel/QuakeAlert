@@ -114,7 +114,14 @@ data class WsAlertMessage(
      * then falls back to the legacy [isRecent] window rather than treating the
      * frame as expired — absence is legacy, never expired.
      */
-    val validityMs: Long = 0L
+    val validityMs: Long = 0L,
+    /**
+     * Admin Node local warning (D-036): this frame carries single-station
+     * authority for the area within 20 km of the designated node. Defaults to
+     * false so a frame that says nothing is an ordinary warning — local trust
+     * is never inferred, only stated by the server.
+     */
+    val trustedLocal: Boolean = false
 ) {
 
     /**

@@ -85,12 +85,14 @@ object AlertRaiser {
             return
         }
 
-        val decision = AlertGate.decide(
-            userLocation = network.sessionStore.readUserLocation(),
-            centroidLat = message.centroidLat,
-            centroidLon = message.centroidLon,
-            mmi = message.mmi,
-            pgaGal = message.pgaGal
+        val userLocation = network.sessionStore.readUserLocation()
+        // One choke point for both gates (AlertGate.decideFor): a trusted-local
+        // frame takes the 20 km no-override gate, everything else the confirmed
+        // path. The advisory drop above already ran, so a local flag on an
+        // advisory can never reach either gate.
+        val decision = AlertGate.decideFor(
+            message = message,
+            userLocation = userLocation
         )
 
         if (!decision.shouldAlarm) {

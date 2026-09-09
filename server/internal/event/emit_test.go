@@ -126,14 +126,14 @@ func TestPhase2FrameKeysUnchanged(t *testing.T) {
 	if err := json.Unmarshal(b, &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	for _, k := range []string{"event_state", "event_revision", "origin_ts", "origin_ts_source", "independent_cell_count"} {
+	for _, k := range []string{"event_state", "event_revision", "origin_ts", "origin_ts_source", "independent_cell_count", "trusted_local"} {
 		if _, ok := got[k]; ok {
 			t.Errorf("frame Fase 2 memuat %q; field aditif harus omitempty", k)
 		}
 	}
 
 	data := dispatch.BuildAlertData(msg)
-	for _, k := range []string{"event_state", "event_revision", "origin_ts", "origin_ts_source", "independent_cell_count"} {
+	for _, k := range []string{"event_state", "event_revision", "origin_ts", "origin_ts_source", "independent_cell_count", "trusted_local"} {
 		if _, ok := data[k]; ok {
 			t.Errorf("data FCM Fase 2 memuat %q; field aditif harus bersyarat", k)
 		}

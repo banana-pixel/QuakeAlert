@@ -35,6 +35,15 @@ object SafetyPolicy {
     const val ALERT_RADIUS_KM = 200
 
     /**
+     * Admin Node local-warning radius, in kilometres (D-036). Must equal
+     * `dispatch.TrustedLocalRadiusKm` on the server, under the same discipline
+     * as [ALERT_RADIUS_KM]: the server sends the frame only to tokens inside
+     * this radius, and this app applies it as the final gate before the siren
+     * for a frame the socket broadcast may have carried further.
+     */
+    const val LOCAL_WARNING_RADIUS_KM = 20
+
+    /**
      * Modified Mercalli intensity at or above which distance stops mattering. VII is
      * where non-structural damage becomes widespread, so there is no distance at
      * which "you did not need to know" is the right answer.

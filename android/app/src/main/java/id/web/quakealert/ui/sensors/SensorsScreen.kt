@@ -286,7 +286,8 @@ fun SensorsScreen(
                             item = item,
                             onClick = { onSensorClicked(item) },
                             isSelected = item.id == uiState.selectedStationId,
-                            lang = lang
+                            lang = lang,
+                            adminNodeBadge = strings.adminNodeBadge
                         )
                     }
                 }

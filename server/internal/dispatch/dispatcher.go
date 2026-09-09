@@ -256,7 +256,7 @@ func (d *Dispatcher) dispatchFCM(msg *AlertMessage, wsCount int) {
 		}
 
 		if tokens := d.nearbyTokens(ctx, msg); len(tokens) > 0 {
-			attempted, succeeded := d.sendToTokens(ctx, tokens, data, msg)
+			attempted, succeeded := d.sendToTokens(ctx, tokens, data, msg, AlertRadiusKm)
 			d.recordEmission(msg, ledger.AudienceTokensRadius, decidedAt, delivery{
 				wsClients: wsCount, fcmAttempted: attempted, fcmSucceeded: succeeded,
 				fcmConfigured: true,
@@ -444,7 +444,9 @@ func (d *Dispatcher) nearbyTokens(ctx context.Context, msg *AlertMessage) []stri
 // mengembalikan (jumlah dicoba, jumlah berhasil).
 // Kegagalan per token hanya dicatat: satu token mati (UNREGISTERED) tidak boleh
 // menghentikan pengiriman ke perangkat lain pada event yang sama.
-func (d *Dispatcher) sendToTokens(ctx context.Context, tokens []string, data map[string]string, msg *AlertMessage) (attempted, succeeded int) {
+// radiusKm hanya untuk baris log — query-nya sudah dibatasi pemanggil — supaya
+// emisi lokal 20 km tidak pernah tercatat seolah beradius normal.
+func (d *Dispatcher) sendToTokens(ctx context.Context, tokens []string, data map[string]string, msg *AlertMessage, radiusKm int) (attempted, succeeded int) {
 	sem := make(chan struct{}, maxFCMConcurrency)
 	var wg sync.WaitGroup
 	var failed atomic.Int64
@@ -471,7 +473,7 @@ func (d *Dispatcher) sendToTokens(ctx context.Context, tokens []string, data map
 
 	d.log.Info("FCM bertarget terkirim",
 		"event_id", msg.EventID, "type", msg.Type,
-		"tokens", len(tokens), "gagal", failed.Load(), "radius_km", AlertRadiusKm)
+		"tokens", len(tokens), "gagal", failed.Load(), "radius_km", radiusKm)
 
 	return len(tokens), len(tokens) - int(failed.Load())
 }

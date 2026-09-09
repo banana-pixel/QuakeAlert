@@ -46,6 +46,11 @@ const (
 	AudienceTokensRadius = "TOKENS_RADIUS_200KM"
 	AudienceGeoTopicAll  = "GEO_TOPIC_ALL"
 	AudienceNone         = "NONE"
+	// AudienceTokensRadiusLocal adalah audiens peringatan lokal Admin Node
+	// (D-036 PROPOSED): token dalam TrustedLocalRadiusKm (20 km), bukan
+	// radius 200 km normal. Nilai tersendiri agar akuntansi ledger tidak
+	// pernah membaca emisi lokal sebagai emisi radius normal.
+	AudienceTokensRadiusLocal = "TOKENS_RADIUS_20KM"
 )
 
 // Nilai tetap kolom sensor_observations.

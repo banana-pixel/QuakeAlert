@@ -105,6 +105,11 @@
       "minimum": 1,
       "description": "Masa berlaku frame yang dinyatakan PENGIRIM (D-018, U-010) sebagai durasi milidetik. Klien TIDAK BOLEH membunyikan frame yang umurnya melebihi durasi ini. OPSIONAL dan aditif: ketiadaan berarti jendela legacy klien, TIDAK PERNAH dibaca sebagai kedaluwarsa. Disamakan dengan contracts/fcm/alert_payload.json (di sana string desimal karena batasan FCM; di sini integer).",
       "examples": [90000]
+    },
+    "trusted_local": {
+      "type": "boolean",
+      "description": "Penanda peringatan lokal Admin Node (D-036, PROPOSED). OPSIONAL dan aditif: true berarti peringatan lokal tepercaya dalam radius <=20 km dari node admin yang ditunjuk; false atau ketiadaan berarti peringatan normal -- TIDAK PERNAH dibaca sebagai lokal. Disamakan dengan contracts/fcm/alert_payload.json (di sana string \"true\"/\"false\" karena batasan FCM; di sini boolean native). Bukan bukti dan bukan pengganti CONFIRMED; tidak membawa koordinat sensor maupun lokasi pengguna.",
+      "examples": [true]
     }
   },
   "examples": [

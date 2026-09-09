@@ -19,6 +19,9 @@ import kotlinx.serialization.Serializable
  * @param verified operator confirmation state; the server always sends it, so the
  *   false default only fires on a malformed payload — trust is never granted by
  *   absence.
+ * @param isAdminNode operator designation as Admin Node (D-036); the server
+ *   always sends it, so the false default only fires on a malformed payload:
+ *   the badge is never granted by absence, like trust.
  * @param lastPing human-readable relative time owned by the server, e.g. "33s ago".
  * @param rssiDbm signal strength in dBm (negative).
  */
@@ -33,7 +36,8 @@ data class SensorDto(
     @SerialName("last_ping") val lastPing: String? = null,
     @SerialName("rssi_dbm") val rssiDbm: Int? = null,
     @SerialName("latency_ms") val latencyMs: Int? = null,
-    @SerialName("verified") val verified: Boolean = false
+    @SerialName("verified") val verified: Boolean = false,
+    @SerialName("is_admin_node") val isAdminNode: Boolean = false
 )
 
 /**

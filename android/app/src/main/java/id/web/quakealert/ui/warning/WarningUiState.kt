@@ -470,6 +470,12 @@ sealed interface WarningUiState {
      *   (id.web.quakealert.data.network.mapper.toDomainOrNull) — so the badge is not
      *   what protects the public; it is what stops the *tester* mistaking a drill for
      *   the real thing, which is the whole reason a drill is safe to run at all.
+     * @param isLocalWarning true when this screen was raised by an Admin Node
+     *   local warning (`trusted_local`, D-036), which renders the "Local Warning"
+     *   title and badge instead of the confirmed-alert wording. Orthogonal to
+     *   [isTest]: a drill is never local and a local warning is never a drill.
+     *   Defaults to false, so an intent built before this extra existed raises an
+     *   ordinary alert rather than claiming local trust.
      */
     @Immutable
     data class ActiveAlert(
@@ -478,6 +484,7 @@ sealed interface WarningUiState {
         val distanceKm: Int?,
         val locationName: String,
         val isTest: Boolean = false,
+        val isLocalWarning: Boolean = false,
         val isMuted: Boolean = false,
         val isSosLightOn: Boolean = false,
         val isSosLightUnavailable: Boolean = false,

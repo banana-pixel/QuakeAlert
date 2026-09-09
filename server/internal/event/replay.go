@@ -76,6 +76,30 @@ type ReplayProfile struct {
 	// digerakkan received_ts, dan transisi yang digerakkan sweep terkuantisasi
 	// ke SweepIntervalMs. Nol berarti SweepIntervalMs + 1000.
 	DecidedAtToleranceMs int64
+
+	// AdminNode adalah designasi Admin Node yang DIASSERSI OPERATOR untuk
+	// pemutaran ini (D-036), sejajar dengan parameter lain yang tak terekam
+	// di baris. Nil berarti fitur mati: tidak ada frame lokal yang dinilai.
+	// Non-nil berarti SATU node ditunjuk (maksimum-satu deployment saat ini),
+	// dan Tracker replay TIDAK PERNAH membaca designasi dari baris historis —
+	// tidak ada tabel yang mencatat siapa yang ditunjuk, kapan diverifikasi,
+	// atau kapan denyut terakhir, jadi ketiganya datang dari operator atau
+	// tidak ada sama sekali.
+	AdminNode *ReplayAdminNode
+}
+
+// ReplayAdminNode adalah designasi operator untuk satu pemutaran ulang: siapa
+// yang ditunjuk, apakah ia terverifikasi, dan berapa umur heartbeat-nya
+// MENURUT OPERATOR pada saat keputusan historis dibuat (mis. dari log
+// heartbeat atau /sensors saat itu). Seperti parameter lain di profil ini:
+// diassersi, bukan dipulihkan — dan dicetak di laporan sebelum hasil apa pun.
+type ReplayAdminNode struct {
+	StationID string
+	Verified  bool
+	// HeartbeatAge adalah NOW() - last_heartbeat yang diassersi operator.
+	// Negatif dijepit menjadi nol oleh pemetaan ke AdminNodeState, sama
+	// seperti pembaca store produksi.
+	HeartbeatAge time.Duration
 }
 
 // tolerance mengembalikan toleransi efektif.
@@ -303,6 +327,17 @@ type ReplayResult struct {
 	// Events adalah transisi yang dikelompokkan per event_id replay, terurut
 	// revision. Ini bentuk yang dibandingkan.
 	Events map[string][]Snapshot
+
+	// AdminOutcomes adalah keputusan Admin Node per frame, dalam urutan
+	// Frames. Dihitung lewat evaluator produksi yang sama dengan emisi
+	// langsung (yang juga dipakai TrustedLocalFrameFor) — bukan penafsiran
+	// kedua — dari designasi operator pada profil, BUKAN dari baris historis. Kosong bila profil
+	// tidak membawa designasi (AdminNode == nil): fitur mati, bukan
+	// "tidak layak" — ketiadaan config tidak boleh dibaca sebagai penolakan.
+	// Hasil ini DILAPORKAN, tidak pernah dibandingkan dengan riwayat:
+	// tidak ada trusted_local historis sebagai pembanding (seluruh riwayat
+	// mendahului D-036), dan Compare() karenanya tidak menyentuhnya.
+	AdminOutcomes []AdminOutcome
 }
 
 // Replay memutar ulang observasi melalui Tracker BARU dan mengembalikan
@@ -411,7 +446,48 @@ func Replay(ctx context.Context, obs []store.ReplayObservation, p ReplayProfile)
 		fs := res.Events[id]
 		sort.Slice(fs, func(i, j int) bool { return fs[i].Revision < fs[j].Revision })
 	}
+	res.AdminOutcomes = evaluateReplayAdmin(p, res.Frames)
 	return res, nil
+}
+
+// AdminOutcome adalah keputusan Admin Node untuk satu frame replay.
+type AdminOutcome struct {
+	EventID  string // event_id replay (bukan UUID historis; lihat F2)
+	Revision int
+	Eligible bool
+	Reason   string // kosakata tertutup evaluator (ADMIN_ELIGIBLE, ...)
+}
+
+// evaluateReplayAdmin menilai setiap frame replay lewat evaluator produksi
+// yang sama dengan emisi langsung (yang juga dipakai TrustedLocalFrameFor,
+// choke point konstruksi frame lokal). Murni (tanpa I/O, tanpa jam) sehingga deterministik:
+// frame yang sama di bawah designasi yang sama selalu memberi alasan yang
+// sama, dan pemutaran ulang yang sama selalu memberi daftar yang sama.
+func evaluateReplayAdmin(p ReplayProfile, frames []Snapshot) []AdminOutcome {
+	if p.AdminNode == nil {
+		return nil
+	}
+	age := p.AdminNode.HeartbeatAge
+	if age < 0 {
+		age = 0
+	}
+	state := AdminNodeState{
+		Designated:   true,
+		StationID:    p.AdminNode.StationID,
+		Verified:     p.AdminNode.Verified,
+		HeartbeatAge: age,
+	}
+	out := make([]AdminOutcome, 0, len(frames))
+	for _, f := range frames {
+		d := EvaluateAdminNodeEligibility(state, f)
+		out = append(out, AdminOutcome{
+			EventID:  f.EventID,
+			Revision: f.Revision,
+			Eligible: d.Eligible,
+			Reason:   d.Reason,
+		})
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------

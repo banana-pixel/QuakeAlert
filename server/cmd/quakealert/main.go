@@ -150,7 +150,14 @@ func run(log *slog.Logger) error {
 		// dibangun pada titik yang berbeda, dan Bridge-lah yang menerjemahkan
 		// transisi menjadi frame (§8.3) supaya arah impornya tetap event ->
 		// dispatch saja.
-		tracker.SetEmitter(event.NewBridge(dispatcher))
+		//
+		// Kait Admin Node (D-036 PROPOSED) dipasang bersama emitter: sumber
+		// status operator dari store + sink dispatch lokal. Tanpa designate
+		// aktif kait ini tidak menghasilkan apa pun (gagal-tertutup di
+		// sumber), dan emisi normal di atas tidak berubah karenanya.
+		bridge := event.NewBridge(dispatcher)
+		bridge.SetAdminNodeHook(adminNodeSource(st, log), dispatcher)
+		tracker.SetEmitter(bridge)
 
 		if ledgerWriter != nil {
 			// Persistensi event menempuh antrean yang SAMA dengan observasi:
@@ -397,6 +404,34 @@ func eventOptions(cfg *config.Config) event.Options {
 		TerminalRetentionMs: cfg.TerminalRetention.Milliseconds(),
 		MaxTombstones:       cfg.EventTrackerMaxTombstones,
 	}
+}
+
+// adminNodeSource mengadaptasi baris designation store menjadi sumber status
+// operator untuk kait peringatan lokal Admin Node (D-036 PROPOSED).
+//
+// Gagal-tertutup di dua lapis: basis data yang tak terbaca berarti tanpa
+// status tepercaya, dan tanpa status tepercaya Bridge tidak mengemisikan
+// frame lokal — keduanya dicatat sebagai Warn, bukan Fatal, karena jalur
+// peringatan normal tidak bergantung pada kait ini. Tanpa state di memori:
+// designation selalu dibaca dari kolom is_admin_node, sehingga restart server
+// mempertahankannya tanpa logika pemuatan ulang.
+func adminNodeSource(st *store.Store, log *slog.Logger) event.AdminNodeSource {
+	return event.AdminNodeSourceFunc(func(ctx context.Context) (event.AdminNodeState, bool) {
+		row, designated, err := st.GetAdminNodeStatus(ctx)
+		if err != nil {
+			log.Warn("admin node: baca designation gagal, peringatan lokal ditahan", "err", err)
+			return event.AdminNodeState{}, false
+		}
+		if !designated {
+			return event.AdminNodeState{}, false
+		}
+		return event.AdminNodeState{
+			Designated:   true,
+			StationID:    row.StationID,
+			Verified:     row.Verified,
+			HeartbeatAge: row.HeartbeatAge,
+		}, true
+	})
 }
 
 // resolveStaleEventsAtStartup menandai RESOLVED setiap baris HAPPENING yang mulai

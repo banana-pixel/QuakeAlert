@@ -81,6 +81,13 @@ func BuildAlertData(a *AlertMessage) map[string]string {
 	if a.ValidityMs > 0 {
 		data["validity_ms"] = strconv.FormatInt(a.ValidityMs, 10)
 	}
+	// Penanda lokal Admin Node (D-036 PROPOSED, contracts/fcm): hanya "true"
+	// yang diemisikan, mengikuti konvensi is_test — ketiadaan berarti
+	// peringatan normal. "false" eksplisit tidak pernah dikirim; ia valid di
+	// kontrak hanya agar parser lama/baru sepakat memaknainya sebagai normal.
+	if a.TrustedLocal {
+		data["trusted_local"] = "true"
+	}
 	return data
 }
 

@@ -34,6 +34,7 @@ fun SensorDto.toDomain(): SensorNode = SensorNode(
     longitude = longitude,
     online = status.equals(STATUS_ONLINE, ignoreCase = true),
     verified = verified,
+    isAdminNode = isAdminNode,
     lastPing = lastPing?.takeIf { it.isNotBlank() },
     rssiDbm = rssiDbm,
     latencyMs = latencyMs
@@ -71,6 +72,7 @@ fun SensorNode.toStationItem(): SensorStationItem = SensorStationItem(
     stationId = stationId,
     location = locationName,
     chipLabel = sensorModel,
+    isAdminNode = isAdminNode,
     status = when {
         !verified -> SensorStatus.PENDING
         online -> SensorStatus.ONLINE

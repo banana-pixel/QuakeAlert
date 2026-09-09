@@ -141,6 +141,7 @@ object WarningNotifier {
                 locationName = message.locationName,
                 distanceKm = distanceKm,
                 isTest = message.isTest,
+                isLocalWarning = message.trustedLocal,
                 activeCount = board.extraActiveCount(),
                 // D-030: the chrome language is frozen with the snapshot, like the
                 // intensity label and location above — see WarningActivity.
@@ -253,6 +254,9 @@ object WarningNotifier {
         // apart from a real one would misrepresent what the app has warned about.
         if (message.isTest) return "Drill (test alert) near $where"
         val proximity = distanceKm?.let { ", $it km away" }.orEmpty()
+        // A local warning names its source (D-036): one station's report, not a
+        // network-confirmed alert — the distinction must survive in the record.
+        if (message.trustedLocal) return "Local Warning near $where$proximity (Admin Node)"
         return "Intensity ${message.mmi} near $where$proximity"
     }
 
@@ -262,12 +266,15 @@ object WarningNotifier {
         // "Distance unknown" rather than a fabricated number — the gate fails open on
         // an unknown position, so this is a real case and not a defensive branch.
         val proximity = distanceKm?.let { "$it km away" } ?: "distance unknown"
+        if (message.trustedLocal) return "Local Warning near $where ($proximity). Source: Admin Node. Drop, cover, hold on."
         return "Intensity ${message.mmi} near $where ($proximity). Drop, cover, hold on."
     }
 
     private fun alertTitle(message: WsAlertMessage, lang: DisplayLanguage): String {
         if (lang == DisplayLanguage.ID) return alertTitleId(message)
-        return if (message.isTest) "TEST - earthquake drill" else "Earthquake detected"
+        if (message.isTest) return "TEST - earthquake drill"
+        if (message.trustedLocal) return "Local Warning"
+        return "Earthquake detected"
     }
 
     // Indonesian branches (B2). Acuan BMKG: "Lindungi diri Anda!".
@@ -277,15 +284,20 @@ object WarningNotifier {
         val where = message.locationName.takeIf { it.isNotBlank() } ?: "daerah Anda"
         if (message.isTest) return "Latihan (peringatan uji) di dekat $where"
         val proximity = distanceKm?.let { ", $it km dari Anda" }.orEmpty()
+        if (message.trustedLocal) return "Peringatan Lokal di dekat $where$proximity (Admin Node)"
         return "Intensitas ${message.mmi} di dekat $where$proximity"
     }
     private fun bodyTextId(message: WsAlertMessage, distanceKm: Int?): String {
         val where = message.locationName.takeIf { it.isNotBlank() } ?: "daerah Anda"
         val proximity = distanceKm?.let { "$it km dari Anda" } ?: "jarak tidak diketahui"
+        if (message.trustedLocal) return "Peringatan Lokal di dekat $where ($proximity). Sumber: Admin Node. Menunduk, lindungi kepala, berpegangan."
         return "Intensitas ${message.mmi} di dekat $where ($proximity). Menunduk, lindungi kepala, berpegangan."
     }
-    private fun alertTitleId(message: WsAlertMessage): String =
-        if (message.isTest) "UJI - latihan gempa bumi" else "Gempa bumi terdeteksi"
+    private fun alertTitleId(message: WsAlertMessage): String {
+        if (message.isTest) return "UJI - latihan gempa bumi"
+        if (message.trustedLocal) return "Peringatan Lokal"
+        return "Gempa bumi terdeteksi"
+    }
 
     /** Single source is [canPostNotifications] (D-021): runtime grant + app-level toggle. */
     private fun canPost(context: Context): Boolean = context.canPostNotifications()
