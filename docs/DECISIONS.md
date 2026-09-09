@@ -1025,6 +1025,20 @@ No raise-path, gate, contract, or delivery change in any of the three. Verificat
 
 ---
 
+### D-034 — The launcher icon is owner-built via Asset Studio
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-LAUNCHER-ICON
+
+The committed D-023 launcher logo was reverted (`5ece266`) and the owner rebuilt the icon through Android Studio's Asset Studio (`7ddf48a`): adaptive foreground/background layers, re-exported `mipmap-*` WebP densities, `mipmap-anydpi` migrated to `anydpi-v26`, plus the Play Store icon. Shape and motif decisions stay with D-023; this entry records the production mechanics and the revert. Verification: owner test drive round 1 PASS (installed beside production under the `.debug` id on one device); unit suite and lint green (resource-only change).
+
+---
+
+### D-035 — Onboarding page 2 shows the globe beside the sensor chip
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-ONBOARD-GLOBE
+
+Page 2 of onboarding renders `ic_globe_05` beside the sensor chip (Figma 1:341, `e968fa6`). Presentational only; no copy, string, or flow change. Verification: owner test drive round 1 PASS (visual, one device); unit suite and lint green.
+
+---
+
 ### Governance correction G1 (owner-approved 2026-09-07; nothing above is rewritten)
 Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read as
 "U-001 … U-009 remain unresolved; U-010 … U-013 see D-017 … D-020": U-010 answered

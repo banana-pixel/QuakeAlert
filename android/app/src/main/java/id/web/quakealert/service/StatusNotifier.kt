@@ -139,6 +139,12 @@ object StatusNotifier {
             // Ongoing and silent: it is a place to look, never an interruption. No
             // timestamp, because "since when" is not one of the facts it reports and a
             // stale-looking clock would suggest the status itself is stale.
+            // Platform note: since Android 14 (API 34) the system lets the user
+            // swipe away even ongoing notifications (developer.android.com,
+            // "behavior-changes-all", non-dismissible notifications) — except on
+            // the lock screen and via Clear all — so a missing shade line means
+            // "dismissed", never "broken". The collector re-posts on the next
+            // emission (e.g. app resume); only the toggle clears by decision.
             .setOngoing(true)
             .setShowWhen(false)
             .setSilent(true)

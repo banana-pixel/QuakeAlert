@@ -76,3 +76,18 @@ Data-only messages, every value a string (`contracts/fcm/alert_payload.json`).
 and socket share one state machine, one distance gate and one dedup key. Notification-style
 payloads (`notification:` block) are deliberately unsupported: the system tray would render
 them itself, bypassing the gate and the siren.
+
+## 5. Current setup (non-secret inventory, verified 2026-09-09)
+
+Names and locations only — no values. Everything below lives outside the repo
+(except the `.example` shape file) and is gitignored by rule.
+
+| Item | Location | Covers |
+| --- | --- | --- |
+| Release keystore | `~/.keystores/quakealert-release.jks` + `~/.gradle/gradle.properties` (`quake.keystorePath/Password/Alias/KeyPassword`) | signing the release build |
+| Debug `google-services.json` | `android/app/google-services.json` (copy of `google-services-debug.json`) | `id.web.quakealert` + `id.web.quakealert.debug` (FCM in drill builds) |
+| Release `google-services.json` | `google-services-release.json` (repo root, untracked) | `id.web.quakealert` — swap into `android/app/` at release-build time, restore after |
+| Server service account | `/opt/quakealert/deploy/secrets/fcm-service-account.json` on the VPS + `FCM_PROJECT_ID` / `FCM_CREDENTIALS_FILE` in `deploy/.env.prod` | server-side send; log shows `FCM sender aktif` since the 2026-09-07 start |
+
+If the workstation changes, reproduce this table first: the release cannot be built
+or verified without all four rows, and none of them can be recovered from the repo.

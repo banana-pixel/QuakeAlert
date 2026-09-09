@@ -33,7 +33,7 @@ IMPLEMENTED only.
 | WebSocket delivery | yes | partial | yes, private VPS | Advisory frames observed; alert frames not observed in production. |
 | Push delivery | yes | no | yes, private VPS | Never triggered in production; one device vendor only in testing. |
 | Firmware detection | yes | partial | one node | One board, one location, one firmware build. |
-| Android client | yes | partial — drill-validated on one device | sideloaded, not published | Advisory-never-wakes enforced in three independent places. Locked-screen alarm, Doze wake, cross-channel dedup and all-clear teardown demonstrated on hardware 2026-08-31 (drill path). Unlocked-device delivery demonstrated 2026-09-01 after the emergency channel was made audible — heads-up observed by the owner (drill path, one device, debug build). Policy for an in-use device remains **U-012**. |
+| Android client | yes | partial — drill- plus UI-batch-validated on one device | sideloaded, not published | Advisory-never-wakes enforced in three independent places. Locked-screen alarm, Doze wake, cross-channel dedup and all-clear teardown demonstrated on hardware 2026-08-31 (drill path). Unlocked-device delivery demonstrated 2026-09-01 after the emergency channel was made audible — heads-up observed by the owner (drill path, one device, debug build). Policy for an in-use device remains **U-012**. UI batch D-021…D-035 owner test-drove PASS on one debug device 2026-09-09 (two rounds; details in *Demonstrated*). |
 
 **Production status, stated precisely:** Phase 3 is activated on a **private
 VPS**. That is a single-operator deployment serving a single-node network. It is
@@ -402,8 +402,29 @@ de-duplication — **not** at-least-once (D-008).
   `independent_cells >= 2`, `mixed_provenance`, terminal and ambiguity
   shapes the fleet cannot produce. Prior v1 bundle stays preserved as
   INCOMPLETE and is never cited as success. What this does **not** claim:
-  no `CONFIRMED` production path, no multi-node field correlation, no
-  lead-time, population, or reliability claim. Phase F remains `BLOCKED`.
+   no `CONFIRMED` production path, no multi-node field correlation, no
+   lead-time, population, or reliability claim. Phase F remains `BLOCKED`.
+- **Server-side FCM sender initialized in production — VALIDATED 2026-09-09
+  (read-only VPS check).** The live server log records `FCM sender aktif`
+  at startup 2026-09-07 (`project_id: quakealert26`); `.env.prod` carries
+  non-empty `FCM_PROJECT_ID` / `FCM_CREDENTIALS_FILE` and
+  `deploy/secrets/fcm-service-account.json` is present. Scope, stated
+  exactly: this validates that the production server *can* send push — it
+  says nothing about delivery, which has never been exercised in production
+  (see *NOT demonstrated*: push across vendors, any real-event alert).
+- **UI batch D-021…D-035 — owner test-drove PASS on one debug device,
+  2026-09-09 (two rounds).** Round 1 covered the D-021…D-032 debug build
+  against production: status-resume flip, System language following,
+  launcher icon (owner-built via Asset Studio, D-034), event dots, toggle-off
+  clearing, fullscreen pill refresh, checklist icon, dark still gap on
+  language switch, legible shade icon, fully Indonesian drill card, teal/ghost
+  filter buttons, repo/profile links, and the onboarding globe (D-035) — all
+  PASS except the About link, which opened the broken Pages
+  site. Round 2 covered the D-033 follow-up build: About opens the repo,
+  Donate opens Saweria, Apply wears confirming green — 3/3 PASS. Scope,
+  stated exactly: manual/visual on a single POCO F1 (API 36, debug
+  build); no second device, no vendor, no release build, and nothing here
+  touches detection, confirmation, or delivery semantics.
 
 ## NOT demonstrated
 
