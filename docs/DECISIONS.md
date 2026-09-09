@@ -961,6 +961,70 @@ The status collector emits the triple (status, lang, enabled): enabled posts via
 
 ---
 
+### D-026 — The fullscreen settings page opens via the settings launcher so the pill refreshes on return
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-ONBOARD-FULLSCREEN
+
+The dedicated "Manage full screen intents" page (API 34+) opens via `settingsLauncher`, like the battery page already does, so the return callback re-reads `canUseFullScreenIntentCompat()` into `fullscreenGranted` immediately. Previously the dedicated page was opened via direct `startActivity`, bypassing the launcher, leaving the `remember`ed pill stale until an unrelated recomposition (page swipe). Adds a launcher-accepting overload in `FullscreenIntentSettings.kt`; no new strings. Verification: grant → pill flips to "Allowed" without leaving the page; deny → invitation stands; unit suite and lint green.
+
+---
+
+### D-027 — The Delivery Checklist Precise Location row uses the onboarding location icon
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-CHECKLIST-ICON
+
+The Precise Location row in `SettingsComponents.kt` uses `ic_location_permission`, consistent with the onboarding location page. Previously it used `ic_pin_location` while the other three rows already matched onboarding. One drawable; no new strings. Verification: visual checklist vs onboarding; unit suite and lint green.
+
+---
+
+### D-028 — The empty window is based on the app's dark background so language-change recreation reads as a still frame
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-LANG-FLICKER
+
+`Theme.QuakeAlert` sets `android:windowBackground` to `@color/app_window_background` (`#FF000000`, the same value as `BackgroundGradientBottom`). On API 33+, `LocaleManager.setApplicationLocales()` (D-022's system mirror) recreates the Activity, and the window shown before Compose draws its first frame — plus the `Loading` surface `AppRoot` holds until the onboarding flag is read — previously flashed an unsynchronised system default against the app's dark content. The recreation still happens (it is platform behaviour the mirror requires); only the gap's colour is camouflaged, so the switch reads as a brief still frame rather than a flash. Presentation only: no language, contract, threshold, or delivery semantic changes; covers `MainActivity` and `WarningActivity` alike, both of which paint opaque content over it on the first frame. Verification: EN↔ID switch shows a dark still gap instead of a contrasting flash; cold start normal; unit suite and lint green.
+
+---
+
+### D-029 — Notifications use an optically-scaled small-icon variant; D-023's whole-variant rule stands everywhere else
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-NOTIF-ICON
+
+`StatusNotifier`, `UpdatesNotifier` and `WarningNotifier` set `ic_notification_small` as their small icon: the same logo motif and strokes as `ic_quake_logo`, paths verbatim, wrapped in a scale-1.35 group about the viewport centre so the 88–423px content fills ~30–482px. The launcher asset centres the motif on 65% of the viewport for the adaptive-icon safe zone; the status bar renders at ~24dp through an alpha mask, where that margin read as "too small". Shape and motif are unchanged — optical scaling only — and launcher, About, onboarding and all other surfaces keep the whole transparent variant, so **D-023 is narrowed, not superseded**: its shape-intact rule gains one recorded optical exception for the status-bar glyph. Verification: shade icon legible at status-bar size; unit suite and lint green.
+
+---
+
+### D-030 — The full-screen alert freezes its chrome language from the raising intent
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-ALERT-LANG
+
+`WarningNotifier.notify` passes its already-resolved language tag (`DisplayLanguage.tag`, stable `"en"`/`"id"`) as `EXTRA_LANG` on the `WarningActivity` intent; the Activity resolves it once (`fromTagOrNull ?: EN`) into a `lang` state — in `onCreate` and `onNewIntent` alike — and passes it to `ActiveAlertCard`. Previously the Activity never read the stored language, so **every** full-screen alert (test and real) rendered English while the shade beside it was localised. Freezing (rather than observing the repository live) is deliberate: the screen is one coherent snapshot of what the raiser decided to show — intensity label and location are already frozen the same way — so a mid-alert language switch does not produce a mixed-language screen, and an Activity woken from a dead process needs no DataStore read. Absent or unrecognised (a pre-change PendingIntent, or anything forged) degrades to EN, the default every warning component already carries. No raise-path, gate, contract, or delivery change. Verification: ID drill → fully Indonesian full-screen card (badge, AKHIRI TES, suggested actions); EN drill → English; unit suite and lint green (no new JVM-testable surface: the mapping is Intent-bound, as in D-026).
+
+---
+
+### D-031 — The filter dialog's Apply is primary teal and its Reset is a ghost
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-FILTER-BUTTONS
+
+`FilterDialogAction` gains a `primary` weight over one unchanged geometry: Apply carries `FilterActiveFill` (`#003346`, the filter family's own active fill); Reset is a ghost — transparent fill under the same white-30% stroke. Previously both capsules shared the wine-red `EmergencyCtaFill`, so the committing action was indistinguishable from the housekeeping one, and an alarm hue spoke on a reversible tap: Reset discards only an uncommitted, session-only draft. The wine-red fill stays reserved for emergency contexts. No new colour token (`Color.Transparent`), no new strings, order and position unchanged. Verification: dialog screenshot (weight hierarchy at identical geometry); unit suite and lint green.
+
+---
+
+### D-032 — Project URLs live once in ProjectLinks; About and onboarding reference it
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-GITHUB-LINKS
+
+`ProjectLinks` (root package, beside `MainActivity`) is the single definition of `REPO_URL` (`https://github.com/banana-pixel/QuakeAlert`), `PROFILE_URL` and `PAGES_URL` (`https://banana-pixel.github.io/QuakeAlert/`). The repository URL previously lived as separate private constants in the About overlay and the onboarding flow, which is how the two pages silently disagreed after the repository moved to `QuakeAlert`. `AboutLinks` keeps only About-specific destinations (contact, support); the Settings call site and the onboarding links reference `ProjectLinks` directly, with no forwarding aliases. No visible copy changes (link labels untouched), no new strings. Verification: About action opens the new Pages site, onboarding Page 7 links open the new repo and the unchanged profile; unit suite and lint green.
+
+---
+
+### D-033 — Test-drive follow-ups: About links at the repo and Saweria, Apply in confirming green
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-TESTDRIVE-FOLLOWUP
+
+Owner test drive of the D-029…D-032 build passed everything except three corrections, decided together:
+
+**About GitHub action opens the repository, not the Pages site.** The Pages URL (`banana-pixel.github.io/...`) proved broken in the field while the onboarding link at the repo worked, so the About action now opens `ProjectLinks.REPO_URL` — identical to onboarding — and its hard-coded label drops the stale `"GitHub Pages"` for `"GitHub"` (a proper noun, identical in both languages, so no new strings; it also fixes a label that was never localised). With no remaining consumer, `PAGES_URL` is removed from `ProjectLinks` rather than left as a dead token; D-032's single-source rule stands, over two URLs instead of three.
+
+**Donate opens Saweria.** `AboutLinks.DONATE` becomes `https://saweria.co/bananapixel` (owner-supplied; the GitHub Sponsors URL assumed a set-up that does not exist). Labels unchanged.
+
+**Apply wears the confirming green (amends D-031).** The primary fill moves from `FilterActiveFill` teal to `WizardConfirmActionFill` (`#465115`) — the confirming green the wizard's own confirm actions already wear — per owner taste; Reset's ghost and the reserved-red rule are untouched. D-031 is amended on the record, not silently.
+
+No raise-path, gate, contract, or delivery change in any of the three. Verification: manual tap of all three About/onboarding links, filter-dialog screenshot; unit suite and lint green.
+
+---
+
 ### Governance correction G1 (owner-approved 2026-09-07; nothing above is rewritten)
 Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read as
 "U-001 … U-009 remain unresolved; U-010 … U-013 see D-017 … D-020": U-010 answered
