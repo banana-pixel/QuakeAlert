@@ -954,6 +954,13 @@ The transparent logo variant replaces the Android Studio placeholders throughout
 
 ---
 
+### D-025 — Switching the status notification toggle off removes the notification
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 · **See:** `docs/PLANNING_2026-09-09.md` § P-NOTIF-TOGGLE
+
+The status collector emits the triple (status, lang, enabled): enabled posts via `StatusNotifier.notify()`, disabled removes via the previously never-called `StatusNotifier.clear()`. Previously the toggle only persisted a preference nobody read, and `distinctUntilChanged` on (status, lang) meant switching off never even re-fired the collector — the stale ongoing notification survived, including across restarts. Switching on without the OS grant stays suppressed by `canPost()`. Verification: off → disappears instantly; on → appears; restart while off → stays gone; unit suite and lint green.
+
+---
+
 ### Governance correction G1 (owner-approved 2026-09-07; nothing above is rewritten)
 Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read as
 "U-001 … U-009 remain unresolved; U-010 … U-013 see D-017 … D-020": U-010 answered
