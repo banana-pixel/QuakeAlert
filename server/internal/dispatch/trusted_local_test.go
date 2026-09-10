@@ -1,9 +1,12 @@
 package dispatch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -141,6 +144,45 @@ func TestTrustedLocalWithoutFCMSender(t *testing.T) {
 	}
 	if rows[0].FCMAttempted != nil {
 		t.Fatal("fcm_attempted terisi padahal FCM tak dikonfigurasi (mau NULL)")
+	}
+}
+
+// D-019 untuk emisi lokal (D-037): tepat satu baris outcome per pemanggilan
+// dispatch — event_id + enum saja. Tanpa koordinat, jarak, atau data turunan
+// lokasi: satu-satunya angka pada baris ini adalah ID event.
+func TestTrustedLocalD019OutcomeExactlyOnce(t *testing.T) {
+	var buf bytes.Buffer
+	saver := &fakeTargetedSaver{tokens: []string{"tok-a"}}
+	fcm := &fakeFCM{}
+	h := NewHub(testLogger(), func(*http.Request) bool { return true })
+	d := NewDispatcher(saver, h, fcm, time.Hour,
+		slog.New(slog.NewTextHandler(&buf, nil)))
+	d.SetLedger(&fakeEmissionWriter{})
+
+	d.DispatchTrustedLocalEventFrame(context.Background(), localFrame(false))
+
+	// Tepat satu baris outcome untuk satu emisi (jalur token di bawah juga
+	// mencatat baris kirimnya sendiri — yang dihitung di sini hanya outcome).
+	if got := strings.Count(buf.String(), "trusted-local emitted"); got != 1 {
+		t.Fatalf("baris outcome = %d, mau tepat 1:\n%s", got, buf.String())
+	}
+	var outcome string
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		if strings.Contains(line, "trusted-local emitted") {
+			outcome = line
+		}
+	}
+	for _, want := range []string{"evt-local-1", "ADMIN_ELIGIBLE"} {
+		if !strings.Contains(outcome, want) {
+			t.Fatalf("baris outcome tidak memuat %q:\n%s", want, outcome)
+		}
+	}
+	// Privasi D-019: centroid frame ini (-6.9, 107.6) tidak boleh bocor ke
+	// log mana pun pada jalur ini.
+	for _, leak := range []string{"-6.9", "107.6", "centroid", "distance"} {
+		if strings.Contains(buf.String(), leak) {
+			t.Fatalf("log membocorkan posisi (%q):\n%s", leak, buf.String())
+		}
 	}
 }
 

@@ -33,6 +33,15 @@ type trustedLocalSink interface {
 	DispatchTrustedLocalEventFrame(ctx context.Context, msg *dispatch.AlertMessage)
 }
 
+// adminEdgeEmitter adalah kapabilitas opsional emitter untuk snapshot
+// non-transisi tepi-FINAL (D-037). Dideteksi lewat type assertion — pola yang
+// sama dengan nearPersister di SetLedger — sehingga recorder replay, harness
+// biasa, dan probe latensi tetap sah tanpa mengimplementasikannya, dan
+// perilaku mereka tidak berubah sedikit pun.
+type adminEdgeEmitter interface {
+	EmitAdminEdge(ctx context.Context, s Snapshot)
+}
+
 // SetAdminNodeHook memasang jalur peringatan lokal: sumber status operator
 // dan sink dispatch lokal. Dipisahkan dari konstruktor seperti SetEmitter —
 // dispatcher dan sumber dibangun pada titik yang berbeda di main.go — dan
@@ -62,6 +71,17 @@ func (b *Bridge) EmitTransition(ctx context.Context, s Snapshot) {
 	// Kait Admin Node (D-036): aditif setelah emisi normal — tidak mengubah
 	// frame di atas, tidak menahannya, dan tidak membaca I/O apa pun secara
 	// sinkron (lihat emitTrustedLocal di admin_node.go).
+	b.emitTrustedLocal(ctx, s)
+}
+
+// EmitAdminEdge memenuhi adminEdgeEmitter: menyalurkan satu snapshot
+// non-transisi tepi-FINAL (D-037) ke jalur evaluasi lokal yang sama persis
+// dengan kait transisi — bukan pipa kedua. Snapshot di sini tidak pernah
+// menjadi baris log maupun revisi; ia hanya parsel bukti untuk evaluator.
+func (b *Bridge) EmitAdminEdge(ctx context.Context, s Snapshot) {
+	if b == nil {
+		return
+	}
 	b.emitTrustedLocal(ctx, s)
 }
 

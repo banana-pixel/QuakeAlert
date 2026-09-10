@@ -86,6 +86,11 @@ func (d *Dispatcher) DispatchTrustedLocalEventFrame(ctx context.Context, msg *Al
 	if msg.ValidityMs == 0 {
 		msg.ValidityMs = d.resolveAfter.Milliseconds()
 	}
+	// Audit outcome D-019 untuk emisi lokal (D-037): event_id + outcome saja.
+	// Tanpa koordinat, jarak, atau data turunan lokasi — mengikuti bentuk
+	// RaiseOutcomeLog di klien. Satu baris per pemanggilan: pemanggil
+	// (transisi maupun tepi-FINAL) menjamin at-most-once per kejadian.
+	d.log.Info("trusted-local emitted", "event_id", msg.EventID, "outcome", "ADMIN_ELIGIBLE")
 	// decidedAt sinkron seperti dispatchFCM: waktu keputusan, bukan waktu
 	// pengiriman.
 	decidedAt := time.Now().UnixMilli()

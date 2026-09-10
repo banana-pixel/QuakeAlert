@@ -92,6 +92,16 @@ type Tracker struct {
 	// terjadi di luarnya. Dilindungi t.mu bersama counters — bukan kunci kedua.
 	nearPending []NearConfirmedEntry
 
+	// localPending memegang snapshot tepi-FINAL Admin Node (D-037) yang
+	// terdeteksi di bawah kunci dan belum diserahkan ke emitter. Pola yang
+	// sama persis dengan nearPending di atas, untuk alasan yang sama:
+	// pendeteksian tepi hanya sah di bawah kunci (keadaan kontributor),
+	// sedangkan evaluasi kelayakan membaca store dan karenanya hanya boleh
+	// terjadi di luarnya. Snapshot di sini BUKAN transisi: state, revision,
+	// dan event_state_log tidak tersentuh oleh keberadaannya. Dilindungi
+	// t.mu — bukan kunci kedua.
+	localPending []Snapshot
+
 	// nearCoverage adalah fakta pembacaan durable saat boot (B1). Dilindungi
 	// t.mu; ditulis sekali oleh LoadNearConfirmed dan dibaca setiap laporan.
 	nearCoverage NearConfirmedCoverage
@@ -200,6 +210,30 @@ func (t *Tracker) Ingest(ctx context.Context, in Input) {
 // kegagalannya jauh lebih berbahaya: baris audit yang hilang ditemukan nanti oleh
 // sebuah query, peringatan yang hilang ditemukan oleh sebuah gempa.
 func (t *Tracker) publish(ctx context.Context, ts []Snapshot) {
+	// Kuras antrean tepi-FINAL (D-037) lebih dulu, di bawah kunci singkat
+	// tanpa I/O — pola yang sama dengan flushNearConfirmed di bawah.
+	t.mu.Lock()
+	local := t.localPending
+	t.localPending = nil
+	t.mu.Unlock()
+
+	// Tepi-FINAL Admin Node (D-037): snapshot non-transisi diserahkan HANYA
+	// kepada emitter yang menyatakannya sanggup (type assertion, pola yang
+	// sama dengan nearPersister di SetLedger) — recorder replay, harness
+	// biasa, dan probe latensi tidak tersentuh karena mereka tidak
+	// mengimplementasikannya. Berdiri SEBELUM early-return ts-kosong di
+	// bawah: tepi justru lahir tepat saat tidak ada transisi, dan
+	// melewatkannya di sini berarti membuangnya diam-diam. Loop emisi normal
+	// di bawah tidak berubah; penyerahan tepi di sini async (goroutine di
+	// Bridge) sehingga tidak ada urutan emisi yang dijanjikan dengannya.
+	if t.emit != nil {
+		if edge, ok := t.emit.(adminEdgeEmitter); ok {
+			for _, s := range local {
+				edge.EmitAdminEdge(ctx, s)
+			}
+		}
+	}
+
 	// Pembilasan catatan near-confirmation (P4-M2′) menutup fungsi ini, dan
 	// itulah sebabnya jalur kosong TIDAK lagi kembali lebih awal di sini: sebuah
 	// persilangan ambang boleh terjadi tanpa satu pun transisi (UNCONFIRMED ->
@@ -370,7 +404,27 @@ func (t *Tracker) ingestLocked(in Input) []Snapshot {
 			t.counters.reonsetSplits++
 		}
 	} else {
+		// Tepi FINAL (D-037, pengecualian eksplisit D-003): catat apakah
+		// kontributor ini sudah FINAL sebelum absorb. Absen dihitung sebagai
+		// non-FINAL — kontribusi FINAL pertama (mis. PRELIM-nya hilang di
+		// QoS0) sama sahnya dengan flip PRELIM->FINAL. Tepi diserahkan
+		// tepat-sekali per event (adminEdgeFired): flip berikutnya — dari
+		// kontributor mana pun — bukan kejadian baru.
+		wasFinal := false
+		if c, ok := e.Contributors[in.NodeID]; ok {
+			wasFinal = c.Phase == PhaseFinal
+		}
 		t.upsertContributorLocked(e, in)
+		// BUKAN transisi: state, revision, dan event_state_log tidak
+		// tersentuh di sini. Snapshot hanya parsel bukti terkini untuk
+		// evaluasi async di luar kunci; kelayakan (designation, heartbeat)
+		// tetap diputuskan di sana, bukan di sini.
+		if !wasFinal && e.State == StateUnconfirmed {
+			if c, ok := e.Contributors[in.NodeID]; ok && c.Phase == PhaseFinal && !e.adminEdgeFired {
+				e.adminEdgeFired = true
+				t.localPending = append(t.localPending, e.snapshot(e.State, ""))
+			}
+		}
 	}
 
 	e.LastEvidenceTS = now

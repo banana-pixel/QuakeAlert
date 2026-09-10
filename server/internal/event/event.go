@@ -195,6 +195,16 @@ type Event struct {
 	// Invalidated disetel oleh InvalidateContributor bila SELURUH bukti ditarik.
 	Invalidated bool
 
+	// adminEdgeFired menandai tepi-FINAL Admin Node (D-037) event ini sudah
+	// diserahkan ke emitter — tepat-sekali per event. In-memory saja: ia
+	// melindungi idempotensi antar-absorb dalam satu masa hidup proses, bukan
+	// janji lintas restart (restart tidak memicu absorb baru, jadi tidak ada
+	// emisi ulang darinya; duplikat residual lintas-restart diredam dedup
+	// revisi klien karena revisi tak pernah naik untuk tepi ini). BUKAN
+	// state, revisi, maupun baris log — tidak dipersistensi, tidak
+	// direkonsiliasi, tidak dibandingkan replay.
+	adminEdgeFired bool
+
 	// EverConfirmed menentukan apakah RESOLVED/CANCELLED berhak atas FCM (§8.1):
 	// all-clear hanya diutangkan kepada audiens yang menerima alarmnya.
 	EverConfirmed bool
