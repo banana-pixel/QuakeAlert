@@ -328,6 +328,29 @@
 - Action: owner — phone-check for the ≈01:04 WIB alarm (expect it iff the phone holds a live token); decide V1 server redeploy timing (D-038 floor + D-040 all-clear take effect only then); consider token-pruning + B1 rotation.
 - Experiment: production window analysis (R-032 owed item 1 of 2; sweep-harness run replaced by manual tabulation — same arithmetic, stated method). Decision: none — findings only. Supersedes: R-032 "production check owed" (done); N-1 BLOCKED (resolved by N-2).
 
+## R-035 — 2026-09-27 — Release-candidate cleanup: gofmt fix amended into V1 commit, docs provenance committed, full verification green — candidate READY, NOT DEPLOYED
+
+- Finding (authorized cleanup only; no deploy/rotation/FCM/unrelated change):
+  - TASK 1 GOFMT: `gofmt -w` scoped to `server/internal/event/admin_node_test.go`; verified diff = exactly the two trailing blank lines, nothing else; event `-race` tests re-run green on the fixed file; folded into the V1 commit via `commit --fixup` + `rebase -i --autosquash` (all commits local/unpushed, so the rewrite is safe). Amended commit `127d70d` differs from old `f9a2670` by ONLY that 2-line removal (verified via `git diff f9a2670 127d70d`); docs commits rebased content-identically (`ada77f0`, `f42db5e`). Final stack: `127d70d → ada77f0 → f42db5e`, tree clean, 3 ahead of `origin/development`, nothing pushed.
+  - TASK 2 PROVENANCE: the 4 uncommitted docs files (DECISIONS N-2, CHANGELOG, RESEARCH_LEDGER through R-034, rewritten run-sheet) inspected (docs-only, no keys, no 64-hex values), staged by explicit path (never `git add .`), committed as `5950045` pre-rebase → `f42db5e` post-rebase.
+  - TASK 3 VERIFICATION on the final tree: `gofmt -l` over ALL compiled packages clean; `go build ./...` OK; `event` + `config` `-race` green; `go vet` clean; `canonical-host-test.sh` pass; contracts parse OK; sweep SELFTEST OK. Secrets: candidate diff `8e93c4d..HEAD` holds zero 64-hex values and zero private keys. Migrations: zero diff (deploy migrate step will be a verified no-op). D-036 evaluator + D-037 edge + D-038 floor-60 + D-040 all-clear + D-041 domain all present as intended.
+  - Unexpected observation (reported, NOT fixed — out of authorized scope): `gofmt -d` on the build-ignored operator tool `server/scripts/admin_floor_sweep.go` shows a comment-indentation nit (pre-existing from `d36c2f2`, file unmodified). Zero binary impact (never compiled into the server); recommended for a follow-up docs commit, not this release.
+  - No production action occurred this turn: every command ran locally (build/test/lint/scan/git); no SSH to Fedora or VPS, no flash, no DB contact, no deploy, no push.
+- Evidence: gofmt/build/test/vet/scan transcripts; `git log` (final SHAs); `git diff f9a2670 127d70d` (2 deletions); clean `git status`.
+- Confidence: FACT (all directly observed).
+- Impact: R-034's single blocker is closed. The V1 server candidate is READY pending only standing owner items (LICENSE, B1 rotation, token hygiene) and the deploy authorization itself.
+- Action: owner — authorize the §G procedure execution in a deploy-authorized session.
+- Experiment: release cleanup (§8/§13 MASTER prompt, cleanup leg). Decision: candidate READY. Supersedes: R-034 "NOT READY on gofmt" (fixed).
+
+## R-036 — 2026-09-27 — Final provenance close: R-035 ledger committed, candidate frozen, production NOT deployed
+
+- Finding: committed the R-035 ledger/changelog files by explicit path (2 files, docs-only, inspected before staging — no code, config, secret, or unrelated content). No SSH to any host, no push, no rotation, no FCM change, no test run in this step (all R-035 checks already evidenced; re-running them would be new testing, explicitly out of scope). Post-commit verification: working tree clean; release code identical to the verified R-035 candidate (no source/config/contract diff introduced by this step — the commit carries ledger prose only).
+- Evidence: `git status` (clean), `git log` (final SHAs below).
+- Confidence: FACT.
+- Impact: the release candidate is now fully provenanced in git; every decision, verification, and finding from R-024 through R-035 is committed history. PRODUCTION NOT DEPLOYED — deploy authorization remains a separate, explicit owner decision.
+- Action: none pending from this step. Next session starts from a clean tree at the SHAs below.
+- Experiment: provenance close. Decision: none. Supersedes: nothing.
+
 ## R-034 — 2026-09-27 — Release-preparation audit: V1 server candidate (floor 60 + D-040) NOT READY on one minor item (gofmt); everything else green, NOT DEPLOYED
 
 - Finding (read-only audit + local builds/tests only; no deploy, restart, DB write, push, rotation, or unrelated change):
