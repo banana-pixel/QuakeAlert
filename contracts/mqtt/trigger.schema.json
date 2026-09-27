@@ -52,7 +52,7 @@
     },
     "phase": {
       "type": "string",
-      "description": "PRELIM = dipublish pada konfirmasi onset (~300 ms setelah onset), pga=puncak sejauh ini, dur_ms=waktu berjalan sejauh ini, tanpa detrigger_ts. FINAL = dipublish saat event ditutup, pga=puncak, dur_ms=durasi total, dengan detrigger_ts. TEPAT DUA publikasi per event; tidak ada UPDATE. Keduanya berbagi obs_seq yang sama dan hanya berbeda phase, sehingga PRELIM dan FINAL dari satu node adalah satu node — bukan dua — bagi konsensus.",
+      "description": "PRELIM = diterbitkan setelah jendela puncak singkat sejak konfirmasi onset (PRELIM_WINDOW_MS, ~1000 ms; jadi ~1.3 s setelah onset dengan konfirmasi 300 ms), pga=puncak sepanjang jendela itu (bukan sampel sesaat onset), dur_ms=waktu berjalan sejak onset saat diterbitkan, tanpa detrigger_ts. Bila event ditutup sebelum jendela habis, PRELIM tetap diterbitkan pada saat penutupan agar dua publikasi terjaga. FINAL = diterbitkan saat event ditutup, pga=puncak penuh, dur_ms=durasi total, dengan detrigger_ts. TEPAT DUA publikasi per event; tidak ada UPDATE. Keduanya berbagi obs_seq yang sama dan hanya berbeda phase, sehingga PRELIM dan FINAL dari satu node adalah satu node (bukan dua) bagi konsensus.",
       "enum": [
         "PRELIM",
         "FINAL"
@@ -95,9 +95,9 @@
       "obs_seq": 196609,
       "attempt_no": 1,
       "pga": 0.4215,
-      "dur_ms": 300,
+      "dur_ms": 1300,
       "onset_ts": 1723891233820,
-      "ts": 1723891234120,
+      "ts": 1723891235120,
       "signature": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
     },
     {

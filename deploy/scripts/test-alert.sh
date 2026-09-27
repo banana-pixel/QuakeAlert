@@ -24,7 +24,7 @@
 # kombinasi yang gempa sungguhan tidak pernah menghasilkan.
 set -euo pipefail
 
-API_BASE="${API_BASE:-https://api.quakealert.id}"
+API_BASE="${API_BASE:-https://api.quakealert.web.id}"
 
 # Default di Bandung: posisi uji yang sama dengan emulator pengembangan, jadi
 # gate jarak di klien (200 km dari centroid) meloloskannya alih-alih diam.
@@ -48,7 +48,7 @@ Pemakaian: test-alert.sh --pga <gal> [--lat <lat>] [--lon <lon>] [--place <nama>
 
 Environment:
   ADMIN_API_KEY  wajib, kunci operator (header X-Admin-Key)
-  API_BASE       opsional, default https://api.quakealert.id
+  API_BASE       opsional, default https://api.quakealert.web.id
 USAGE
     exit 2
 }

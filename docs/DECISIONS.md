@@ -1039,6 +1039,103 @@ Page 2 of onboarding renders `ic_globe_05` beside the sensor chip (Figma 1:341, 
 
 ---
 
+### D-036 — Admin Node local-warning capability adopted, not activated
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-09 (explicit owner order; acceptance of the design, not activation of the capability)
+
+The audited Admin Node design is adopted: additive `trusted_local` on `EARTHQUAKE_ALERT` (contract-first, no new state/enum), `iot_nodes.is_admin_node` with a single-active partial unique index and OFF-by-default (migration 000010, no auto-designation), designate/revoke behind `X-Admin-Key` with unverify auto-clear, a pure eligibility evaluator (designated + verified + FINAL + PGA ≥ 140 gal + heartbeat ≤ 5 min) feeding a dedicated token-only ≤ 20 km dispatch with no GeoTopic fallback, Android parse/gate/copy/badge, and deterministic replay via operator-asserted profile. Implemented and tested in `c85ddcf` (Phases 1–3 + Android + Replay); Go/DB validation green locally, Android unit/lint/assemble green; CONFIRMED/advisory/dispatch semantics unchanged.
+
+**NOT activated.** No node is designated, and none was designated as part of this decision. Activation requires ALL of the following, verified in order, and any missing item STOPS activation (no partial activation):
+1. Migration 000010 applied AND the D-036 server binary deployed — **not done as of 2026-09-09** (evidence: production `/sensors` carries no `is_admin_node`; `POST /api/v1/admin/nodes/{id}/admin-designate` answers 404 while the existing `verify` route answers 401).
+2. The compatible Android build installed before server-side activation (pre-release precondition; the D-036 client exists, installation unverified).
+3. The designated node verified AND heartbeat-fresh — `NODE-52960B47` reads `verified:true` but `last_ping` 83h on 2026-09-09, so it fails the 5-minute gate; designating it now would create a capability that can never fire.
+
+**Does not decide:** `algo_ver` bump timing, deployment scheduling, or any threshold/quorum/radius change (none — all invariants hold). **Reversible:** revoke designation, migrate down.
+
+---
+
+### D-037 - Admin Node trusted-local also evaluates on the FINAL edge (recorded retroactively)
+**Status:** ACCEPTED · implemented in commit `8e93c4d` ("feat(d-037): trusted-local FINAL-edge exception"); this entry records the decision after the fact, from that commit and the source, and rewrites nothing.
+
+The trusted-local eligibility path is evaluated not only on state transitions but also on the FINAL-contribution edge of an event that stays UNCONFIRMED (`Bridge.EmitAdminEdge` feeding the same `emitTrustedLocal` evaluator, `server/internal/event/emit.go`, `admin_node.go`). Rationale from the code: a single admin node whose own FINAL PGA crosses the floor produces no second UNCONFIRMED transition to hang the evaluation on, so without the edge the local warning would never fire for exactly the one-node case it exists to serve. The edge snapshot is evidence only: it becomes neither a log row nor a revision.
+
+**Does not decide:** any change to the eligibility gate itself, quorum, or radius. **Reversible:** the edge emitter is an optional capability detected by type assertion; removing it restores transition-only evaluation.
+
+---
+
+### D-038 - Admin Node V1 PGA floor set to 60 gal (sensitivity-first, reversible)
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-27 (explicit owner choice "60 gal" among 60/80/100/120/140) · **Implemented:** 2026-09-27 this session.
+
+`AdminNodeMinPGAGal` lowered from 140.0 (D-007) to 60.0 in `server/internal/event/admin_node.go`. This is the initial V1 operational floor under the owner's stated "sensitivity first" priority: it lets locally-measured moderate shaking (roughly MMI V and above) wake the 20 km trusted-local audience earlier, at the cost of a higher false-warning rate that is monitored post-release rather than pre-empted. It remains a compile-time constant (D-007 rationale unchanged: the threshold ships with the binary that decides on it).
+
+Offline public-waveform replay (R-022, 52 FDSN records) frames the tradeoff, not equivalent to QuakeAlert PGA (§8.1 non-equivalence): of records whose FINAL crosses a given floor, the count reaching it rises as the floor falls (140→5, 120→7, 100→8, 80→12, 60→15), and none cross before roughly 1 s after onset, so a lower floor buys both more catches and earlier catches on that dataset.
+
+**Reversal criteria (this is initial config, explicitly reversible):** raise the floor if post-release monitoring shows the trusted-local false-warning rate exceeds what the owner will accept; the change is a one-constant edit plus rebuild. **Does not decide:** quorum, independence, alert radius, or the network-confirmed alarm path (all unchanged). **Tests:** eligibility boundary matrix and replay boundaries updated to the 60 gal floor; `go test ./internal/event/ -race` green 2026-09-27.
+
+### D-039 - PRELIM is the running peak over the first 1.0 s after confirmation (single window)
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-27 (explicit owner choice "Peak over first 1.0s" among 300ms/500ms/1s/1.5s/2s/3s) · **Implementation:** firmware source DONE this session; on-device build/flash verification BLOCKED (no ESP32 toolchain in this environment).
+
+The first of the two per-event publishes (PRELIM) becomes the running peak of corrected acceleration over the window [confirmation, confirmation + 1.0 s], published at the end of that window. This replaces the prior behaviour in which PRELIM was the single onset-instant sample captured at the 300 ms confirmation (`firmware/src/sensor.cpp`), which contradicted the comment and schema that described it as a peak-so-far (reported as DISC-3 / DISC-C in prior audits, now corrected in code and contract rather than only flagged). FINAL is unchanged: the true running peak at detrigger. Still exactly two publishes per event sharing one `obs_seq`.
+
+One window, not two. The two-window PRELIM architecture was evaluated (docs `15-`, `16-`) and is NOT adopted: offline public-waveform replay (R-022) showed a later single window recovers a median of roughly 7 percent (onset) rising to about 42 percent of FINAL at +1.0 s, while a second window did not demonstrate an advantage over simply re-timing the one window, so the simplest architecture that captures early growth wins per the owner's "prefer the simplest architecture" directive.
+
+**Reversible:** the window length is a single firmware constant (`PRELIM_WINDOW_MS`, config.h); 1.0 s is the initial choice and can be retuned. **Does not decide:** confirmation timing (stays 300 ms), FINAL semantics, detector constants, or any server/Android contract beyond the PRELIM value's meaning and the schema/comment correction.
+
+**Implemented (source) this session:** at confirmation, `firmware/src/sensor.cpp` now arms a peak window (`prelimPending` + `prelimWindowEndMillis = millis() + PRELIM_WINDOW_MS`) instead of populating `pendingPrelim` at the onset instant; the active-event block keeps `pga = max(pga, correctedMagnitude)` and, once the window closes, calls the new file-static `flushPendingPrelim(pga, now)` to publish the running peak exactly once. An event that detriggers before the window closes flushes PRELIM first, so the exactly-two-publishes-per-event (shared `obs_seq`) contract is preserved. `eventTriggered` still fires at onset (it drives only display/LED state, not the PRELIM observation). `PRELIM_WINDOW_MS = 1000` added to `config.h`; stale peak-at-onset descriptions corrected in `sensor.cpp`, `canonical.h`, `state.h`, `firmware.ino`, and the phase description + PRELIM example in `contracts/mqtt/trigger.schema.json`. **Tests:** `firmware/scripts/canonical-host-test.sh` passes (canonical signing + onset checks; confirms `canonical.h` still host-compiles byte-identically to the Go signer). `sensor.cpp` cannot be host-compiled (Arduino/FreeRTOS deps), so full validation is owed on the owner's bench (build + flash + shake) and remains BLOCKED.
+
+---
+
+### D-040 - Trusted-local warnings receive a local all-clear even when never CONFIRMED
+**Status:** ACCEPTED · **Owner-approved:** 2026-09-27 (release-blocker fix authorized: "if the fix is straightforward and within scope, implement it") · **Implemented:** 2026-09-27 this session.
+
+An event that fired a HIGH-priority trusted-local `EARTHQUAKE_ALERT` to the 20 km audience (D-036/D-037) but then ended without ever reaching CONFIRMED previously received no FCM all-clear: `FrameFor` pushes RESOLVED/CANCELLED only when `EverConfirmed` is true (§8.1), and `EverConfirmed` is set only at CONFIRMED, so the local audience was left with an alarm that was never withdrawn. The `Bridge` now remembers which events emitted a local alarm (`localAlarmed`, keyed by `event_id`) and, on the terminal transition of such an event when it was never CONFIRMED, dispatches one `EVENT_RESOLVED` frame marked `trusted_local` through the same token-only 20 km path. Events that were CONFIRMED are covered by the normal all-clear (pushed to `AlertRadiusKm` = 200 km, which contains the 20 km ring), so their local trace is simply forgotten.
+
+The fix is additive and fail-safe: with no prior local alarm the reconciliation does nothing; the all-clear dispatch runs on its own goroutine with its own deadline, so a slow token lookup delays only the local all-clear, never normal emission (invariant S1). **Reversible:** removing the reconciliation call restores prior behaviour. **Does not decide:** any change to normal-path all-clear semantics, radius, or eligibility. **Tests:** four new Bridge tests (resolve-never-confirmed, cancel-never-confirmed, no-double-all-clear-when-confirmed, no-all-clear-when-never-alarmed); `go test ./internal/event/ -race` green 2026-09-27.
+
+---
+
+### Reconciliation N-1 - D-036 activation record vs live-state documentation (append-only; D-036 not rewritten)
+**Recorded:** 2026-09-27. D-036 (line above) states the Admin Node capability was NOT activated as of 2026-09-09 and lists three activation preconditions. `docs/CURRENT_STATE.md` (working tree) describes the Admin Node as live since 2026-09-09T~21:15Z. These two statements are in tension; per PROJECT_RULES the earlier decision text is preserved and this note reconciles rather than edits it.
+
+**Reconciliation:** the V1 intent under D-038/D-039/D-040 is that the trusted-local capability IS part of the release (that is what the floor and all-clear work serve). Whether production is presently activated (migration 000010 applied, D-036 binary deployed, compatible Android installed, and a verified heartbeat-fresh designated node) is a factual question about the live VPS. This session has no authorized production database or API access, so that specific verification is **BLOCKED** pending an authorized production check; it must not be asserted as done without evidence (the audit found the 2026-09-09 designated node `NODE-52960B47` failing the 5-minute heartbeat gate, which would make any designation inert). **Next action (owner or authorized session):** confirm the four activation preconditions against production and record the result here, then align CURRENT_STATE.md to the verified state.
+
+
+### D-041 - The canonical domain is quakealert.web.id for both API and broker; stale .id defaults reconciled
+**Status:** DECIDED and reconciled in source this session. This resolves the audit blocker (B) domain-mismatch (release-readiness-master-audit.md, R-023): the app shipped `quakealert.web.id` while every server, deploy, and contract default still named the bare `quakealert.id`.
+
+**Evidence (DNS, resolved this session 2026-09-27):** `api.quakealert.web.id` and `broker.quakealert.web.id` both resolve to the production VPS `168.110.217.4`; the apex `quakealert.web.id` resolves to Cloudflare. Every bare-`.id` host (`api.quakealert.id`, `broker.quakealert.id`, `quakealert.id`) returns NO-RESOLVE. The Android reverse-domain package `id.web.quakealert` independently confirms `web.id` as canonical. DNS was available, so this is a bounded operational decision, NOT a BLOCKED item.
+
+**Decision:** `quakealert.web.id` is canonical for both the API host and the MQTT broker host. An operator who deploys against the code defaults must reach the live system, not a dead name.
+
+**Reconciled to web.id this session (operator- and runtime-facing defaults/examples):**
+- `server/internal/config/config.go` MQTTPublicBroker default (:184) and MQTTBroker doc comment (:19).
+- `deploy/.env.prod.example` API_DOMAIN / MQTT_DOMAIN / ACME_EMAIL (:15-17).
+- `deploy/docker-compose.prod.yml` Caddy env hint messages (:42-43).
+- `deploy/scripts/{broadcast,test-alert,verify-node}.sh` API_BASE default and its usage note.
+- `contracts/openapi/openapi.yaml` production server url (:19) and mqtt_broker example (:1461).
+- `firmware/src/config.h` broker-buffer sizing comment (:78).
+- `docs/CLIENT_SPEC.md` production base-URL row and `docs/SYSTEM_SPEC.md` provisioning-response example.
+
+**Deliberately NOT changed (with reason):**
+- JSON-Schema `$id` URNs (`https://quakealert.id/contracts/...` in trigger/heartbeat/alert/alert_payload schemas): these are opaque identity URIs, not endpoints. Verified no `$ref` targets them and no Go code compares against the literal, so they never touch DNS; rewriting a schema's identity right before V1 is churn with no operational benefit.
+- Android test fixtures (`MappersTest.kt`, `AddSensorStateTest.kt`) that assert `broker.quakealert.id`: the literal is arbitrary round-trip mapping data, not a domain claim, and the shipping app already uses `web.id` correctly.
+- Historical records that must not be back-edited: `release-readiness-master-audit.md` (records the finding), `docs/TEMP_ANDROID_PHASE4_CHECKLIST.md` (already flags `.id` as wrong), and the `ANDROID_IMPLEMENTATION_PLAN.md` planning artifact.
+
+**Verification:** `go build ./...` and `go test ./internal/config/` pass after the default change (no test pinned the old string); `openapi.yaml` re-parses as valid YAML and `trigger.schema.json` as valid JSON. Live DNS ownership/certificate state on the VPS is not re-checked here (no production access), but resolution proves the names are live and correct.
+
+**Not done here:** no push, no deploy, no flash.
+
+### Security action item B1 - Production secrets exposed in a local session transcript; rotation required (owner)
+**Status:** OPEN, requires owner action. Recorded without values per the standing rule never to print secrets.
+
+**Finding:** the untracked local file `session-ses_f6d9.md` contains real production secret material in plaintext. Detected by key name only (values never read or printed): `MASTER_KEY_HEX`, `JWT_SECRET`, `POSTGRES_PASSWORD`, `ADMIN_API_KEY`, `MQTT_SERVER_PASSWORD`, `MQTT_MONITOR_PASSWORD`, plus distinct 64-hex tokens. A secondary file, `session-ses_f736.md`, holds two unidentified 64-hex tokens that are NOT the public schema example signatures; treat them as potentially sensitive until the owner confirms otherwise.
+
+**Containment done this session:** `.gitignore` now excludes `session-ses_*`, the stray `firmware/src/*this-session-is-being*.txt`, and `.hermes/`, and `git check-ignore` confirms all are ignored. None of these files were ever tracked (`git ls-files` clean), so nothing entered git history. This stops a future commit from leaking them; it does NOT undo the exposure of secrets that already sit in plaintext on disk.
+
+**Owner action required (cannot be done here safely):**
+1. ROTATE every secret named above. `MASTER_KEY_HEX` is the highest severity: rotating it re-keys node secret decryption (per config.go comment, it invalidates verification of already-provisioned nodes), so plan the node re-provisioning path before rotating. `JWT_SECRET` rotation invalidates all outstanding anonymous tokens. Rotate `POSTGRES_PASSWORD`, `ADMIN_API_KEY`, and the MQTT user passwords, then restart the stack.
+2. Confirm the two `session-ses_f736.md` tokens: if either is a node HMAC key or the master key, rotate; if they are published trigger HMAC signatures, no action.
+3. Securely remove or relocate the plaintext transcript files off the deployment host once no longer needed. Not deleted here: destructive and the files are operational records; this is the owner's call.
+
 ### Governance correction G1 (owner-approved 2026-09-07; nothing above is rewritten)
 Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read as
 "U-001 … U-009 remain unresolved; U-010 … U-013 see D-017 … D-020": U-010 answered

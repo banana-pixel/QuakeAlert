@@ -16,7 +16,7 @@ info:
     `GET /api/v1/events`. Endpoint lainnya dipakai firmware (provisioning) dan
     tooling web (sensors, reroll pseudonym).
 servers:
-  - url: https://api.quakealert.id
+  - url: https://api.quakealert.web.id
     description: Produksi
   - url: http://localhost:8080
     description: Dev lokal (docker-compose)
@@ -1458,7 +1458,7 @@ components:
           example: sec_key_991823719283719
         mqtt_broker:
           type: string
-          example: broker.quakealert.id
+          example: broker.quakealert.web.id
         mqtt_port:
           type: integer
           example: 8883

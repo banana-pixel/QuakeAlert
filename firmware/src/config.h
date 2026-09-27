@@ -75,7 +75,7 @@
 #define NVS_KEY_MQTT_BROKER "mqtt_broker"
 #define NVS_KEY_MQTT_PORT   "mqtt_port"
 #define NVS_KEY_MQTT_TLS    "mqtt_tls"
-// Ruang untuk hostname broker terpanjang yang masuk akal (mis. broker.quakealert.id).
+// Ruang untuk hostname broker terpanjang yang masuk akal (mis. broker.quakealert.web.id).
 #define MQTT_BROKER_BUFFER_SIZE 128
 
 
@@ -104,6 +104,7 @@
 #define STA_LTA_DETRIGGER_RATIO  1.5f              // STA/LTA ratio to close event
 #define MIN_STA_THRESHOLD_GAL    1.5f              // Minimum STA (gal) — suppresses noise triggers
 #define CONFIRMATION_DURATION_MS 300               // ms STA/LTA must stay triggered before confirming
+#define PRELIM_WINDOW_MS         1000              // ms peak window for PRELIM, measured from confirmation (D-039)
 #define MAX_EVENT_DURATION_MS    60000             // Maximum event duration cap (ms)
 #define EVENT_COOLDOWN_PERIOD_MS 60000             // Minimum gap between reported events (ms)
 #define LTA_WARMUP_TIME_MS       45000             // Boot time before detection activates (ms)

@@ -20,7 +20,7 @@
 #   API_BASE=http://localhost:8080 ./verify-node.sh --list
 set -euo pipefail
 
-API_BASE="${API_BASE:-https://api.quakealert.id}"
+API_BASE="${API_BASE:-https://api.quakealert.web.id}"
 
 mode="verify"
 station_id=""
@@ -34,7 +34,7 @@ Pemakaian:
 
 Environment:
   ADMIN_API_KEY  wajib, kunci operator (header X-Admin-Key)
-  API_BASE       opsional, default https://api.quakealert.id
+  API_BASE       opsional, default https://api.quakealert.web.id
 USAGE
     exit 2
 }

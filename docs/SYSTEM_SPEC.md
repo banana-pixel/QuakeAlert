@@ -357,7 +357,7 @@ Base URL selalu **HTTPS**. Semua endpoint kecuali auth publik memerlukan `Author
 {
   "station_id": "NODE-163A149F",
   "provisioning_secret": "sec_key_991823719283719",
-  "mqtt_broker": "broker.quakealert.id",
+  "mqtt_broker": "broker.quakealert.web.id",
   "mqtt_port": 8883,
   "mqtt_tls": true
 }

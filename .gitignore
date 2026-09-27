@@ -84,6 +84,14 @@ deploy/docker-compose.staging.override.yml
 # Scratch/session files
 session.txt
 *-hello.txt
+# Agent/session transcript dumps. May contain pasted secrets and long
+# operational transcripts; never commit. Covers the root session-ses_* dumps,
+# the stray timestamped transcript that landed in firmware/src, and the .hermes
+# tool scratch dir.
+session-ses_*
+firmware/src/*this-session-is-being*.txt
+*this-session-is-being-continued-from-a-previous-c*.txt
+.hermes/
 
 # Firebase config files (root-level staging copies; the app/ one is already ignored)
 google-services*.json

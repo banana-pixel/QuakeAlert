@@ -39,6 +39,14 @@ void IRAM_ATTR DMPDataReady() {
 // yang perlu dilindungi mutex.
 static int64_t currentObsSeq = 0;
 
+// Jendela puncak PRELIM (D-039). prelimPending menandai bahwa event yang sudah
+// terkonfirmasi belum menerbitkan PRELIM-nya; prelimWindowEndMillis adalah
+// tenggat millis() saat jendela puncak PRELIM_WINDOW_MS (dihitung dari
+// konfirmasi) tutup. Keduanya file-static dengan alasan yang sama seperti
+// currentObsSeq: hanya SensorTask yang menyentuhnya.
+static bool prelimPending = false;
+static unsigned long prelimWindowEndMillis = 0UL;
+
 bool initializeSensorInterrupts() {
     if (mpuInterruptSemaphore == nullptr) {
         return false;
@@ -90,6 +98,29 @@ void initMPU() {
     }
 
     xSemaphoreGive(i2cMutex);
+}
+
+// flushPendingPrelim mengisi slot pendingPrelim dengan puncak PRELIM dan
+// menandainya siap-publish (handleAlerts memungutnya lewat servePendingSlot).
+// Dipanggil SEKALI per event: saat jendela PRELIM_WINDOW_MS tutup, atau lebih
+// awal bila event ditutup sebelum jendela habis (agar kontrak dua-publikasi
+// tetap terpenuhi). pga yang diberikan pemanggil sudah puncak-berjalan, jadi
+// PRELIM membawa guncangan terkuat dalam jendela itu, bukan sampel onset.
+// nowMs adalah millis() saat flush: dipakai untuk timestamp dan dur_ms berjalan.
+static void flushPendingPrelim(float peakPga, unsigned long nowMs) {
+    portENTER_CRITICAL(&reportMux);
+    pendingPrelim.maxPga = peakPga;
+    pendingPrelim.duration = (nowMs - eventStartTime) / 1000.0f;
+    pendingPrelim.timestamp = nowMs;
+    pendingPrelim.obsSeq = currentObsSeq;
+    pendingPrelim.onsetMillis = eventStartTime;
+    pendingPrelim.detriggerMillis = 0UL;
+    pendingPrelim.publishAttempts = 0;
+    pendingPrelim.lastAttemptMs = 0UL;
+    pendingPrelim.ready = true;
+    pendingPrelim.processed = false;
+    portEXIT_CRITICAL(&reportMux);
+    prelimPending = false;
 }
 
 void processSensorData() {
@@ -220,21 +251,15 @@ void processSensorData() {
                 inBootSeq++;
                 currentObsSeq = composeObsSeq(bootCount, inBootSeq);
 
-                // PRELIM: dipublish pada konfirmasi onset, jadi pga adalah puncak
-                // sejauh ini dan dur_ms adalah waktu berjalan sejak onset — bukan
-                // nilai final, dan kontrak memang tidak memintanya final.
-                portENTER_CRITICAL(&reportMux);
-                pendingPrelim.maxPga = pga;
-                pendingPrelim.duration = (millis() - eventStartTime) / 1000.0f;
-                pendingPrelim.timestamp = millis();
-                pendingPrelim.obsSeq = currentObsSeq;
-                pendingPrelim.onsetMillis = eventStartTime;
-                pendingPrelim.detriggerMillis = 0UL;
-                pendingPrelim.publishAttempts = 0;
-                pendingPrelim.lastAttemptMs = 0UL;
-                pendingPrelim.ready = true;
-                pendingPrelim.processed = false;
-                portEXIT_CRITICAL(&reportMux);
+                // PRELIM (D-039): puncaknya ditelusuri selama PRELIM_WINDOW_MS
+                // sejak konfirmasi, lalu diterbitkan SEKALI dengan puncak jendela
+                // itu, bukan sampel sesaat pada onset (yang selalu lebih rendah
+                // dari puncak sebenarnya). Isi pendingPrelim ditunda sampai jendela
+                // tutup di blok event aktif di bawah; di sini jendela hanya
+                // dipersenjatai. eventTriggered TETAP ditandai pada onset karena ia
+                // hanya menggerakkan state tampilan/LED, bukan observasi PRELIM.
+                prelimPending = true;
+                prelimWindowEndMillis = millis() + PRELIM_WINDOW_MS;
 
                 portENTER_CRITICAL(&eventTriggerMux);
                 eventTriggered = true;
@@ -251,6 +276,14 @@ void processSensorData() {
         // Track peak correctedMagnitude (gal) throughout the event.
         pga = max(pga, correctedMagnitude);
 
+        // PRELIM (D-039): tutup jendela puncak pada konfirmasi + PRELIM_WINDOW_MS
+        // dan terbitkan PRELIM dengan puncak sepanjang jendela itu. Selisih dicor
+        // ke signed agar aman terhadap wrap millis() (~49 hari). pga di atas sudah
+        // puncak-berjalan, jadi PRELIM membawa guncangan terkuat pada ~1 s pertama.
+        if (prelimPending && (long)(millis() - prelimWindowEndMillis) >= 0) {
+            flushPendingPrelim(pga, millis());
+        }
+
         const bool timeOutReached = (millis() - eventStartTime > MAX_EVENT_DURATION_MS);
         const bool ratioDropped = (ratio < STA_LTA_DETRIGGER_RATIO);
 
@@ -260,6 +293,13 @@ void processSensorData() {
             }
 
             const unsigned long detriggerMs = millis();
+
+            // Event yang ditutup sebelum jendela PRELIM habis tetap WAJIB
+            // menerbitkan PRELIM lebih dulu: kontrak dua-publikasi (obs_seq sama)
+            // tidak boleh menyusut jadi satu. Puncaknya adalah pga sampai detik ini.
+            if (prelimPending) {
+                flushPendingPrelim(pga, detriggerMs);
+            }
 
             portENTER_CRITICAL(&reportMux);
             // Jangan timpa laporan yang masih menunggu publish ulang: ganti

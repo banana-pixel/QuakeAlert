@@ -133,7 +133,7 @@ func TestReplayAdmin_EligibleProducesTrustedLocal(t *testing.T) {
 	}
 }
 
-// ---- batas: 140 gal dan 5 menit --------------------------------------------
+// ---- batas: 60 gal dan 5 menit ---------------------------------------------
 
 func TestReplayAdmin_Boundaries(t *testing.T) {
 	for _, tc := range []struct {
@@ -142,8 +142,8 @@ func TestReplayAdmin_Boundaries(t *testing.T) {
 		age    time.Duration
 		reason string
 	}{
-		{"tepat 140 gal layak", 140.0, time.Minute, ReasonAdminNodeEligible},
-		{"139.999 gal ditolak", 139.999, time.Minute, ReasonAdminNodeBelowFloor},
+		{"tepat 60 gal layak", 60.0, time.Minute, ReasonAdminNodeEligible},
+		{"59.999 gal ditolak", 59.999, time.Minute, ReasonAdminNodeBelowFloor},
 		{"tepat 5 menit layak", 150, AdminNodeHeartbeatMaxAge, ReasonAdminNodeEligible},
 		{"5 menit 1 detik basi", 150, AdminNodeHeartbeatMaxAge + time.Second, ReasonAdminNodeHeartbeatStale},
 	} {

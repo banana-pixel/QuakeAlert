@@ -27,7 +27,14 @@ const (
 	// admin sendiri agar memenuhi syarat: yang membenarkan peringatan lokal
 	// adalah guncangan yang diukur node itu, bukan puncak event dari node
 	// lain.
-	AdminNodeMinPGAGal = 140.0
+	//
+	// V1 = 60.0 gal (D-038, sensitivitas-lebih-dulu). Sebelumnya 140.0 (D-007).
+	// Ini konfigurasi operasional AWAL yang dapat dibalik: lantai diturunkan
+	// agar guncangan lokal sedang (kira-kira MMI V ke atas) membangunkan audiens
+	// 20 km lebih dini, dengan laju peringatan-palsu dipantau pasca-rilis (D-038
+	// mencatat kriteria pembalikan). Tetap konstanta compile-time (D-007): lihat
+	// alasan di komentar paket di atas.
+	AdminNodeMinPGAGal = 60.0
 
 	// AdminNodeHeartbeatMaxAge adalah umur last_heartbeat maksimum agar
 	// memenuhi syarat. Basi menahan peringatan lokal, tetapi TIDAK PERNAH
@@ -192,6 +199,76 @@ func (b *Bridge) emitTrustedLocal(ctx context.Context, s Snapshot) {
 		if !ok {
 			return
 		}
+		// D-040: catat SEBELUM dispatch. Begitu event dinyatakan layak (di atas)
+		// ia PASTI membangunkan audiens lokal, jadi transisi terminalnya berutang
+		// all-clear walau pencarian token di bawah menemukan nol. Idempotent:
+		// tepi-FINAL (D-037) dan transisi dapat sama-sama memancarkan untuk event
+		// yang sama.
+		b.localAlarmed.Store(s.EventID, struct{}{})
 		sink.DispatchTrustedLocalEventFrame(tctx, msg)
 	}()
+}
+
+// reconcileTrustedLocalAllClear menutup asimetri all-clear (D-040): sebuah event
+// yang telah memancarkan alarm lokal trusted_local (membangunkan audiens 20 km
+// saat UNCONFIRMED) tetapi tidak pernah CONFIRMED tidak menerima all-clear dari
+// jalur normal, karena FrameFor hanya mendorong RESOLVED/CANCELLED saat
+// EverConfirmed (§8.1). Pada transisi terminal event semacam itu, satu frame
+// EVENT_RESOLVED bertanda trusted_local dikirim lewat jalur token-only 20 km yang
+// sama dengan alarmnya.
+//
+// CONFIRMED tidak berutang all-clear lokal terpisah: jalur normal mendorong
+// RESOLVED/CANCELLED-nya ke AlertRadiusKm (200 km) yang mencakup audiens 20 km,
+// jadi jejaknya cukup dilupakan. Aditif dan gagal-aman: tanpa alarm lokal
+// sebelumnya, LoadAndDelete mengembalikan false dan fungsi tidak berbuat apa pun.
+func (b *Bridge) reconcileTrustedLocalAllClear(ctx context.Context, s Snapshot) {
+	switch s.To {
+	case StateConfirmed:
+		b.localAlarmed.Delete(s.EventID)
+	case StateResolved, StateCancelled:
+		if _, owed := b.localAlarmed.LoadAndDelete(s.EventID); !owed {
+			return
+		}
+		if s.EverConfirmed {
+			return // ditutup jalur normal (200 km mencakup 20 km); tanpa utang lokal
+		}
+		sink := b.adminSink
+		if sink == nil {
+			return
+		}
+		msg := trustedLocalAllClearFrame(s)
+		// Async dengan deadline sendiri seperti emitTrustedLocal (S1): pencarian
+		// token 20 km yang lambat menunda all-clear lokal, tidak pernah emisi
+		// normal maupun pemanggil.
+		go func() {
+			tctx, cancel := context.WithTimeout(context.Background(), adminNodeLoadTimeout)
+			defer cancel()
+			sink.DispatchTrustedLocalEventFrame(tctx, msg)
+		}()
+	}
+}
+
+// trustedLocalAllClearFrame membangun frame penarikan untuk jalur lokal: tipe
+// EVENT_RESOLVED (all-clear yang sudah dipahami setiap klien terpasang, D11),
+// trusted_local=true agar klien dapat mengkorelasikannya dengan alarm lokal yang
+// ia terima, dan korelasi event_id/revisi/timestamp dari snapshot terminal.
+func trustedLocalAllClearFrame(s Snapshot) *dispatch.AlertMessage {
+	return &dispatch.AlertMessage{
+		Type:                 dispatch.TypeResolved,
+		EventID:              s.EventID,
+		MMI:                  s.MMIScale,
+		IntensityLabel:       s.IntensityLabel,
+		PGAGal:               s.PeakPGA,
+		CentroidLat:          s.CentroidLat,
+		CentroidLon:          s.CentroidLon,
+		LocationName:         s.LocationName,
+		Timestamp:            s.DecidedAt,
+		NodeCount:            s.NodeCount,
+		EventState:           string(s.To),
+		EventRevision:        s.Revision,
+		OriginTS:             s.OriginTS,
+		OriginTSSource:       s.OriginTSSource,
+		IndependentCellCount: s.IndependentCells,
+		TrustedLocal:         true,
+	}
 }

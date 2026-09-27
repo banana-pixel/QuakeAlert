@@ -18,7 +18,7 @@
 #   API_BASE=http://localhost:8080 ./broadcast.sh --title ... --body ...
 set -euo pipefail
 
-API_BASE="${API_BASE:-https://api.quakealert.id}"
+API_BASE="${API_BASE:-https://api.quakealert.web.id}"
 
 title=""
 body=""
@@ -34,7 +34,7 @@ Pemakaian: broadcast.sh --title <judul> --body <isi> [--region <ISO2>-<slug>]
 
 Environment:
   ADMIN_API_KEY  wajib, kunci operator (header X-Admin-Key)
-  API_BASE       opsional, default https://api.quakealert.id
+  API_BASE       opsional, default https://api.quakealert.web.id
 USAGE
     exit 2
 }

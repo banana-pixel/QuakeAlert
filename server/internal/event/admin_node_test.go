@@ -58,7 +58,7 @@ func TestEvaluateAdminNodeEligibility(t *testing.T) {
 	}{
 		{"positif FINAL 150 gal denyut segar",
 			eligible, adminSnap(PhaseFinal, 150), ReasonAdminNodeEligible},
-		{"batas PGA tepat 140 gal layak",
+		{"batas PGA tepat 60 gal layak",
 			eligible, adminSnap(PhaseFinal, AdminNodeMinPGAGal), ReasonAdminNodeEligible},
 		{"batas heartbeat tepat 5 menit layak",
 			AdminNodeState{Designated: true, StationID: adminTestStation, Verified: true, HeartbeatAge: AdminNodeHeartbeatMaxAge},
@@ -68,8 +68,8 @@ func TestEvaluateAdminNodeEligibility(t *testing.T) {
 		{"designate tetapi unverified",
 			AdminNodeState{Designated: true, StationID: adminTestStation, HeartbeatAge: time.Minute},
 			adminSnap(PhaseFinal, 150), ReasonAdminNodeUnverified},
-		{"139.999 gal di bawah lantai",
-			eligible, adminSnap(PhaseFinal, 139.999), ReasonAdminNodeBelowFloor},
+		{"59.999 gal di bawah lantai",
+			eligible, adminSnap(PhaseFinal, 59.999), ReasonAdminNodeBelowFloor},
 		{"PRELIM bukan FINAL",
 			eligible, adminSnap(PhasePrelim, 300), ReasonAdminNodeNotFinal},
 		{"heartbeat basi 5m1s",
@@ -143,8 +143,8 @@ func TestTrustedLocalFrameFor(t *testing.T) {
 		t.Errorf("event_state = %q, mau UNCONFIRMED yang jujur", msg.EventState)
 	}
 
-	if _, ok := TrustedLocalFrameFor(adminEligibleState(), adminSnap(PhaseFinal, 139)); ok {
-		t.Error("139 gal membangun frame lokal")
+	if _, ok := TrustedLocalFrameFor(adminEligibleState(), adminSnap(PhaseFinal, 59)); ok {
+		t.Error("59 gal membangun frame lokal")
 	}
 	if _, ok := TrustedLocalFrameFor(AdminNodeState{}, s); ok {
 		t.Error("tanpa designate membangun frame lokal")
@@ -227,6 +227,15 @@ func (f *fakeLocalSink) first() *dispatch.AlertMessage {
 		return nil
 	}
 	return f.msgs[0]
+}
+
+func (f *fakeLocalSink) at(i int) *dispatch.AlertMessage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if i < 0 || i >= len(f.msgs) {
+		return nil
+	}
+	return f.msgs[i]
 }
 
 func waitForLocal(t *testing.T, f *fakeLocalSink, want int) {
@@ -313,5 +322,98 @@ func TestBridgeLocalFailClosedAndConfirmedUntouched(t *testing.T) {
 	}
 	if src.callCount() != before {
 		t.Fatal("CONFIRMED memicu pembacaan status operator: pra-filter bocor")
+	}
+}
+
+// ---- All-clear lokal (D-040) ------------------------------------------------
+
+// Event yang membangunkan audiens 20 km lewat trusted_local lalu RESOLVED TANPA
+// pernah CONFIRMED menerima penarikan lokal EVENT_RESOLVED — persis audiens yang
+// jalur normal tidak tenangkan (push=EverConfirmed, dan itu false di sini).
+func TestBridgeTrustedLocalAllClearOnResolveNeverConfirmed(t *testing.T) {
+	sink := &recSink{}
+	local := &fakeLocalSink{}
+	b := NewBridge(sink)
+	b.SetAdminNodeHook(&fakeAdminSource{state: adminEligibleState(), ok: true}, local)
+
+	// Alarm lokal saat UNCONFIRMED.
+	b.EmitTransition(context.Background(), adminSnap(PhaseFinal, 150))
+	waitForLocal(t, local, 1)
+
+	// Event berakhir tanpa pernah CONFIRMED: EverConfirmed=false, event_id sama.
+	b.EmitTransition(context.Background(), snapTo(StateResolved, false))
+	waitForLocal(t, local, 2)
+
+	got := local.at(1)
+	if got == nil || got.Type != dispatch.TypeResolved {
+		t.Fatalf("penarikan lokal = %+v, mau EVENT_RESOLVED", got)
+	}
+	if !got.TrustedLocal {
+		t.Error("penarikan lokal TrustedLocal = false, mau true (korelasi audiens)")
+	}
+	if got.EventID != snapTo(StateResolved, false).EventID {
+		t.Errorf("penarikan lokal event_id = %q, mau sama dengan alarm", got.EventID)
+	}
+	// Emisi normal RESOLVED tidak didorong (EverConfirmed=false): jalur lokallah
+	// satu-satunya yang menenangkan audiens ini.
+	if len(sink.pushs) < 2 || sink.pushs[1] {
+		t.Errorf("push normal RESOLVED = %v, mau elemen kedua false", sink.pushs)
+	}
+}
+
+// CANCELLED memikul utang yang sama: dua status terminal, satu penarikan lokal.
+func TestBridgeTrustedLocalAllClearOnCancelNeverConfirmed(t *testing.T) {
+	sink := &recSink{}
+	local := &fakeLocalSink{}
+	b := NewBridge(sink)
+	b.SetAdminNodeHook(&fakeAdminSource{state: adminEligibleState(), ok: true}, local)
+
+	b.EmitTransition(context.Background(), adminSnap(PhaseFinal, 150))
+	waitForLocal(t, local, 1)
+	b.EmitTransition(context.Background(), snapTo(StateCancelled, false))
+	waitForLocal(t, local, 2)
+	if got := local.at(1); got == nil || got.Type != dispatch.TypeResolved || !got.TrustedLocal {
+		t.Fatalf("penarikan lokal CANCELLED = %+v", got)
+	}
+}
+
+// Event yang PERNAH CONFIRMED tidak menerima penarikan lokal terpisah: jalur
+// normal mendorong RESOLVED-nya ke AlertRadiusKm (200 km) yang mencakup 20 km.
+// Jejak lokal dilupakan pada CONFIRMED.
+func TestBridgeTrustedLocalNoDoubleAllClearWhenConfirmed(t *testing.T) {
+	sink := &recSink{}
+	local := &fakeLocalSink{}
+	b := NewBridge(sink)
+	b.SetAdminNodeHook(&fakeAdminSource{state: adminEligibleState(), ok: true}, local)
+
+	b.EmitTransition(context.Background(), adminSnap(PhaseFinal, 150))
+	waitForLocal(t, local, 1)
+	b.EmitTransition(context.Background(), snapTo(StateConfirmed, false))
+	b.EmitTransition(context.Background(), snapTo(StateResolved, true))
+	time.Sleep(50 * time.Millisecond)
+	if local.count() != 1 {
+		t.Fatalf("frame lokal = %d, mau 1 (alarm saja; tanpa penarikan lokal ganda)", local.count())
+	}
+}
+
+// All-clear diutangkan TEPAT kepada yang menerima alarm: event yang tak pernah
+// membangunkan audiens lokal (di bawah lantai 60) tidak menghasilkan penarikan
+// lokal saat RESOLVED.
+func TestBridgeTrustedLocalNoAllClearWhenNeverAlarmed(t *testing.T) {
+	sink := &recSink{}
+	local := &fakeLocalSink{}
+	b := NewBridge(sink)
+	b.SetAdminNodeHook(&fakeAdminSource{state: adminEligibleState(), ok: true}, local)
+
+	// 30 gal < lantai 60: tidak ada alarm lokal.
+	b.EmitTransition(context.Background(), adminSnap(PhaseFinal, 30))
+	time.Sleep(50 * time.Millisecond)
+	if local.count() != 0 {
+		t.Fatalf("alarm lokal di bawah lantai = %d, mau 0", local.count())
+	}
+	b.EmitTransition(context.Background(), snapTo(StateResolved, false))
+	time.Sleep(50 * time.Millisecond)
+	if local.count() != 0 {
+		t.Fatalf("penarikan lokal tanpa alarm = %d, mau 0", local.count())
 	}
 }

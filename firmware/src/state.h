@@ -48,10 +48,11 @@ extern SemaphoreHandle_t mpuInterruptSemaphore;
 // ========================================
 // EventReport adalah satu observasi yang menunggu publish. Ada DUA slot
 // (pendingPrelim, pendingReport) dan bukan satu, karena protokol v2 memublikasikan
-// tepat dua kali per event (PRELIM pada onset, FINAL saat event ditutup) dan
-// keduanya dapat sedang di-retry secara bersamaan: satu slot berarti FINAL akan
-// menimpa PRELIM yang belum terkirim, sehingga observasi paling dini — satu-satunya
-// yang punya nilai peringatan — justru yang hilang.
+// tepat dua kali per event (PRELIM setelah jendela puncak singkat sejak konfirmasi
+// per D-039, FINAL saat event ditutup) dan keduanya dapat sedang di-retry secara
+// bersamaan: satu slot berarti FINAL akan menimpa PRELIM yang belum terkirim,
+// sehingga observasi paling dini, satu-satunya yang punya nilai peringatan, justru
+// yang hilang.
 //
 // onsetMillis/detriggerMillis disimpan sebagai millis(), BUKAN epoch. Seluruh
 // pewaktuan di sensor.cpp adalah millis(), dan konversi ke epoch dilakukan saat

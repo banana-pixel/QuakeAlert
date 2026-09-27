@@ -29,8 +29,9 @@
 // Nilai proto_ver satu-satunya yang dikenal kontrak.
 #define PROTO_VER_V2 2
 
-// Nilai phase kontrak. PRELIM dipublish pada konfirmasi onset, FINAL saat event
-// ditutup — TEPAT DUA publikasi per event.
+// Nilai phase kontrak. PRELIM diterbitkan setelah jendela puncak singkat sejak
+// konfirmasi (PRELIM_WINDOW_MS, D-039), FINAL saat event ditutup. TEPAT DUA
+// publikasi per event, keduanya berbagi obs_seq yang sama.
 #define PHASE_PRELIM "PRELIM"
 #define PHASE_FINAL  "FINAL"
 

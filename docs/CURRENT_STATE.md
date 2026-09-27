@@ -31,7 +31,7 @@ IMPLEMENTED only.
 | Deterministic replay (P4-M4′ forensics) | yes | **yes — recorded window reproduced 2026-09-03 against a real PostgreSQL database** | **not deployed** — operator tooling, `//go:build ignore` | Read-only by construction (D-013): two `SELECT`s feed a fresh `Tracker` with no persister and no ledger, never reconciled; no migration, no contract change. Identity is compared as an observation-grouping **bijection** (F2) and `decided_at` as an elapsed **delta** within tolerance (F3); revision, states, reason, `node_count` and `independent_cells` are compared exactly. One event on one node, and parameters other than `INDEPENDENCE_CELL_KM` are operator-asserted — see *Demonstrated* and *NOT demonstrated*. |
 | Simulation harnesses in CI (P4-M5′) | yes | **yes — executed in GitHub Actions CI #22 with archived evidence, 2026-09-03** | n/a — CI only, nothing deployed | **Software evidence only.** A fourth CI job runs `sim_multi_node.sh` then `sim_dual_event.sh` serially and each harness emits its own `schema_version 1` artifact from an EXIT trap; both upload and are re-validated on the runner. The nodes are database rows with hand-picked coordinates (S9, D-011 constraint 2), so this is **not** field validation, production validation, real multi-node sensor performance, or real multi-node correlation — each artifact names those four in `not_claimed`. |
 | WebSocket delivery | yes | partial | yes, private VPS | Advisory frames observed; alert frames not observed in production. |
-| Push delivery | yes | no | yes, private VPS | Never triggered in production; one device vendor only in testing. |
+| Push delivery | yes | partial — drill path, two vendors | yes, private VPS | Never triggered by a real production event. FCM drill-path (`test-alert`) delivery demonstrated on two vendors — Poco F1 (PixelOS/AOSP, Android 16) and Samsung Galaxy A56 (One UI 8.5, Android 16) — debug builds. See *Demonstrated*. |
 | Firmware detection | yes | partial | one node | One board, one location, one firmware build. |
 | Android client | yes | partial — drill- plus UI-batch-validated on one device | sideloaded, not published | Advisory-never-wakes enforced in three independent places. Locked-screen alarm, Doze wake, cross-channel dedup and all-clear teardown demonstrated on hardware 2026-08-31 (drill path). Unlocked-device delivery demonstrated 2026-09-01 after the emergency channel was made audible — heads-up observed by the owner (drill path, one device, debug build). Policy for an in-use device remains **U-012**. UI batch D-021…D-035 owner test-drove PASS on one debug device 2026-09-09 (two rounds; details in *Demonstrated*). |
 
@@ -44,6 +44,11 @@ production readiness.
 one-node fleet, gate unchanged (PGA ≥16.6 gal + ≥3 nodes + ≥2 cells/5 km), so
 CONFIRMED stays unreachable by density (S2) and no real alert is promised.
 Migration `000009` is approved for deployment to production (D-012).
+
+**Admin Node live (D-036, owner-approved activation 2026-09-09):** server
+binary `c85ddcf` with migration `000010` deployed to production; `NODE-52960B47`
+designated sole Admin Node 2026-09-09T~21:15Z (verified, heartbeat fresh,
+exactly one holder). Local-warning path active; CONFIRMED semantics unchanged.
 
 ---
 
@@ -168,6 +173,25 @@ de-duplication — **not** at-least-once (D-008).
   sustained vibrator (`WarningActivity` owns `AlertSiren` and `TorchController`
   only; `AlertVibrator` is wired to the onboarding preview, not to the alert), so
   the observation is consistent with intent but was not confirmed either way.
+- **Cross-vendor FCM drill delivery — Samsung Galaxy A56, drill path, debug
+  build (owner-reported 2026-09-26; test date not recorded).** On a Samsung
+  Galaxy A56 (One UI 8.5, Android 16), a server `POST /api/v1/admin/test-alert`
+  FCM push was observed by the owner in **both** device states: a full-screen
+  alarm launched over the lock screen from Doze, and a heads-up banner while the
+  device was in use, each with alert sound and a **short** vibration, and the
+  all-clear (`EVENT_RESOLVED`) tore the notification down. This is the **second
+  vendor** after the Poco F1 and the first Samsung / One UI observation, and it
+  exercised the real **FCM transport** — not the local `Uji Notifikasi` drill.
+  Scope, stated exactly: **drill path only** (`test-alert` writes no
+  `earthquake_events` row and carries no `event_state`), one Samsung device,
+  **debug build** (so a debug `google-services.json` was present on this device,
+  unlike the WebSocket-only Poco build in the 2026-09-08 checkpoint) — it says
+  nothing about a real-event alert, a release build, History, or CANCELLED
+  wording. Timings were not measured; the cues are the owner's observation. The
+  short vibration is a positive observation on this device and is consistent with
+  the notification-channel vibration; it does **not** overturn the still-UNVERIFIED
+  locked-device *sustained* vibration finding on the Poco F1 (different device,
+  and the locked path runs no sustained vibrator by design).
 - **Near-confirmation durability across a real process restart — P4-M2′, isolated
   PostgreSQL, 2026-09-03.** Owner-approved SATISFIED. Migration `000009` applied to
   a throwaway PostGIS container reached only over loopback; 14 integration tests
@@ -506,7 +530,12 @@ only presence in *Demonstrated* is** (`PROJECT_RULES.md` §8).
 - **No measured false-negative rate.**
 - **No measured lead time.** No end-to-end warning has preceded shaking for any
   real user. Do not claim EEW lead time.
-- **Push delivery not verified across device vendors.** One vendor, in testing.
+- **Push delivery is drill-path, debug-build, two vendors — no real-event push
+  on any device.** FCM delivery is now demonstrated on two vendors (Poco F1 /
+  PixelOS and Samsung Galaxy A56 / One UI 8.5) — see *Demonstrated* — but only via
+  the drill path (`test-alert`), only on debug builds, and never for a real
+  production event. Cross-vendor coverage beyond these two, release-build
+  delivery, and delivery for an actual earthquake all remain unverified.
 - **Delivery to an unlocked, in-use device was broken until 2026-09-01, and the
   fix is demonstrated only on one device.** Observed failing on hardware
   2026-08-31 in both process states, with two contributing causes now separated:
@@ -630,6 +659,18 @@ not a Phase 4 failure.
   of the M5′ feature and CI-fix commits — `gofmt -w` only, every changed line a
   comment line, non-comment token stream identical. *Verify formatting* is green in
   CI #22.
+- `internal/dispatch` `TestBlockedLedgerDoesNotDelayDispatch` (`guard_test.go:379`)
+  FAILS on this build host and PASSES in multi-core CI. **Environment-specific,
+  not a regression:** the host is a 1-vCPU VPS (`nproc=1`), so Go defaults
+  `GOMAXPROCS=1`. Measured 2026-09-27: at `GOMAXPROCS=1` it fails deterministically;
+  at `GOMAXPROCS=8` it passes 3/3. The test asserts that a stalled ledger with a
+  full queue produces drops rather than back-pressure; with a single P, the ~200
+  async record goroutines do not interleave enough to overflow the size-4 bounded
+  queue and trip the drop path. `git status` shows no non-test changes under
+  `internal/dispatch/` or `internal/ledger/`, so this session did not touch the
+  code under test. Every other server package is green (`go test ./...`,
+  2026-09-27). A fix belongs with the test (pin `GOMAXPROCS>=2` in `TestMain`, or
+  drive the queue deterministically), not with a V1 release criterion.
 
 ## Maintenance
 

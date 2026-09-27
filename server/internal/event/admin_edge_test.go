@@ -162,7 +162,7 @@ func TestAdminEdge_IneligibleEmitsNone(t *testing.T) {
 		ok    bool
 		pga   float64
 	}{
-		{"di bawah lantai", adminEligibleState(), true, 139},
+		{"di bawah lantai", adminEligibleState(), true, 59},
 		{"denyut basi", AdminNodeState{Designated: true, StationID: adminTestStation, Verified: true, HeartbeatAge: time.Hour}, true, 150},
 		{"unverified", AdminNodeState{Designated: true, StationID: adminTestStation, HeartbeatAge: time.Minute}, true, 150},
 		{"tanpa designasi", AdminNodeState{}, false, 150},
@@ -170,7 +170,10 @@ func TestAdminEdge_IneligibleEmitsNone(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newEdgeRig(t, tc.state, tc.ok)
-			r.ingestPrelimFinal(60, tc.pga)
+			// PRELIM sengaja di bawah lantai (10 gal) agar puncak kontribusi =
+			// max(PRELIM, FINAL) tidak mengangkat kasus "di bawah lantai" (FINAL
+			// 59) ke atas lantai V1 60 gal (D-038); kasus lain memakai FINAL 150.
+			r.ingestPrelimFinal(10, tc.pga)
 			// Tepi TERCATAT (flip fase terjadi) tetapi evaluasi menolak:
 			// beri goroutine async kesempatan, lalu pastikan nihil.
 			time.Sleep(50 * time.Millisecond)

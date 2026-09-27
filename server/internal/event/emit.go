@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"sync"
 
 	"github.com/banana-pixel/quakealert/server/internal/dispatch"
 )
@@ -24,6 +25,14 @@ type Bridge struct {
 	// nonaktif: EmitTransition berperilaku persis seperti sebelum kait ada.
 	adminSource AdminNodeSource
 	adminSink   trustedLocalSink
+	// localAlarmed adalah himpunan event_id yang telah memancarkan alarm lokal
+	// trusted_local dan belum berpindah dari UNCONFIRMED: persis audiens 20 km
+	// yang berutang all-clear bila event berakhir tanpa pernah CONFIRMED (D-040).
+	// FrameFor hanya mendorong RESOLVED/CANCELLED saat EverConfirmed (§8.1),
+	// jadi tanpa jejak ini audiens lokal ditinggal dengan alarm yang tak pernah
+	// ditarik. Nilai kosong siap pakai; entri dibersihkan pada transisi terminal
+	// maupun CONFIRMED (lihat reconcileTrustedLocalAllClear).
+	localAlarmed sync.Map
 }
 
 // trustedLocalSink adalah satu-satunya yang dibutuhkan kait admin dari
@@ -72,6 +81,12 @@ func (b *Bridge) EmitTransition(ctx context.Context, s Snapshot) {
 	// frame di atas, tidak menahannya, dan tidak membaca I/O apa pun secara
 	// sinkron (lihat emitTrustedLocal di admin_node.go).
 	b.emitTrustedLocal(ctx, s)
+	// All-clear lokal (D-040): event yang membangunkan audiens 20 km lewat jalur
+	// trusted_local berutang penarikan kepada audiens yang sama bila ia berakhir
+	// tanpa pernah CONFIRMED — jalur normal di atas tidak mendorongnya (§8.1).
+	// Aditif dan gagal-aman: tanpa alarm lokal sebelumnya ini tidak melakukan
+	// apa pun (lihat reconcileTrustedLocalAllClear di admin_node.go).
+	b.reconcileTrustedLocalAllClear(ctx, s)
 }
 
 // EmitAdminEdge memenuhi adminEdgeEmitter: menyalurkan satu snapshot

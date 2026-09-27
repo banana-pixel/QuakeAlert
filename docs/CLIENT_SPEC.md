@@ -10,7 +10,7 @@ Panduan integrasi resmi untuk aplikasi Android (Kotlin, `id.web.quakealert`) ter
 
 | Lingkungan | Base URL | Catatan |
 |---|---|---|
-| Produksi | `https://api.quakealert.id` | HTTPS wajib (ADR-0003). |
+| Produksi | `https://api.quakealert.web.id` | HTTPS wajib (ADR-0003). |
 | Dev lokal | `http://localhost:8080` | Stack: `server/docker-compose.yml`. |
 
 Transport **wajib HTTPS** — Android dilarang `usesCleartextTraffic=true`. Realtime memakai WSS; push background memakai FCM.

@@ -367,8 +367,11 @@ void servePendingSlot(volatile EventReport& slot, bool isFinal) {
 void handleAlerts() {
     // eventTriggered menandai onset terkonfirmasi dan hanya dipakai untuk state
     // tampilan/LED. Observasi PRELIM-nya sendiri tidak dibawa oleh flag ini
-    // melainkan oleh pendingPrelim, yang diisi SensorTask bersamaan dengan flag —
-    // sebuah flag tidak dapat membawa pga, onset, maupun obs_seq.
+    // melainkan oleh pendingPrelim, yang diisi SensorTask saat jendela puncak
+    // PRELIM tutup (D-039), bukan bersamaan dengan flag ini; sebuah flag tidak
+    // dapat membawa pga, onset, maupun obs_seq. servePendingSlot memungut
+    // pendingPrelim begitu ia siap, jadi penundaan pengisian itu tidak menyentuh
+    // jalur publish di sini.
     portENTER_CRITICAL(&eventTriggerMux);
     if (eventTriggered) {
         eventTriggered = false;

@@ -16,7 +16,7 @@ type Config struct {
 	DatabaseURL string
 
 	// MQTT
-	MQTTBroker   string // mis. "tls://broker.quakealert.id:8883" atau "tcp://localhost:1883" (dev)
+	MQTTBroker   string // mis. "tls://broker.quakealert.web.id:8883" atau "tcp://localhost:1883" (dev)
 	MQTTUser     string
 	MQTTPassword string
 	MQTTClientID string
@@ -181,7 +181,7 @@ func Load() (*Config, error) {
 		FCMCredentialsFile: getEnv("FCM_CREDENTIALS_FILE", ""),
 
 		RedisURL:         getEnv("REDIS_URL", "redis://localhost:6379/0"),
-		MQTTPublicBroker: getEnv("MQTT_PUBLIC_BROKER", "broker.quakealert.id"),
+		MQTTPublicBroker: getEnv("MQTT_PUBLIC_BROKER", "broker.quakealert.web.id"),
 		MQTTPublicPort:   getEnvInt("MQTT_PUBLIC_PORT", 8883),
 		MQTTPublicTLS:    getEnvBool("MQTT_PUBLIC_TLS", true),
 

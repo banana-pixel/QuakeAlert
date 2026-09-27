@@ -39,8 +39,8 @@ services:
       - "443:443"
       - "443:443/udp"  # HTTP/3
     environment:
-      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN wajib (mis. api.quakealert.id)}
-      MQTT_DOMAIN: ${MQTT_DOMAIN:?MQTT_DOMAIN wajib (mis. broker.quakealert.id)}
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN wajib (mis. api.quakealert.web.id)}
+      MQTT_DOMAIN: ${MQTT_DOMAIN:?MQTT_DOMAIN wajib (mis. broker.quakealert.web.id)}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL wajib untuk peringatan kedaluwarsa}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro,z
