@@ -1,0 +1,189 @@
+/home/ubuntu/.venv-waveform/lib/python3.11/site-packages/obspy/clients/fdsn/client.py:257: ObsPyDeprecationWarning: IRIS is now EarthScope, please consider changing the FDSN client short URL to 'EARTHSCOPE'.
+  warnings.warn(msg, ObsPyDeprecationWarning)
+[fetch] Ridgecrest M7.1 2019 ...
+   records so far: 14  excluded: 48
+[fetch] Ridgecrest M6.4 2019 ...
+   records so far: 28  excluded: 93
+[fetch] La Habra M5.1 2014 ...
+   records so far: 52  excluded: 326
+
+=== SUMMARY ===
+{
+ "n_records": 52,
+ "by_checkpoint": {
+  "0.3": {
+   "n": 52,
+   "median_ratio_to_final": 0.273,
+   "p25": 0.127,
+   "p75": 0.553,
+   "min": 0.033,
+   "max": 1.0
+  },
+  "0.5": {
+   "n": 52,
+   "median_ratio_to_final": 0.324,
+   "p25": 0.183,
+   "p75": 0.802,
+   "min": 0.095,
+   "max": 1.0
+  },
+  "1.0": {
+   "n": 52,
+   "median_ratio_to_final": 0.418,
+   "p25": 0.235,
+   "p75": 0.923,
+   "min": 0.105,
+   "max": 1.0
+  },
+  "1.5": {
+   "n": 52,
+   "median_ratio_to_final": 0.469,
+   "p25": 0.281,
+   "p75": 1.0,
+   "min": 0.124,
+   "max": 1.0
+  },
+  "2.0": {
+   "n": 52,
+   "median_ratio_to_final": 0.492,
+   "p25": 0.293,
+   "p75": 1.0,
+   "min": 0.134,
+   "max": 1.0
+  },
+  "3.0": {
+   "n": 52,
+   "median_ratio_to_final": 0.708,
+   "p25": 0.319,
+   "p75": 1.0,
+   "min": 0.159,
+   "max": 1.0
+  }
+ },
+ "threshold_crossing": {
+  "60": {
+   "reach_ever(final>=thr)": 15,
+   "reach_by_checkpoint": {
+    "0.3": 0,
+    "0.5": 1,
+    "1.0": 2,
+    "1.5": 5,
+    "2.0": 5,
+    "3.0": 8
+   },
+   "below_at_0.3s_exceed_later": 15,
+   "time_to_cross_s": {
+    "median": 2.87,
+    "p25": 1.2,
+    "p75": 4.285,
+    "n": 15
+   }
+  },
+  "80": {
+   "reach_ever(final>=thr)": 12,
+   "reach_by_checkpoint": {
+    "0.3": 0,
+    "0.5": 1,
+    "1.0": 2,
+    "1.5": 2,
+    "2.0": 3,
+    "3.0": 7
+   },
+   "below_at_0.3s_exceed_later": 12,
+   "time_to_cross_s": {
+    "median": 2.83,
+    "p25": 1.99,
+    "p75": 4.3,
+    "n": 12
+   }
+  },
+  "100": {
+   "reach_ever(final>=thr)": 8,
+   "reach_by_checkpoint": {
+    "0.3": 0,
+    "0.5": 0,
+    "1.0": 1,
+    "1.5": 1,
+    "2.0": 1,
+    "3.0": 4
+   },
+   "below_at_0.3s_exceed_later": 8,
+   "time_to_cross_s": {
+    "median": 3.27,
+    "p25": 2.488,
+    "p75": 5.072,
+    "n": 8
+   }
+  },
+  "120": {
+   "reach_ever(final>=thr)": 7,
+   "reach_by_checkpoint": {
+    "0.3": 0,
+    "0.5": 0,
+    "1.0": 1,
+    "1.5": 1,
+    "2.0": 1,
+    "3.0": 3
+   },
+   "below_at_0.3s_exceed_later": 7,
+   "time_to_cross_s": {
+    "median": 4.34,
+    "p25": 2.715,
+    "p75": 5.15,
+    "n": 7
+   }
+  },
+  "140": {
+   "reach_ever(final>=thr)": 5,
+   "reach_by_checkpoint": {
+    "0.3": 0,
+    "0.5": 0,
+    "1.0": 0,
+    "1.5": 0,
+    "2.0": 0,
+    "3.0": 2
+   },
+   "below_at_0.3s_exceed_later": 5,
+   "time_to_cross_s": {
+    "median": 4.35,
+    "p25": 2.97,
+    "p75": 5.3,
+    "n": 5
+   }
+  }
+ },
+ "time_to_pct": {
+  "25": {
+   "median_s": 0.245,
+   "p25": 0.01,
+   "p75": 1.08,
+   "n": 52
+  },
+  "50": {
+   "median_s": 2.415,
+   "p25": 0.185,
+   "p75": 5.112,
+   "n": 52
+  },
+  "75": {
+   "median_s": 3.115,
+   "p25": 0.487,
+   "p75": 9.945,
+   "n": 52
+  },
+  "90": {
+   "median_s": 4.355,
+   "p25": 1.153,
+   "p75": 13.43,
+   "n": 52
+  }
+ },
+ "prelim_vs_later": {
+  "prelim_over_final_median": 0.071,
+  "p25": 0.03,
+  "p75": 0.169,
+  "note": "compare against by_checkpoint ratios: how much a later window recovers of FINAL vs the current onset-instant PRELIM"
+ }
+}
+
+52 records, 326 excluded. out/ written.
