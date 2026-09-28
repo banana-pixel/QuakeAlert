@@ -6,28 +6,21 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // --- Fakes ---
 
-// fakeMessage adalah mqtt.Message minimal untuk menguji callback subscriber
+// fakeMessage adalah Message minimal untuk menguji callback subscriber
 // tanpa broker nyata.
 type fakeMessage struct {
 	topic   string
 	payload []byte
 }
 
-func (m fakeMessage) Duplicate() bool   { return false }
-func (m fakeMessage) Qos() byte         { return 1 }
-func (m fakeMessage) Retained() bool    { return false }
-func (m fakeMessage) Topic() string     { return m.topic }
-func (m fakeMessage) MessageID() uint16 { return 1 }
-func (m fakeMessage) Payload() []byte   { return m.payload }
-func (m fakeMessage) Ack()              {}
+func (m fakeMessage) Topic() string   { return m.topic }
+func (m fakeMessage) Payload() []byte { return m.payload }
 
-var _ mqtt.Message = fakeMessage{}
+var _ Message = fakeMessage{}
 
 // fakeVerifier mencatat apakah pipa verifikasi (HMAC + IO DB) sampai dipanggil.
 type fakeVerifier struct {

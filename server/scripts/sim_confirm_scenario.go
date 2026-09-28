@@ -23,7 +23,8 @@ import (
 	"strconv"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	gclient "github.com/256dpi/gomqtt/client"
+	"github.com/256dpi/gomqtt/packet"
 
 	"github.com/banana-pixel/quakealert/server/internal/ingest"
 )
@@ -64,16 +65,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	opts := mqtt.NewClientOptions().
-		AddBroker("tcp://localhost:1883").
-		SetClientID("quakealert-sim-3.1").
-		SetCleanSession(true)
-	client := mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", token.Error())
+	client := gclient.New()
+	fut, err := client.Connect(gclient.NewConfigWithClientID(
+		"tcp://localhost:1883", "quakealert-sim-3.1"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.Disconnect(250)
+	if err := fut.Wait(10 * time.Second); err != nil {
+		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer client.Disconnect(250 * time.Millisecond)
 
 	fmt.Printf("sim: onset_ts=%d  pga=%.1f gal  nodes=%v\n",
 		onsetTsMs, simPGA,
@@ -96,10 +99,12 @@ func main() {
 		)
 		topic := fmt.Sprintf("sensor/%s/trigger", n.ID)
 
-		token := client.Publish(topic, 1, false, payload)
-		token.Wait()
-		if token.Error() != nil {
-			fmt.Fprintf(os.Stderr, "publish %s failed: %v\n", n.ID, token.Error())
+		pubFut, err := client.Publish(topic, []byte(payload), packet.QOS(1), false)
+		if err == nil {
+			err = pubFut.Wait(10 * time.Second)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "publish %s failed: %v\n", n.ID, err)
 			os.Exit(1)
 		}
 		fmt.Printf("sim: published %s  ts=%d  sig=%s...\n", n.ID, ts, sig[:16])

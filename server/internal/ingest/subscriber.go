@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"strings"
 	"time"
-
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // Wildcard topik sesuai kontrak: sensor/<station_id>/{trigger,heartbeat}.
@@ -33,7 +31,7 @@ type HeartbeatHandler func(ctx context.Context, h *Heartbeat, latencyMs *int)
 
 // Subscriber menghubungkan MQTT ke pipeline verifikasi.
 type Subscriber struct {
-	client    mqtt.Client
+	client    Client
 	verifier  TriggerVerifier
 	handler   TriggerHandler
 	log       *slog.Logger
@@ -46,7 +44,7 @@ type Subscriber struct {
 
 // NewSubscriber membuat subscriber. Client dibuat di caller (main) agar opsi
 // TLS/kredensial terpusat.
-func NewSubscriber(client mqtt.Client, v TriggerVerifier, h TriggerHandler, log *slog.Logger, ioTimeout time.Duration) *Subscriber {
+func NewSubscriber(client Client, v TriggerVerifier, h TriggerHandler, log *slog.Logger, ioTimeout time.Duration) *Subscriber {
 	return &Subscriber{client: client, verifier: v, handler: h, log: log, ioTimeout: ioTimeout}
 }
 
@@ -60,28 +58,23 @@ func (s *Subscriber) WithHeartbeat(v *HeartbeatValidator, h HeartbeatHandler) *S
 // Start berlangganan topik trigger (dan heartbeat bila dikonfigurasi) dengan
 // QoS 1 (life-safety, at-least-once).
 func (s *Subscriber) Start() error {
-	if err := s.subscribe(TriggerTopic, s.onMessage); err != nil {
+	if err := s.subscribe(TriggerTopic, func(msg Message) { s.onMessage(s.client, msg) }); err != nil {
 		return err
 	}
 	if s.hbValidator == nil || s.hbHandler == nil {
 		s.log.Warn("heartbeat tidak dikonfigurasi — status liveness node tidak diperbarui")
 		return nil
 	}
-	return s.subscribe(HeartbeatTopic, s.onHeartbeat)
+	return s.subscribe(HeartbeatTopic, func(msg Message) { s.onHeartbeat(s.client, msg) })
 }
 
-func (s *Subscriber) subscribe(topic string, cb mqtt.MessageHandler) error {
-	token := s.client.Subscribe(topic, 1, cb)
-	token.Wait()
-	if err := token.Error(); err != nil {
-		return err
-	}
-	s.log.Info("subscribed", "topic", topic, "qos", 1)
-	return nil
+func (s *Subscriber) subscribe(topic string, cb MessageHandler) error {
+	// Log "subscribed" dikeluarkan implementasi Client (batas dibatasi timeout).
+	return s.client.Subscribe(topic, 1, cb)
 }
 
 // onMessage adalah callback hot-path. Minimalkan alokasi; verifikasi lalu delegasikan.
-func (s *Subscriber) onMessage(_ mqtt.Client, msg mqtt.Message) {
+func (s *Subscriber) onMessage(_ Client, msg Message) {
 	// Context per-pesan dengan timeout IO (Aturan Server #3: <= 2s).
 	ctx, cancel := context.WithTimeout(context.Background(), s.ioTimeout)
 	defer cancel()
@@ -120,7 +113,7 @@ func (s *Subscriber) onMessage(_ mqtt.Client, msg mqtt.Message) {
 // Payload heartbeat tidak ber-signature, jadi minimal station_id pada payload
 // wajib cocok dengan segmen topik agar satu node tidak bisa memutakhirkan
 // baris node lain.
-func (s *Subscriber) onHeartbeat(_ mqtt.Client, msg mqtt.Message) {
+func (s *Subscriber) onHeartbeat(_ Client, msg Message) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.ioTimeout)
 	defer cancel()
 

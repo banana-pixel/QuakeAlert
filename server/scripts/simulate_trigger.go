@@ -15,7 +15,8 @@ import (
 	"strconv"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	gclient "github.com/256dpi/gomqtt/client"
+	"github.com/256dpi/gomqtt/packet"
 )
 
 func main() {
@@ -47,17 +48,18 @@ func main() {
 	ts := time.Now().UnixMilli()
 
 	// Connect to Mosquitto broker (dev: plaintext 1883)
-	opts := mqtt.NewClientOptions().
-		AddBroker("tcp://localhost:1883").
-		SetClientID("quakealert-simulator").
-		SetCleanSession(true)
-	client := mqtt.NewClient(opts)
-
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", token.Error())
+	client := gclient.New()
+	fut, err := client.Connect(gclient.NewConfigWithClientID(
+		"tcp://localhost:1883", "quakealert-simulator"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.Disconnect(250)
+	if err := fut.Wait(10 * time.Second); err != nil {
+		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer client.Disconnect(250 * time.Millisecond)
 
 	fmt.Printf("Simulating MMI VI earthquake (PGA=%.1f gal) near Bandung...\n", pga)
 	fmt.Printf("Timestamp: %d (%s)\n\n", ts, time.UnixMilli(ts).Format(time.RFC3339))
@@ -76,10 +78,12 @@ func main() {
 		payload := fmt.Sprintf(`{"node_id":"%s","pga":%.4f,"dur_ms":%d,"ts":%d,"signature":"%s"}`, n.ID, pga, durMs, ts, sig)
 		topic := fmt.Sprintf("sensor/%s/trigger", n.ID)
 
-		token := client.Publish(topic, 1, false, payload)
-		token.Wait()
-		if token.Error() != nil {
-			fmt.Fprintf(os.Stderr, "Publish failed for %s: %v\n", n.ID, token.Error())
+		pubFut, err := client.Publish(topic, []byte(payload), packet.QOS(1), false)
+		if err == nil {
+			err = pubFut.Wait(10 * time.Second)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Publish failed for %s: %v\n", n.ID, err)
 		} else {
 			fmt.Printf("✓ Published to %s (PGA=%.1f gal, sig=%s...)\n", topic, pga, sig[:16])
 		}

@@ -15,8 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-
 	"github.com/banana-pixel/quakealert/server/internal/api"
 	"github.com/banana-pixel/quakealert/server/internal/config"
 	"github.com/banana-pixel/quakealert/server/internal/consensus"
@@ -456,35 +454,37 @@ func resolveStaleEventsAtStartup(st *store.Store, cfg *config.Config, log *slog.
 	}
 }
 
-// newMQTTClient membuat client MQTT. Untuk skema tls:///ssl:// mengaktifkan
-// TLS dengan verifikasi CA sistem (ADR-0003: TLS everywhere, plaintext dilarang
-// di produksi). Skema tcp:// hanya untuk pengembangan lokal.
-func newMQTTClient(cfg *config.Config, log *slog.Logger) (mqtt.Client, error) {
-	opts := mqtt.NewClientOptions()
-	opts.AddBroker(cfg.MQTTBroker)
-	opts.SetClientID(cfg.MQTTClientID)
-	opts.SetUsername(cfg.MQTTUser)
-	opts.SetPassword(cfg.MQTTPassword)
-	opts.SetCleanSession(false) // pertahankan langganan QoS 1 antar-reconnect
-	opts.SetOrderMatters(false)
-	opts.SetKeepAlive(30 * time.Second)
-	opts.SetConnectTimeout(cfg.IOTimeout)
-	opts.SetAutoReconnect(true)
-	opts.SetConnectionLostHandler(func(_ mqtt.Client, err error) {
-		log.Warn("koneksi mqtt terputus", "err", err)
-	})
-
+// newMQTTClient membuat client MQTT (gomqtt Apache-2.0; lihat
+// internal/ingest/mqttclient.go untuk adaptor + supervisor reconnect).
+// Untuk skema tls:///ssl:// mengaktifkan TLS dengan verifikasi CA sistem
+// (ADR-0003: TLS everywhere, plaintext dilarang di produksi). Skema tcp://
+// hanya untuk pengembangan lokal. Nilai opsi dipertahankan dari perilaku
+// paho sebelumnya: CleanSession=false, KeepAlive 30s, timeout=IOTimeout,
+// reconnect otomatis, log saat putus.
+func newMQTTClient(cfg *config.Config, log *slog.Logger) (ingest.Client, error) {
+	var tlsCfg *tls.Config
 	if isTLS(cfg.MQTTBroker) {
 		// Verifikasi CA sistem; JANGAN InsecureSkipVerify di produksi.
-		opts.SetTLSConfig(&tls.Config{MinVersion: tls.VersionTLS12})
+		tlsCfg = &tls.Config{MinVersion: tls.VersionTLS12}
 	} else {
 		log.Warn("MQTT tanpa TLS — hanya untuk pengembangan lokal (ADR-0003)", "broker", cfg.MQTTBroker)
 	}
 
-	client := mqtt.NewClient(opts)
-	token := client.Connect()
-	token.Wait()
-	if err := token.Error(); err != nil {
+	client, err := ingest.Dial(ingest.DialConfig{
+		BrokerURL:      cfg.MQTTBroker,
+		ClientID:       cfg.MQTTClientID,
+		Username:       cfg.MQTTUser,
+		Password:       cfg.MQTTPassword,
+		CleanSession:   false, // pertahankan langganan QoS 1 antar-reconnect
+		KeepAlive:      30 * time.Second,
+		ConnectTimeout: cfg.IOTimeout,
+		TLSConfig:      tlsCfg,
+		Logger:         log,
+		OnDrop: func(err error) {
+			log.Warn("koneksi mqtt terputus", "err", err)
+		},
+	})
+	if err != nil {
 		return nil, err
 	}
 	log.Info("terhubung ke broker mqtt", "broker", cfg.MQTTBroker)

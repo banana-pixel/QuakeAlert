@@ -23,7 +23,8 @@ import (
 	"os"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	gclient "github.com/256dpi/gomqtt/client"
+	"github.com/256dpi/gomqtt/packet"
 
 	"github.com/banana-pixel/quakealert/server/internal/ingest"
 )
@@ -58,7 +59,7 @@ const (
 )
 
 func publishCluster(
-	client mqtt.Client,
+	client *gclient.Client,
 	nodes [3]struct {
 		ID  string
 		Lat float64
@@ -78,10 +79,12 @@ func publishCluster(
 			n.ID, dualPGA, dualDurMs, ts, sig,
 		)
 		topic := fmt.Sprintf("sensor/%s/trigger", n.ID)
-		token := client.Publish(topic, 1, false, payload)
-		token.Wait()
-		if token.Error() != nil {
-			fmt.Fprintf(os.Stderr, "%s publish %s failed: %v\n", label, n.ID, token.Error())
+		pubFut, err := client.Publish(topic, []byte(payload), packet.QOS(1), false)
+		if err == nil {
+			err = pubFut.Wait(10 * time.Second)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s publish %s failed: %v\n", label, n.ID, err)
 			os.Exit(1)
 		}
 		fmt.Printf("sim: [%s] published %s  ts=%d  sig=%s...\n", label, n.ID, ts, sig[:16])
@@ -99,16 +102,18 @@ func main() {
 	secretsA := [3]string{os.Args[1], os.Args[2], os.Args[3]}
 	secretsB := [3]string{os.Args[4], os.Args[5], os.Args[6]}
 
-	opts := mqtt.NewClientOptions().
-		AddBroker("tcp://localhost:1883").
-		SetClientID("quakealert-sim-3.2").
-		SetCleanSession(true)
-	client := mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", token.Error())
+	client := gclient.New()
+	fut, err := client.Connect(gclient.NewConfigWithClientID(
+		"tcp://localhost:1883", "quakealert-sim-3.2"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.Disconnect(250)
+	if err := fut.Wait(10 * time.Second); err != nil {
+		fmt.Fprintf(os.Stderr, "MQTT connect failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer client.Disconnect(250 * time.Millisecond)
 
 	fmt.Printf("sim 3.2: cluster-A=%v cluster-B=%v pga=%.1f\n",
 		[3]string{clusterA[0].ID, clusterA[1].ID, clusterA[2].ID},
