@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # verify-000009.sh — cek baca-saja sebelum/sesudah migrasi 000009 di VPS.
 #
 # 000009 (D-012) menambah tabel event_near_confirmed: aditif, idempoten, tanpa

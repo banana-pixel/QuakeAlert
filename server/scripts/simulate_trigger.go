@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // Helper manual: dijalankan lewat `go run scripts/simulate_trigger.go <secret...>`.

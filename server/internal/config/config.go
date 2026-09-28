@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package config memuat konfigurasi runtime dari environment variable.
 // Tanpa dependency eksternal (12-factor): semua via os.Getenv dengan default aman.
 package config

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // trace_triggers.go — alat operator P4-M1′: penelusuran HANYA-BACA keterlacakan

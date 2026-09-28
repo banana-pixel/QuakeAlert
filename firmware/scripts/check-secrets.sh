@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # =============================================================================
 # Preflight untuk firmware/src/secrets.h — dijalankan SEBELUM `pio run -t upload`.
 #

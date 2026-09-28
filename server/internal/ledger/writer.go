@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package ledger menulis observation ledger (sensor_observations,
 // alert_emissions) DI LUAR jalur peringatan.
 //

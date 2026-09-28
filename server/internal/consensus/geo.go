@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package consensus mengimplementasikan Spatial Consensus Engine QuakeAlert:
 // sliding window in-memory, pengelompokan spasial berbasis Haversine, evaluasi
 // >= 3 node -> CONFIRMED, kalkulasi weighted centroid + MMI, dan persistensi

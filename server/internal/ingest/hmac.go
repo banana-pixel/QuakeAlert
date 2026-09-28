@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package ingest menangani subscriber MQTT, verifikasi HMAC, dan anti-replay
 // sebelum trigger diproses oleh engine konsensus.
 package ingest

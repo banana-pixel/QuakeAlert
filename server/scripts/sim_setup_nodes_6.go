@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // sim_setup_nodes_6.go — Checkpoint 3.2: insert 6 sim nodes for dual-event scenario.

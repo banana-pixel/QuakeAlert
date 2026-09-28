@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // event_timeline.go — alat operator P4-M6′: garis waktu forensik HANYA-BACA

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /**
  * Host test untuk src/canonical.cpp — dijalankan dengan g++ biasa, TANPA ESP32.
  *

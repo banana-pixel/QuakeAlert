@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # shellcheck disable=SC2034
 # (Mini-fixture vars SIM_ERROR/SIM_SUMMARY_REACHED are set in a subshell and
 # read by the sourced sim_evidence.sh via its trap/emit path — invisible to

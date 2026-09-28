@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "mqtt_tls.h"
 
 #include "secrets.h"

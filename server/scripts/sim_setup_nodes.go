@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // sim_setup_nodes.go — insert 3 sim nodes directly into dev DB.

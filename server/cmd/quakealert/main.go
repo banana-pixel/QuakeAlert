@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Command quakealert adalah entrypoint server backend QuakeAlert.
 // Bertanggung jawab: bootstrap config, pool pgx, cipher AES-GCM, client MQTT
 // (TLS di produksi), subscriber ingest, dan graceful shutdown (SIGTERM/SIGINT).

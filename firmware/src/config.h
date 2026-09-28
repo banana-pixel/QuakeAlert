@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /**
  * QuakeAlert ESP32 - Configuration
  * Constants, pin definitions, and compile-time settings.

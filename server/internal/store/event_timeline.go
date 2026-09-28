@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package store
 
 // --- Pembacaan HANYA-BACA per-event_id untuk garis waktu forensik (P4-M6′, D-015) ---

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // replay_window.go — alat operator P4-M4′: pemutaran ulang HANYA-BACA satu

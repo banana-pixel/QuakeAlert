@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // sim_dual_event_scenario.go — Checkpoint 3.2: two simultaneous earthquake events.

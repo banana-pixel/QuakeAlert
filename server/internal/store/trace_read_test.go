@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package store
 
 // --- Integrasi Postgres untuk pembacaan penelusuran P4-M1′ ---

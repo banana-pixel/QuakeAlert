@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package dispatch menyebarkan event konsensus ke klien: WebSocket Hub (WSS)
 // untuk klien foreground dan FCM Admin SDK v1 untuk delivery background.
 // Lihat docs/SYSTEM_SPEC.md Bab 3 (Dispatch Tier) & .clinerules/10.

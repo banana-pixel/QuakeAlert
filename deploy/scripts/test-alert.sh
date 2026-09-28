@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 #
 # test-alert.sh — mengirim satu peringatan LATIHAN lewat POST /api/v1/admin/test-alert.
 #

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package crypto menyediakan enkripsi/dekripsi AES-256-GCM untuk secret HMAC node.
 // secret_key_enc di DB = ciphertext GCM; secret_key_nonce = nonce 12 byte.
 // Lihat ADR-0003 & contracts/db/migrations/000001_init_schema.up.sql.

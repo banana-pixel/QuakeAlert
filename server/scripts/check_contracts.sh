@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # check_contracts.sh — penjaga contract-first (D-001 / ADR-0004) di CI.
 #
 # Setiap klaim di bawah diuji sebagai asersi yang GAGAL BERSUARA, bukan lolos

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Pemutaran ulang deterministik (P4-M4′, V7).
 //
 // V7 berbunyi: "Replay must be reproducible: the same observations under the

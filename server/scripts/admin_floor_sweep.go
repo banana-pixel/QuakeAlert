@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //go:build ignore
 
 // admin_floor_sweep.go — alat RISET OFFLINE (bukan produksi): menyapu lantai

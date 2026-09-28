@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # =============================================================================
 # sim_evidence.sh — structured JSON evidence for the P4-M5' simulation harnesses
 #

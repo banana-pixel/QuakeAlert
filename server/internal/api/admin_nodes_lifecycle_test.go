@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package api
 
 // Uji ujung-ke-ujung §7.5: unverify operator -> pencabutan bukti pada Tracker

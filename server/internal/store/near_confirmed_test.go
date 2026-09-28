@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package store
 
 // --- Integrasi Postgres untuk event_near_confirmed (migrasi 000009, P4-M2′) ---

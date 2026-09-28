@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package event
 
 // --- Integrasi Postgres NYATA untuk near-confirmation durable (P4-M2′, D-012) ---

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Tracker adalah otoritas siklus hidup event: satu mutex, satu map event
 // terlacak, satu indeks sel/ember. Ia tidak pernah melakukan I/O di bawah kunci —
 // disiplin yang sama yang membuat consensus.Engine tahan `-race`, dipertahankan

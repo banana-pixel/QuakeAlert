@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # shellcheck disable=SC2034
 # (SIM_* evidence globals are assigned here and read by the sourced
 # sim_evidence.sh at emit time via the EXIT trap — invisible to static lint.

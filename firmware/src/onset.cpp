@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "onset.h"
 
 int64_t epochFromMonotonic(int64_t nowEpochMs, uint32_t nowMillis, uint32_t atMillis) {

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package store menyediakan repository berbasis pgx/v5 (tanpa ORM, ADR-0002).
 // Semua query memakai prepared statement implisit pgx + context timeout.
 package store

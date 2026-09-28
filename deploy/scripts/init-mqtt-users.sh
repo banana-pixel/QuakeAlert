@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # shellcheck disable=SC1090
 # (ENV_FILE di bawah sengaja dinamis — flag deploy --env-file memilihnya — jadi
 # lint tidak boleh mengikutinya. Direktif HARUS di baris ini: quirk 0.11,

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # =============================================================================
 # Host test string kanonik firmware (test/canonical_host_test.cpp).
 #

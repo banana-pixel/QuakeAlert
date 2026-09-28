@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package event memiliki identitas dan siklus hidup event gempa: korelasi
 // observasi ke event, mesin keadaan lima state, dan emisi peringatan pada
 // transisi.

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 QuakeAlert contributors.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 #
 # verify-node.sh — verifikasi node sensor lewat rute admin (migrasi 000005).
 #

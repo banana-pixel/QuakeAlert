@@ -1,3 +1,6 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package event
 
 // Rekonsiliasi saat boot (§15.3) dan pemeriksaan-diri fleet (§7.3, §6.3.1).
