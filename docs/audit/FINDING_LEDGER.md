@@ -515,6 +515,59 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
 - **2026-09-29 — OSS-001 RESOLVED.** Finding ID → commit `5b63648`
   (`CONTRIBUTING.md:7-9` rewritten to the `LICENSING.md` scope map) →
   test: textual verification (no code path) → RESOLVED.
+- **2026-09-29 — API-001 RESOLVED.** Finding ID → commit `4430926`
+  (`contracts/openapi/openapi.yaml`: `region_code` removed from
+  `RerollResponse`) → tests: `check_api_drift.py` DTO parity
+  RerollResponse↔rerollResponse 2/2 fields + full `go test ./...` all-ok +
+  `check_contracts.sh` 32/32 → verification: handler (`api.go:715-718`)
+  never sent it, Android `RerollPseudonymResponseDto` never modeled it,
+  reroll performs no region computation (`UpdatePseudonym` only), and the
+  removed description referenced an "update" reroll does not perform —
+  stale copy-paste, option B → RESOLVED.
+- **2026-09-29 — API-002 RESOLVED.** Finding ID → commit `4430926`
+  (`openapi.yaml`: nullable `region_code`, maxLength 50, added to
+  `UpdateLocationResponse`) → tests: DTO parity 6/6 fields + suite +
+  contracts 32/32 → verification: handler computes/returns it
+  (`api.go:913-927`), Android consumes it (`UpdateLocationDto.kt:66`,
+  `QuakeApiClient.kt:243`), CLIENT_SPEC documents `{…, region_code|null}`
+  — implementation is the source of truth, contract was stale → RESOLVED.
+- **2026-09-29 — API-003 RESOLVED.** Finding ID → commit `4430926`
+  (`openapi.yaml` Station: enum `[Online, Offline, Pending]` + `verified`
+  boolean with trust-before-health description) → tests: DTO parity 11/11
+  + Station.status enum gate + suite + contracts 32/32 → verification:
+  semantics unchanged (code already sent both; `api.go:681-689`,
+  migration 000005, Android `SensorDto`/`SensorMappers` already handle
+  both) — contract now represents reality, nothing simplified → RESOLVED.
+- **2026-09-29 — API-004 RESOLVED.** Finding ID → commit `4430926`
+  (`openapi.yaml`: `POST /api/v1/admin/test-alert` + `CreateTestAlertRequest`
+  + `TestAlertResponse`, adminKey security, 202/400/401/503/500) →
+  tests: route↔path parity 22/22 + 202-code check + suite + contracts
+  32/32 → verification: official operator endpoint (CLIENT_SPEC §5.8,
+  `deploy/scripts/test-alert.sh` expects 202, sibling admin routes all
+  documented, Error.code enum already anticipated drill UNAVAILABLE) —
+  documenting changes no exposure; handler untouched → RESOLVED.
+- **2026-09-29 — API-006 RESOLVED.** Finding ID → commit `4430926`
+  (`server/internal/api/chat.go`: `clientMessageIDPattern` + 400
+  INVALID_ARGUMENT for non-empty non-UUID, before membership/rate-limit/DB;
+  empty stays allowed as "no key"; `chat_test.go`: corrected
+  `PersistsThenBroadcasts` fixture `"c-1"` → contract-example UUID per
+  authority hierarchy, added
+  `TestCreateChatMessage_MalformedClientMessageIDIsBadRequest` — 4 malformed
+  shapes → 400 + envelope code + nothing stored + quota unspent, valid UUID
+  → 201 passthrough) → tests: new test PASS, full `go test ./...` all-ok,
+  `go test -race ./internal/api/` clean, `go vet`/`gofmt` clean →
+  verification: malformed input can no longer reach the `::uuid` cast
+  (`store/chat.go:291`); error envelope and quota-ordering conventions
+  preserved → RESOLVED.
+- **2026-09-29 — CIT-002 RESOLVED.** Finding ID → commit `4afd603`
+  (`server/scripts/check_api_drift.py` new + `check_contracts.sh` §7 runs
+  gate and `--selftest`) → tests: gate 8/8 PASS on reconciled tree;
+  selftest replays all six API-001..004 drift classes on generated mutated
+  copies (each caught) + clean tree passes; `check_contracts.sh` 32/32;
+  `shellcheck --severity=warning` clean → verification: gate is
+  deterministic/offline/secret-free/prod-free, uses the already-required
+  PyYAML, fails loudly on empty extraction (no silent pass), fixtures
+  generated from real files (cannot rot) → RESOLVED.
 
 ## Audit decisions (D-AUDIT-xxx)
 
@@ -551,6 +604,30 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   (none: no evidence of wrong/missed alerts from code as written).
   P1 = open REQUIRED. P2 = STRONGLY RECOMMENDED. P3 = OPTIONAL.
   INTENTIONAL / NOT APPLICABLE stay visible to prevent re-flagging.
+- **D-AUDIT-010 — Reconciliation rationale (2026-09-29 batch).** For each
+  API finding the direction was chosen from evidence, not by default:
+  API-001 option B (contract stale: handler+Android+behavior agree);
+  API-002 implementation-is-truth (handler+Android+CLIENT_SPEC agree);
+  API-003 contract-gain expressiveness (semantics untouched);
+  API-004 document (official operator endpoint: CLIENT_SPEC §5.8,
+  `deploy/scripts/test-alert.sh`, sibling admin paths documented —
+  documenting changes no exposure); API-006 validate-at-edge (contract
+  already `format:uuid`; real store already cast). D-AUDIT-004's freeze is
+  superseded for exactly these six findings by this batch's explicit scope.
+- **D-AUDIT-011 — Gate design (2026-09-29 batch).** Python (not a Go test)
+  because the contract is YAML and PyYAML is already a gate prerequisite
+  (`check_contracts.sh` §2); a Go gate would add a YAML dependency to
+  `go.mod` for tooling. Structured extraction (method+path pairs,
+  brace-balanced structs, must-find assertions) instead of bare grep.
+  Selftest fixtures are generated from the real files per run, so they
+  cannot rot independently. Extend via `DTO_TABLE`, not new logic.
+- **D-AUDIT-012 — Existing-test conflict (2026-09-29 batch).**
+  `TestCreateChatMessage_PersistsThenBroadcasts` used `"c-1"` as
+  `client_message_id`; the contract (`format:uuid`), the real store
+  (`NULLIF($6,'')::uuid`), and Android (always UUID) all disagree with it.
+  Per PROJECT_RULES §5 (contracts > tests) the fixture was the defect;
+  corrected to the contract's example UUID with an explanatory comment —
+  a test correction to the authoritative contract, not a weakening.
 
 ## Open-item index (as of 2026-09-29)
 
@@ -561,6 +638,17 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   DB-001, DB-002, MQ-007, MQ-008, API-005, API-007, API-009, API-010,
   CHT-001, CHT-002, CHT-003, CIT-001, CIT-002, CIT-004, CIT-006,
   OSS-002, DOC-001, DOC-003, DEP-001.
+
+### Amendment 2026-09-29 — remediation batch (API-001/002/003/004/006, CIT-002)
+
+- **P1 now RESOLVED:** API-001, API-002, API-003, API-004, API-006
+  (remediation log above). **P1 remaining OPEN:** FW-003, DOC-002.
+- **P2 now RESOLVED:** CIT-002. **P2 remaining OPEN:** all others listed
+  above except CIT-002.
+- Original entries above are preserved verbatim per the append-only rule;
+  this amendment is the status transition record. No new findings were
+  created during remediation (one validator typo caught its own test
+  fixture mid-work; no ledger impact).
 - **P3 (OPTIONAL):** AND-003, AND-004, AND-005, AND-006, ASE-004, SRV-006,
   SRV-007, SRV-008, SRV-010, SRV-011, SRV-012, DB-003, DB-004, DB-005,
   MQ-002, MQ-003, MQ-004, MQ-005, MQ-006, MQ-010, FW-006, FW-007, FW-009,
