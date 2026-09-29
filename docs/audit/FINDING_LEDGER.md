@@ -568,9 +568,37 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   deterministic/offline/secret-free/prod-free, uses the already-required
   PyYAML, fails loudly on empty extraction (no silent pass), fixtures
   generated from real files (cannot rot) → RESOLVED.
-- **2026-09-29 — FW-003 IN PROGRESS (fix staged, bench verification
-  pending owner).** Finding ID → commit `5790753`
-  (`firmware/src/network.cpp` only, +28/−6).
+- **2026-09-30 — FW-003 bench attempt: verification NOT completed,
+  status stays IN PROGRESS.** Bench host `fedora` (`vitowiratara`,
+  Tailscale) reached via SSH; Wi-Fi `WiFi-C-24G` activated throughout;
+  `/dev/ttyUSB0` present (CH340); pio 6.1.19 present.
+  - Precondition failure: bench checkout `~/QuakeAlert26` is on
+    `development` at `8e93c4d` with 24 locally-modified files (license
+    headers + in-progress D-039 sensor work) plus stash
+    `bench-mods-pre-B1-sync`, tracking remote `QuakeAlert-App.git`;
+    commit `5790753` is absent and unfetchable (no push permitted).
+    Overlaying the file would clobber owner work and mix versions on a
+    production node → STOP per §10. No build, no flash, no erase, no
+    provision, no NVS operation performed.
+  - Safe read-only observation (pyserial, 150 s, log `/tmp/fw003-boot.log`
+    on bench): boot OK; `Station ID: NODE-7AA8B39A`; Wi-Fi STATION +
+    `NTP Synced Successfully`; `MPU6050 Initialized & Configured
+    (FS_4/100Hz, ISR semaphore)` + Sensor Task on Core 0 +
+    NetworkMaintenanceTask on Core 1; `Location loaded from NVS cache`
+    at +3.62 s; `MQTT Connected` at +11.15 s; steady-state serial silence
+    for ~139 s (no reset/panic → no WDT event observed).
+    Heartbeat prints are not emitted by this build on success → heartbeat
+    not observable via serial (not a failure; no server access permitted
+    to cross-check).
+  - FW-003 acceptance: NOT testable on this node — location resolves from
+    NVS cache, so the retry path is idle; neither pre-fix spam nor
+    post-fix throttling is observable without disturbing NVS
+    (forbidden). Retry-interval measurement: none obtainable.
+  - Side effect: one node reboot from the esptool `chip_id` connectivity
+    probe's hard reset (chip alive: ESP32 MAC e4:65:b8:a2:b0:50);
+    reconnect in ~11 s, within the 90 s online threshold. No config,
+    credential, DB, server, or designation change. Fedora Wi-Fi never
+    disturbed (no nmcli/ip/systemctl network operation run).
   - Reproduction/root cause (firsthand, static — deterministic path):
     `networkMaintenanceTask` (`network.cpp:562-583`, every 250 ms) called
     `refreshLocation()` on every iteration while `locationResolved` false;
@@ -606,14 +634,15 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
     placeholder values, never printed), `check-secrets.sh` preflight pass.
   - Regression mapping: sensor.cpp/onset/mqtt.cpp/portal/NVS-write paths
     untouched; WDT still reset every 250 ms iteration; strictly less
-    blocking in the maintenance task. On-device sensor-rate, heartbeat,
-    MQTT, Wi-Fi, watchdog behavior NOT observable here (no bench hardware
-    in this environment — no /dev/ttyUSB*, no ESP32 on lsusb).
+    blocking in the maintenance task. Device observation attempted
+    2026-09-30 (see bench-attempt record above): node healthy, retry path
+    idle on NVS cache — cadence unobservable without NVS disturbance.
   - Status: IN PROGRESS, not RESOLVED — per the ledger rule, FW-003
-    requires actual bench evidence (serial-observed retry cadence +
-    heartbeat/MQTT/watchdog sanity on device). Owner bench procedure:
-    build at `5790753`, flash dev node, observe `No location in NVS`
-    cadence go 250 ms → 60 s, confirm heartbeat/MQTT/watchdog nominal.
+    requires bench evidence of throttled retries. Path forward (owner):
+    sync bench checkout to a tree containing `5790753` without losing
+    bench-local work, then flash a dev (non-production) node or observe
+    an unresolved-location episode; acceptance = no 250 ms repeats,
+    ~60 s retry cadence, nominal heartbeat/MQTT/watchdog.
 
 ## Audit decisions (D-AUDIT-xxx)
 
@@ -693,6 +722,23 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   change needs bench provisioning test). FW-008 → B (loop-timing change
   needs heartbeat/alert-latency observation). All remain OPEN; none
   implemented merely for proximity.
+- **D-AUDIT-015 — Bench preconditions unmet (2026-09-30 attempt).** The
+  Fedora bench host is reachable and healthy, but its checkout
+  (`development` @ `8e93c4d`, 24 dirty files, one stash, remote
+  `QuakeAlert-App.git`) cannot produce commit `5790753` without a push
+  (forbidden) or clobbering owner work / mixing versions on a production
+  node (forbidden). Verification of `5790753` on hardware is therefore
+  blocked on the owner syncing the bench tree; the STOP was per §10, not
+  a technical failure of the fix.
+- **D-AUDIT-016 — Read-only node observation (2026-09-30 attempt).**
+  Serial observation without flashing is permitted and valuable: it
+  proved NVS/identity intact (`NODE-7AA8B39A`, NVS location cache),
+  boot/Wi-Fi/NTP/MQTT/DMP/tasks nominal, and no WDT event in 150 s —
+  but also proved the FW-003 retry path idle, hence the acceptance
+  criterion unobservable on a healthy provisioned node. Heartbeat is not
+  serial-observable on this build; no server-side cross-check was
+  performed (production access forbidden). One probe-induced reboot
+  (~11 s reconnect, within the 90 s threshold) was the only side effect.
 
 ## Open-item index (as of 2026-09-29)
 
@@ -724,6 +770,18 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
 - **FW-004: remains OPEN** (timeout half applied under FW-003; allocation
   bounding + on-device validation remain).
 - **P1 remaining OPEN:** FW-003 (IN PROGRESS), DOC-002.
+
+### Amendment 2026-09-30 — FW-003 bench attempt (existing Admin Node)
+
+- **FW-003: remains IN PROGRESS.** Bench verification not completed:
+  `5790753` absent from bench checkout and unfetchable without push;
+  retry path idle on the healthy provisioned node (NVS cache), so the
+  acceptance criterion is unobservable without NVS disturbance
+  (forbidden). See remediation-log bench record + D-AUDIT-015/016.
+- **FW-001, FW-002, FW-004, FW-005, FW-008: remain OPEN, unchanged** —
+  not marked resolved merely because FW-003 was attempted.
+- Node health baseline captured read-only: `NODE-7AA8B39A` boot OK,
+  Wi-Fi/NTP/MQTT/DMP nominal, no WDT event in 150 s serial window.
 - **P3 (OPTIONAL):** AND-003, AND-004, AND-005, AND-006, ASE-004, SRV-006,
   SRV-007, SRV-008, SRV-010, SRV-011, SRV-012, DB-003, DB-004, DB-005,
   MQ-002, MQ-003, MQ-004, MQ-005, MQ-006, MQ-010, FW-006, FW-007, FW-009,
