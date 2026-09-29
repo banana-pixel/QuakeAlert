@@ -99,6 +99,21 @@ else
   fail "MQTT trusted_local harus boolean dan TIDAK required"
 fi
 
+# 7. Implementasi-vs-OpenAPI tidak boleh drift (CIT-002, API-001..API-004) --------
+# check_api_drift.py membandingkan rute chi <-> paths, struct DTO <-> skema
+# (dua arah), enum Station.status, dan kode sukses test-alert. Selftest-nya
+# memutar ulang setiap kelas drift API-001..API-004 pada salinan bermutasi.
+if python3 server/scripts/check_api_drift.py; then
+  ok "implementasi selaras OpenAPI (drift gate)"
+else
+  fail "drift implementasi-vs-OpenAPI terdeteksi (lihat baris FAIL di atas)"
+fi
+if python3 server/scripts/check_api_drift.py --selftest > /dev/null; then
+  ok "drift gate terbukti menangkap kelas drift API-001..API-004 (selftest)"
+else
+  fail "selftest drift gate gagal"
+fi
+
 echo "---"
 echo "check_contracts: $PASS PASS / $FAIL FAIL"
 [ "$FAIL" -eq 0 ]
