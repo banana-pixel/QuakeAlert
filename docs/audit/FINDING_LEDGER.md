@@ -568,6 +568,52 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   deterministic/offline/secret-free/prod-free, uses the already-required
   PyYAML, fails loudly on empty extraction (no silent pass), fixtures
   generated from real files (cannot rot) → RESOLVED.
+- **2026-09-29 — FW-003 IN PROGRESS (fix staged, bench verification
+  pending owner).** Finding ID → commit `5790753`
+  (`firmware/src/network.cpp` only, +28/−6).
+  - Reproduction/root cause (firsthand, static — deterministic path):
+    `networkMaintenanceTask` (`network.cpp:562-583`, every 250 ms) called
+    `refreshLocation()` on every iteration while `locationResolved` false;
+    with no NVS cache that runs `WiFi.scanNetworks()` + BeaconDB HTTPS
+    POST + ipinfo fallback (`network.cpp:472-549`) at ~4 Hz.
+    `LOCATION_RETRY_INTERVAL_MS` (`config.h:126`) was defined but
+    unreferenced; `lastLocRetry` (`firmware.ino:121`) was write-only
+    (`network.cpp:576`, since removed); `HTTP_TIMEOUT_MS` (`config.h:119`)
+    was defined but unused. Trigger condition: WiFi connected + no
+    provisioned/NVS location + geolocation failing (fresh nodes, cleared
+    NVS, no BeaconDB coverage + ipinfo failing). Consequences confirmed by
+    reading: API spam, maintenance-task stall (Wi-Fi/NTP recovery held),
+    power waste; sensor task unaffected (separate task/core) but shared
+    I2C/bus contention possible during scans.
+  - Remediation: in-function gate — NVS cache path stays ungated
+    (identical boot/reconnect timing with cache); network stages gated to
+    60 s via the project's own fixed-interval-throttle convention
+    (cf. MQTT 5 s, Wi-Fi 30 s); first network attempt per boot immediate
+    (`lastLocRetry==0` sentinel); attempts unbounded (recovery preserved);
+    `http.setTimeout(HTTP_TIMEOUT_MS)` on both location HTTP calls;
+    stale "cheap NVS read" comment corrected; no new cross-task sharing
+    (gate variable lives in the one maintenance task); `prefs.end()`
+    before the early return (no Preferences leak).
+  - Before/after: before — up to 1 scan + 2 HTTPS per 250 ms while
+    unresolved; after — same immediate first attempt, then ≤1 network
+    attempt per 60 s, each bounded to 3 s; cache/provisioned behavior
+    byte-identical timing.
+  - Tests: baseline `pio run` SUCCESS (pio 6.2.0, esp32dev) at
+    `7556570`-tree; post-fix `pio run` SUCCESS (22 s); `canonical-host-test.sh`
+    canonical + onset suites pass before and after; gate-arithmetic model
+    (32-bit `millis()` wrap incl. boundary/exact/wrap cases) 7/7
+    verified in Python; `secrets.h` generated from `.example` (gitignored,
+    placeholder values, never printed), `check-secrets.sh` preflight pass.
+  - Regression mapping: sensor.cpp/onset/mqtt.cpp/portal/NVS-write paths
+    untouched; WDT still reset every 250 ms iteration; strictly less
+    blocking in the maintenance task. On-device sensor-rate, heartbeat,
+    MQTT, Wi-Fi, watchdog behavior NOT observable here (no bench hardware
+    in this environment — no /dev/ttyUSB*, no ESP32 on lsusb).
+  - Status: IN PROGRESS, not RESOLVED — per the ledger rule, FW-003
+    requires actual bench evidence (serial-observed retry cadence +
+    heartbeat/MQTT/watchdog sanity on device). Owner bench procedure:
+    build at `5790753`, flash dev node, observe `No location in NVS`
+    cadence go 250 ms → 60 s, confirm heartbeat/MQTT/watchdog nominal.
 
 ## Audit decisions (D-AUDIT-xxx)
 
@@ -628,6 +674,25 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   Per PROJECT_RULES §5 (contracts > tests) the fixture was the defect;
   corrected to the contract's example UUID with an explanatory comment —
   a test correction to the authoritative contract, not a weakening.
+- **D-AUDIT-013 — Bench limitation (2026-09-29 firmware batch).** This
+  environment is a cloud VM with no ESP32 attached (no /dev/ttyUSB*,
+  lsusb shows QEMU devices only) and no preinstalled PlatformIO
+  (6.2.0 installed into a venv for build checks; prior bench used
+  6.1.19 — recorded version skew). Therefore: static-firsthand
+  confirmation + `pio run` build + host tests + arithmetic model are the
+  available verification; flash/serial/observation are impossible here.
+  FW-003 stays IN PROGRESS until owner bench evidence lands; no firmware
+  finding is marked RESOLVED without device observation.
+- **D-AUDIT-014 — Related-firmware adjudication (2026-09-29 batch).**
+  FW-001 → B (dead-sensor safe state changes reliability behavior; needs
+  MPU-fail bench observation). FW-002 → B (locking the mqtt/status paths
+  risks deadlock; needs bench; FW-003 added no new cross-task sharing).
+  FW-004 → partially absorbed (timeout half applied under FW-003's
+  recorded remediation; allocation bounding + on-device validation remain
+  → still OPEN, remainder is B). FW-005 → B (provisioning-acceptance
+  change needs bench provisioning test). FW-008 → B (loop-timing change
+  needs heartbeat/alert-latency observation). All remain OPEN; none
+  implemented merely for proximity.
 
 ## Open-item index (as of 2026-09-29)
 
@@ -649,6 +714,16 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   this amendment is the status transition record. No new findings were
   created during remediation (one validator typo caught its own test
   fixture mid-work; no ledger impact).
+
+### Amendment 2026-09-29 — firmware batch (FW-003 + related)
+
+- **FW-003: OPEN → IN PROGRESS** (fix `5790753` staged; build + host-test
+  verified; bench evidence pending owner — see remediation log).
+- **FW-001, FW-002, FW-005, FW-008: remain OPEN** (all → B: separate bench
+  experiment required; reasons in D-AUDIT-014).
+- **FW-004: remains OPEN** (timeout half applied under FW-003; allocation
+  bounding + on-device validation remain).
+- **P1 remaining OPEN:** FW-003 (IN PROGRESS), DOC-002.
 - **P3 (OPTIONAL):** AND-003, AND-004, AND-005, AND-006, ASE-004, SRV-006,
   SRV-007, SRV-008, SRV-010, SRV-011, SRV-012, DB-003, DB-004, DB-005,
   MQ-002, MQ-003, MQ-004, MQ-005, MQ-006, MQ-010, FW-006, FW-007, FW-009,
