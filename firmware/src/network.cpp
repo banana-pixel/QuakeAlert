@@ -422,6 +422,7 @@ static bool resolveLocationFromIP(Preferences& prefs, float& lat, float& lon) {
     HTTPClient http;
     // https://ipinfo.io/json — completely free, no key required, rate limit 50k/month
     http.begin("https://ipinfo.io/json");
+    http.setTimeout(HTTP_TIMEOUT_MS);  // FW-003/004: batasi tiap upaya jaringan
     http.addHeader("Accept", "application/json");
 
     Serial.println("BSSID triangulation failed. Falling back to IP geolocation...");
@@ -484,6 +485,25 @@ bool refreshLocation() {
         return true;
     }
 
+    // ---- Pembatas laju tahap jaringan (FW-003) ----
+    // refreshLocation() dipanggil setiap NETWORK_MAINTENANCE_INTERVAL_MS
+    // (250 ms) selama locationResolved false. Tanpa pembatas, setiap iterasi
+    // melakukan WiFi.scanNetworks + HTTPS — ~4 Hz spam ke BeaconDB dan
+    // ipinfo.io yang juga menahan tugas pemeliharaan Wi-Fi/NTP.
+    // lastLocRetry == 0 berarti upaya jaringan pertama sejak boot: langsung
+    // jalan (perilaku lama); sesudahnya dibatasi LOCATION_RETRY_INTERVAL_MS.
+    // Pengurangan unsigned aman terhadap millis() wrap. Cache NVS di atas
+    // sengaja tidak dibatasi (murah, <1 ms, tanpa I/O jaringan) sehingga
+    // boot/reconnect dengan cache tetap pulih seketika seperti sebelumnya.
+    // lastLocRetry hanya dibaca/ditulis di jalur ini (satu task), jadi tidak
+    // ada pola berbagi-antar-task baru (lih. FW-002).
+    const unsigned long now = millis();
+    if (lastLocRetry != 0 && now - lastLocRetry < LOCATION_RETRY_INTERVAL_MS) {
+        prefs.end();
+        return false;
+    }
+    lastLocRetry = now;
+
     // ---- Stage 1: BSSID Triangulation via BeaconDB ----
     Serial.println("No location in NVS. Scanning WiFi for BSSID triangulation...");
     int numNetworks = WiFi.scanNetworks(false, true);
@@ -506,6 +526,7 @@ bool refreshLocation() {
 
         HTTPClient http;
         http.begin("https://beacondb.net/v1/geolocate");
+        http.setTimeout(HTTP_TIMEOUT_MS);  // FW-003/004: batasi tiap upaya jaringan
         http.addHeader("Content-Type", "application/json");
 
         Serial.println("Requesting coordinates from BeaconDB...");
@@ -567,13 +588,14 @@ void networkMaintenanceTask(void* pvParameters) {
         if (wifiConnected) {
             checkNtpSync();
 
-            // refreshLocation() is a cheap NVS read (< 1 ms), not an HTTP
-            // call.  We only retry while locationResolved is false — once the
-            // NVS key is present it will succeed and the flag stays true until
-            // the next WiFi drop (which calls clearLocationCoordinates() and
-            // sets locationResolved = false via setLocationStatusWifiDisconnected).
+            // Akuisisi lokasi berjalan di sini, di luar task sensor, dan hanya
+            // selama locationResolved false. refreshLocation() melayani cache
+            // NVS seketika (<1 ms, tanpa pembatas) dan membatasi HANYA tahap
+            // jaringannya ke LOCATION_RETRY_INTERVAL_MS (FW-003) dengan
+            // HTTP_TIMEOUT_MS per upaya (FW-004, separuh timeout). Setelah
+            // koordinat ada, flag tetap true sampai WiFi drop berikutnya
+            // (clearLocationCoordinates + setLocationStatusWifiDisconnected).
             if (!locationResolved) {
-                lastLocRetry = millis();
                 refreshLocation();
             }
         }
