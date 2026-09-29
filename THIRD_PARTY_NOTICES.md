@@ -63,9 +63,34 @@ Coverage corresponds to the verified set in
 Mosquitto, Caddy, PostgreSQL, and Redis are deploy-time infrastructure,
 not distributed code; their own licenses apply to those programs.
 
-## Android
+## Android dependencies (app licensed GPLv3; see qualification below)
 
-No third-party Android dependency audit is recorded here. MapLibre
-attribution (BSD) will be shipped with the app once its license is
-established; proprietary Firebase/Play-services components must be
-documented as such at that time.
+- AndroidX (core-ktx, lifecycle, activity, datastore), Jetpack Compose
+  (BoM, ui, graphics, material3, tooling, google-fonts) — Apache-2.0.
+- Kotlin stdlib, kotlinx-coroutines (+play-services bindings, test),
+  kotlinx-serialization-json — Apache-2.0.
+- OkHttp 4.12.0 (Square) — Apache-2.0.
+- MapLibre Native Android SDK 13.5.0 — BSD-3-Clause (per upstream
+  licensing); no access token or commercial key is embedded.
+- JUnit 4.13.2 — EPL-1.0, test scope only (not linked into the APK).
+  Espresso / androidx-test — Apache-2.0, test scope only.
+- Android Gradle Plugin, Kotlin Gradle plugins, google-services plugin —
+  build tools only (Apache-2.0), not distributed in the APK.
+- Google Play Services linkage (owner-granted §7 exception, see
+  `android/LICENSE-EXCEPTION`):
+  `play-services-location:21.3.0`, `play-services-base:18.5.0`,
+  `play-services-basement:18.4.0`, `play-services-tasks:18.2.0`,
+  `play-services-cloud-messaging:17.2.0`, `play-services-stats:17.0.2` are
+  distributed by Google under the proprietary Android SDK License (per
+  their own POM declarations; the Firebase artifacts above are Apache-2.0
+  and need no exception — the last two Play libraries arrive solely as
+  Firebase transitives).
+  `android/LICENSE-EXCEPTION` grants a GPLv3 §7 additional permission
+  covering only the combination of the QuakeAlert code with exactly these
+  six artifacts; it grants nothing in Google's code, waives none of
+  Google's terms, excludes commingled files, and does not extend to any
+  future proprietary dependency. Mitigating design (already in the code, no change
+  made): location falls back to AOSP LocationManager without Play
+  Services, and every Firebase entry point degrades to WebSocket-only
+  when `google-services.json` is absent, so a fully-open build variant
+  remains possible.

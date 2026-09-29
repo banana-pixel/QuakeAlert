@@ -42,11 +42,31 @@ AGPLv3 §13 applies: anyone running a modified server version for users
 interacting remotely over a network must offer those users the
 Corresponding Source.
 
-## 3. Android — license pending (none assigned)
+## 3. Android — GNU GPLv3 (`android/LICENSE`)
 
-`android/` is **not** covered by either license above. No Android license
-has been established yet. All rights reserved pending the owner's
-decision. Do not assume GPLv3/AGPLv3 applies to `android/`.
+Everything under `android/` is licensed under the GNU General Public
+License v3.0 or later (SPDX: `GPL-3.0-or-later`):
+
+- `android/app/src/` — application sources and tests (`.kt`)
+- `android/app/*.kts`, `android/*.kts`, `android/gradle/` — build logic
+- `android/app/src/main/res`, `android/app/proguard-rules.pro` — resources
+  and build config, covered by the same license via this directory scope
+- Generated outputs (`android/app/build/`, `android/.gradle/`,
+  `android/app/src/*/build/`) carry no header but fall under the same
+  license as build products of these sources
+
+Full text: `android/LICENSE`.
+
+The single-APK distribution links the Designated Google Play Services
+libraries enumerated in `android/LICENSE-EXCEPTION` (granted by the project
+owner as sole copyright holder). That file grants a
+GPLv3 §7 additional permission covering only the combination of the
+QuakeAlert code with those libraries; it grants nothing in Google's code,
+waives none of Google's SDK/service terms, and does not extend to any other
+proprietary component. Removing the six `play-services-*` artifacts (and
+adapting the four GMS-gated source files) yields a fully Apache/BSD tree
+that needs no exception. Each source file points at the exception file from
+its header notice, per GPLv3 §7.
 
 ## 4. Documentation and interface contracts — license pending
 

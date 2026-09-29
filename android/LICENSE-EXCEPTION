@@ -1,0 +1,47 @@
+Additional permission under GNU GPL version 3, section 7 —
+(Signed off by the project owner as sole copyright holder.)
+
+QuakeAlert Android Google Play Services linking exception.
+QuakeAlert Android Google Play Services linking exception.
+
+Copyright (c) 2026 QuakeAlert contributors.
+
+As a special exception, the copyright holders of the QuakeAlert Android
+code give you permission to link that code with the Designated Libraries
+listed below to produce an executable, regardless of the license terms
+of those libraries, and to copy and distribute the resulting executable
+under terms of your choice, provided that you also meet, for each
+Designated Library, the terms and conditions of Google's own license
+for that library.
+
+Designated Libraries (any version obtained through this project's
+declared dependencies):
+  - com.google.android.gms:play-services-location
+  - com.google.android.gms:play-services-base
+  - com.google.android.gms:play-services-basement
+  - com.google.android.gms:play-services-tasks
+  - com.google.android.gms:play-services-cloud-messaging
+  - com.google.android.gms:play-services-stats
+The Firebase dependencies used by this project
+(com.google.firebase:firebase-messaging and its Firebase complement)
+contribute no proprietary artifacts beyond the six listed above; the last
+two arrive solely as Firebase transitives. Should any future dependency
+introduce a new proprietary artifact, that artifact is not covered until
+this exception is expressly extended.
+
+All other terms of GPL-3.0-or-later continue to apply to the QuakeAlert
+code, including Corresponding Source for everything except the
+Designated Libraries.
+
+This permission applies only to the QuakeAlert copyrighted code. It
+grants no right, title, or interest in any Google code, which remains
+governed solely by Google's own license terms. It does not cover copying
+Google code into files containing QuakeAlert code (or vice versa);
+commingled files remain under unmodified GPLv3. It grants no trademark
+rights and waives none of Google's service terms.
+
+If you modify this code you may extend this exception to your version of
+it, but you are not obligated to do so. If you convey this code without
+this exception, the unmodified GPLv3 terms apply to your conveyance in
+full — in which case distribution of an APK containing the Designated
+Libraries will likely no longer be permitted.

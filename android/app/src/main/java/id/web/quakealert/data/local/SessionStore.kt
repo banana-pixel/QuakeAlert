@@ -1,3 +1,7 @@
+// Copyright (c) 2026 QuakeAlert contributors.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// See android/LICENSE-EXCEPTION for the Google Play Services linking permission.
+
 package id.web.quakealert.data.local
 
 import android.content.Context
