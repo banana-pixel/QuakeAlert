@@ -782,6 +782,38 @@ Evidence: `docs/CHAT_DESIGN.md`, `server/internal/api/chat.go`,
   not marked resolved merely because FW-003 was attempted.
 - Node health baseline captured read-only: `NODE-7AA8B39A` boot OK,
   Wi-Fi/NTP/MQTT/DMP nominal, no WDT event in 150 s serial window.
+
+### Amendment 2026-09-30 — D-039 + FW-003 flash bench (d376d1f on hardware)
+
+- **Build:** `d376d1f`, pio 6.1.19, env esp32dev — SUCCESS (13 s);
+  artifact `firmware/.pio/build/esp32dev/firmware.bin` (1,043,888 B). No source modified.
+- **Flash:** `pio run -t upload --upload-port /dev/ttyUSB0` — SUCCESS
+  (23 s, hash verified, write at 0x00010000 only). `platformio.ini`
+  carries no erase flags; NVS preservation by standard esptool
+  write_flash semantics. **NVS erased: NO.**
+- **Identity:** `Station ID: NODE-7AA8B39A` after boot — NVS fully
+  preserved (Wi-Fi creds, HMAC key, NVS location all proven by STATION
+  mode + MQTT connect + `Location loaded from NVS cache` at +4.48 s).
+- **Runtime (180 s serial, `/tmp/fw003-d039-flash.log` on bench):**
+  Wi-Fi STATION + NTP (first attempt transient-fail at +4.46 s, retry OK
+  at +62.60 s — NTP path untouched by this change, pre-existing retry
+  behaved as designed); `MQTT Connected` +11.24 s; `MPU6050 Initialized
+  & Configured (FS_4/100Hz, ISR semaphore)`; SensorTask Core 0 +
+  NetworkMaintenanceTask Core 1; `[Boots: 14]`; no panic, no WDT reset.
+- **D-039: stimulus DECLINED, status INCOMPLETE.** Production runs the
+  Phase-3 tracker armed (`CURRENT_STATE.md:26,81`) with the admin hook
+  installed (`main.go:147-160`), so a ≥60 gal FINAL from this designated
+  + verified Admin Node would emit a trusted-local `EARTHQUAKE_ALERT` to
+  the 20 km audience (real users). Hand-tap amplitude is unmeasurable,
+  hence uncontrolled; T-22's no-alarm expectation predates the armed
+  path. No PRELIM/FINAL observed (no stimulus, no events in window).
+  Decision recorded, not a code verdict.
+- **FW-003: retry path NOT exercised, status IN PROGRESS (unchanged).**
+  Location NVS-resolved → gate idle for the full window; zero location
+  network attempts observed (consistent with, not proof of, gating).
+  No NVS disturbance performed, per constraint.
+- Bench end-state: HEAD `d376d1f`, tree clean, stash intact,
+  `WiFi-C-24G` activated throughout; no push, no prod/credential change.
 - **P3 (OPTIONAL):** AND-003, AND-004, AND-005, AND-006, ASE-004, SRV-006,
   SRV-007, SRV-008, SRV-010, SRV-011, SRV-012, DB-003, DB-004, DB-005,
   MQ-002, MQ-003, MQ-004, MQ-005, MQ-006, MQ-010, FW-006, FW-007, FW-009,
