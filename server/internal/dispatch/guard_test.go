@@ -377,8 +377,10 @@ func TestBlockedLedgerDoesNotDelayDispatch(t *testing.T) {
 	}
 	readMessage(t, c.send) // WS tetap tersiar
 
-	// Antrean penuh berarti membuang, bukan memblokir.
-	if w.Drops() == 0 {
+	// Antrean penuh berarti membuang, bukan memblokir. Penulisan ledger
+	// berjalan asinkron (dispatchFCM mengantre lewat goroutine), jadi beri
+	// kesempatan goroutine menyelesaikan pengantrean sebelum membaca Drops.
+	if !waitFor(func() bool { return w.Drops() > 0 }) {
 		t.Error("ledger yang macet dengan antrean penuh seharusnya menghasilkan drop, bukan tekanan balik")
 	}
 }

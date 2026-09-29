@@ -4,9 +4,12 @@ Thank you for your interest. QuakeAlert is a life-safety earthquake
 early-warning project, so correctness, honesty about what is verified, and
 careful change control matter more than speed.
 
-Before you start, note that no open-source license has been chosen yet (see the
-README). Until one is added, please coordinate with the maintainer before
-reusing or redistributing the code.
+Before you start, note the per-directory license map in `LICENSING.md`
+(firmware: GPL-3.0-or-later; server and deployment: AGPL-3.0-or-later;
+Android: GPL-3.0-or-later with a linking exception; docs, contracts, and
+repository meta: license pending, all rights reserved for now). Please
+coordinate with the maintainer before reusing or redistributing code outside
+those terms.
 
 ## Ground rules
 
