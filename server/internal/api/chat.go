@@ -6,6 +6,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,12 @@ const (
 	// (docs/CHAT_DESIGN.md §7) laju kirim adalah satu-satunya rem yang ada.
 	chatSendWindow = 2 * time.Second
 )
+
+// clientMessageIDPattern mencerminkan CreateChatMessageRequest.client_message_id
+// pada kontrak (format uuid): kunci idempotensi yang cacat bentuknya ditolak
+// 400 di tepi HTTP, bukan 500 dari cast ::uuid Postgres. String kosong tetap
+// sah — artinya "tanpa kunci idempotensi" (disimpan sebagai NULL di store).
+var clientMessageIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // ChatEvent adalah pesan yang sudah tersimpan dan siap disiarkan.
 //
@@ -224,6 +231,14 @@ func (s *Server) HandleCreateChatMessage(w http.ResponseWriter, r *http.Request)
 
 	var req createChatMessageRequest
 	if !s.decodeBody(w, r, &req) {
+		return
+	}
+
+	// Validasi bentuk sebelum apa pun yang berbiaya (keanggotaan, rate limit,
+	// tulis DB): permintaan yang cacat bentuknya tidak boleh menghabiskan
+	// kuota kirim user, dan tidak boleh mencapai cast ::uuid di store.
+	if id := strings.TrimSpace(req.ClientMessageID); id != "" && !clientMessageIDPattern.MatchString(id) {
+		writeError(w, http.StatusBadRequest, "INVALID_ARGUMENT", "client_message_id harus UUID yang valid")
 		return
 	}
 

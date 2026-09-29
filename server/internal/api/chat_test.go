@@ -255,7 +255,10 @@ func TestCreateChatMessage_PersistsThenBroadcasts(t *testing.T) {
 	fanout := &fakeFanout{}
 	_, h := chatServer(repo, NewMemoryRateLimiter(), fanout)
 
-	body := `{"channel_id":"ID-jawa-barat","message":"  aman di sini  ","client_message_id":"c-1"}`
+	// "c-1" di sini dulunya bukan UUID; sejak validasi bentuk (API-006) kunci
+	// idempotensi wajib UUID sesuai kontrak (format: uuid) — nilai non-UUID
+	// tidak pernah lolos cast ::uuid di store.
+	body := `{"channel_id":"ID-jawa-barat","message":"  aman di sini  ","client_message_id":"5c2d1e90-3b7a-4f61-8e0d-9a4b7c6d5e1f"}`
 	rec := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages", body, testSecret, "u-1"))
 
 	if rec.Code != http.StatusCreated {
@@ -264,7 +267,7 @@ func TestCreateChatMessage_PersistsThenBroadcasts(t *testing.T) {
 	if repo.insertedBody != "aman di sini" {
 		t.Fatalf("isi tersimpan = %q, mau tanpa spasi tepi", repo.insertedBody)
 	}
-	if repo.insertedClID != "c-1" {
+	if repo.insertedClID != "5c2d1e90-3b7a-4f61-8e0d-9a4b7c6d5e1f" {
 		t.Fatalf("client_message_id = %q, mau diteruskan untuk idempotensi", repo.insertedClID)
 	}
 	if len(fanout.events) != 1 || fanout.events[0].ChannelID != "ID-jawa-barat" {
@@ -381,6 +384,48 @@ func TestCreateChatMessage_MalformedRequestDoesNotSpendTheSendQuota(t *testing.T
 		`{"message":"halo"}`, testSecret, "u-1"))
 	if good.Code != http.StatusCreated {
 		t.Fatalf("kiriman valid setelahnya: status = %d, mau 201", good.Code)
+	}
+}
+
+// API-006: client_message_id yang cacat bentuknya adalah 400 INVALID_ARGUMENT
+// di tepi HTTP, bukan 500 dari cast ::uuid Postgres. Penolakan bentuk tidak
+// menyentuh store dan tidak menghabiskan kuota; string kosong tetap berarti
+// "tanpa kunci idempotensi".
+func TestCreateChatMessage_MalformedClientMessageIDIsBadRequest(t *testing.T) {
+	repo := &fakeRepo{}
+	_, h := chatServer(repo, NewMemoryRateLimiter(), nil)
+
+	for name, id := range map[string]string{
+		"bukan uuid":      "c-1",
+		"tanpa strip":     "5c2d1e903b7a4f618e0d9a4b7c6d5e1f",
+		"heks truncation": "5c2d1e90-3b7a-4f61-8e0d",
+		"bukan heks":      "5c2d1e90-3b7a-4f61-8e0d-9a4b7c6d5e1zz",
+	} {
+		rec := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages",
+			`{"message":"halo","client_message_id":"`+id+`"}`, testSecret, "u-1"))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%s: status = %d, mau 400: %s", name, rec.Code, rec.Body.String())
+		}
+		var apiErr apiError
+		if err := json.Unmarshal(rec.Body.Bytes(), &apiErr); err != nil {
+			t.Fatalf("%s: amplop error tak terurai: %v", name, err)
+		}
+		if apiErr.Code != "INVALID_ARGUMENT" {
+			t.Fatalf("%s: kode = %q, mau INVALID_ARGUMENT", name, apiErr.Code)
+		}
+	}
+	if repo.insertedBody != "" {
+		t.Fatal("client_message_id cacat tetap tersimpan")
+	}
+	// Kuota tidak terpakai: UUID valid langsung sesudahnya harus lolos.
+	good := do(h, authedRequest(http.MethodPost, "/api/v1/chat/messages",
+		`{"message":"halo","client_message_id":"5c2d1e90-3b7a-4f61-8e0d-9a4b7c6d5e1f"}`,
+		testSecret, "u-1"))
+	if good.Code != http.StatusCreated {
+		t.Fatalf("UUID valid setelahnya: status = %d, mau 201", good.Code)
+	}
+	if repo.insertedClID != "5c2d1e90-3b7a-4f61-8e0d-9a4b7c6d5e1f" {
+		t.Fatalf("client_message_id = %q, mau diteruskan untuk idempotensi", repo.insertedClID)
 	}
 }
 

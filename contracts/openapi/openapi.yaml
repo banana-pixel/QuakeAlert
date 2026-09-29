@@ -809,6 +809,54 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/v1/admin/test-alert:
+    post:
+      tags: [drill]
+      summary: Menyiarkan satu peringatan latihan (drill)
+      description: >
+        Diproteksi shared secret di header `X-Admin-Key`, BUKAN JWT, sama
+        seperti broadcast (pengirimnya deploy/scripts/test-alert.sh; kuncinya
+        tidak pernah ikut dalam APK). Bila `ADMIN_API_KEY` tidak di-set, rute
+        ini tidak didaftarkan sama sekali dan menjawab 404.
+
+        Drill menempuh seluruh jalur push dan state machine klien, tetapi TIDAK
+        melewati internal/consensus dan TIDAK menulis satu baris pun ke
+        earthquake_events. Penargetan hanya topic test_alerts yang hanya
+        dilanggani build debug; build rilis membuang frame is_test. All-clear
+        otomatis setelah 20 detik. Lihat docs/CLIENT_SPEC.md §5.8.
+      operationId: createTestAlert
+      security:
+        - adminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTestAlertRequest'
+      responses:
+        '202':
+          description: Drill diterima dan difanout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestAlertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Header X-Admin-Key tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Jalur siaran drill belum terpasang di server ini
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/v1/admin/nodes/pending:
     get:
       tags: [nodes]
@@ -1535,8 +1583,21 @@ components:
           example: 107.5422
         status:
           type: string
-          enum: [Online, Offline]
+          enum: [Online, Offline, Pending]
+          description: >
+            Pending mengalahkan Online/Offline: kepercayaan adalah pertanyaan
+            sebelum kesehatan. Node yang belum diverifikasi operator selalu
+            Pending, tidak pernah dihitung aktif, dan tidak pernah ikut
+            konsensus. Lihat GET /api/v1/sensors.
           example: Online
+        verified:
+          type: boolean
+          description: >
+            Kepercayaan operator (migrasi 000005). false berarti status Pending:
+            node baru yang belum dikonfirmasi operator. Ia tetap tampak di
+            daftar, tetapi tidak pernah dihitung aktif dan tidak pernah ikut
+            konsensus.
+          example: true
         last_ping:
           type: string
           description: Human-readable relative time.
@@ -1562,15 +1623,6 @@ components:
         pseudonym:
           type: string
           example: Quakezen-7B9A
-        region_code:
-          type: [string, "null"]
-          maxLength: 50
-          description: >
-            Kanal chat regional yang berlaku setelah pembaruan ini, atau null
-            bila wilayahnya tidak dapat dinormalisasi (mis. nama non-ASCII) atau
-            tidak dapat dibaca. Dalam kasus itu user hanya punya kanal global.
-            Bila wilayah tidak dikirim, ini adalah kanal yang sudah tersimpan.
-          example: ID-jawa-barat
         updated_at:
           type: string
           format: date-time
@@ -1659,6 +1711,73 @@ components:
           type: string
           format: date-time
           example: "2026-08-23T06:19:18Z"
+
+    CreateTestAlertRequest:
+      type: object
+      required: [pga_gal, latitude, longitude]
+      properties:
+        pga_gal:
+          type: number
+          format: double
+          minimum: 1
+          maximum: 2000
+          description: >
+            Satu-satunya masukan intensitas: MMI dan intensity_label diturunkan
+            darinya oleh fungsi yang sama dengan jalur konsensus, sehingga drill
+            tidak dapat membawa kombinasi yang gempa sungguhan tidak pernah
+            menghasilkan.
+          example: 61.5
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: -6.9175
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: 107.6191
+        location_name:
+          type: string
+          maxLength: 150
+          description: Kosong berarti nama default latihan.
+          example: Gladi resik Cibiru
+        node_count:
+          type: integer
+          minimum: 1
+          maximum: 99
+          default: 3
+          description: Opsional; default 3 (ambang CONFIRMED).
+          example: 3
+
+    TestAlertResponse:
+      type: object
+      required: [event_id, type, mmi, intensity_label, is_test, topic]
+      properties:
+        event_id:
+          type: string
+          description: >
+            Berawalan `test-`, bukan UUID basis data (tidak ada barisnya).
+            Langsung mengaku dirinya latihan di log dan laporan bug.
+          example: test-3f1c9a72b45d
+        type:
+          type: string
+          example: EARTHQUAKE_ALERT
+        mmi:
+          type: string
+          example: IV
+        intensity_label:
+          type: string
+          example: moderate
+        is_test:
+          type: boolean
+          example: true
+        topic:
+          type: string
+          description: Selalu test_alerts; drill tidak pernah jatuh ke topic nasional.
+          example: test_alerts
 
     PendingNode:
       type: object
@@ -1866,6 +1985,16 @@ components:
           maxLength: 150
           description: null bila user belum/tidak mengirim label lokasi.
           example: Cimahi, West Java, ID
+        region_code:
+          type: [string, "null"]
+          maxLength: 50
+          description: >
+            Kanal chat regional yang berlaku setelah pembaruan ini, atau null
+            bila wilayahnya tidak dapat dinormalisasi. Dikembalikan agar klien
+            tidak perlu menebak kanal mana yang kini menjadi miliknya; klien
+            yang melihat kunci kanal di sini berhak menganggap kanal itu
+            miliknya. Lihat PUT /api/v1/users/location.
+          example: ID-jawa-barat
         updated_at:
           type: string
           format: date-time
