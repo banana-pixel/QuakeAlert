@@ -208,6 +208,13 @@ type Event struct {
 	// direkonsiliasi, tidak dibandingkan replay.
 	adminEdgeFired bool
 
+	// adminPrelimEdgeFired adalah penjaga tepat-sekali tepi-PRELIM Admin
+	// (keputusan D-043): PRELIM pertama milik Admin Node selagi UNCONFIRMED
+	// yang tidak menghasilkan transisi. Aturan yang sama dengan
+	// adminEdgeFired di atas — in-memory, per event, bukan state, revisi,
+	// maupun baris log.
+	adminPrelimEdgeFired bool
+
 	// EverConfirmed menentukan apakah RESOLVED/CANCELLED berhak atas FCM (§8.1):
 	// all-clear hanya diutangkan kepada audiens yang menerima alarmnya.
 	EverConfirmed bool

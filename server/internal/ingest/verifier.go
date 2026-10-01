@@ -201,6 +201,11 @@ func (v *Verifier) verify(ctx context.Context, t *Trigger, nowMs int64) error {
 		v.log.Warn("trigger ditolak: node belum terverifikasi", "node_id", t.NodeID)
 		return ErrNodeUnverified
 	}
+	// Lencana admin menempel pada trigger yang lolos: tracker memakainya
+	// untuk tepi-PRELIM Admin (satu kolom dari baris yang sama — tanpa I/O
+	// baru). Node unverified ditolak di atas, jadi nilainya di sini selalu
+	// dari baris tepercaya.
+	t.IsAdminNode = node.IsAdminNode
 
 	// 4. Anti-replay awal (cek in-memory nilai last_seen; penegakan final via DB
 	// atomik). Gerbang monotonik ini TETAP berlaku untuk v2, tidak diganti oleh

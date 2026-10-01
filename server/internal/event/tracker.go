@@ -105,6 +105,12 @@ type Tracker struct {
 	// t.mu — bukan kunci kedua.
 	localPending []Snapshot
 
+	// prelimPending memegang snapshot tepi-PRELIM Admin Node (keputusan
+	// D-043) dengan pola yang sama persis dengan localPending di atas:
+	// pendeteksian di bawah kunci, evaluasi kelayakan (store) di luarnya,
+	// dan snapshot BUKAN transisi — tanpa state, revisi, maupun baris log.
+	prelimPending []Snapshot
+
 	// nearCoverage adalah fakta pembacaan durable saat boot (B1). Dilindungi
 	// t.mu; ditulis sekali oleh LoadNearConfirmed dan dibaca setiap laporan.
 	nearCoverage NearConfirmedCoverage
@@ -218,6 +224,8 @@ func (t *Tracker) publish(ctx context.Context, ts []Snapshot) {
 	t.mu.Lock()
 	local := t.localPending
 	t.localPending = nil
+	prelim := t.prelimPending
+	t.prelimPending = nil
 	t.mu.Unlock()
 
 	// Tepi-FINAL Admin Node (D-037): snapshot non-transisi diserahkan HANYA
@@ -233,6 +241,16 @@ func (t *Tracker) publish(ctx context.Context, ts []Snapshot) {
 		if edge, ok := t.emit.(adminEdgeEmitter); ok {
 			for _, s := range local {
 				edge.EmitAdminEdge(ctx, s)
+			}
+		}
+		// Tepi-PRELIM Admin (keputusan D-043): diserahkan HANYA kepada
+		// emitter yang menyatakannya sanggup (type assertion terpisah —
+		// pola yang sama dengan tepi-FINAL). Recorder replay, harness
+		// biasa, dan probe latensi tidak mengimplementasikannya sehingga
+		// tetap tuli terhadap tepi ini, sama seperti terhadap tepi-FINAL.
+		if edge, ok := t.emit.(adminPrelimEdgeEmitter); ok {
+			for _, s := range prelim {
+				edge.EmitAdminPrelimEdge(ctx, s)
 			}
 		}
 	}
@@ -399,6 +417,9 @@ func (t *Tracker) ingestLocked(in Input) []Snapshot {
 	}
 
 	var out []Snapshot
+	// wasPrelim dicatat di cabang event-lama di bawah dan dibaca setelah
+	// transisi: dideklarasikan di sini agar cakupannya mencakup keduanya.
+	wasPrelim := false
 	if e == nil {
 		created, forced := t.newEventLocked(in, now)
 		out = append(out, forced...)
@@ -417,6 +438,13 @@ func (t *Tracker) ingestLocked(in Input) []Snapshot {
 		if c, ok := e.Contributors[in.NodeID]; ok {
 			wasFinal = c.Phase == PhaseFinal
 		}
+		// Tepi-PRELIM Admin (keputusan D-043): catat apakah kontributor ini
+		// sudah PRELIM sebelum absorb, dengan aturan kehadiran yang sama
+		// seperti wasFinal di atas. Penandanya dipakai setelah transisi di
+		// bawah supaya tepi tidak menduplikasi advisory transisi.
+		if c, ok := e.Contributors[in.NodeID]; ok {
+			wasPrelim = c.Phase == PhasePrelim
+		}
 		t.upsertContributorLocked(e, in)
 		// BUKAN transisi: state, revision, dan event_state_log tidak
 		// tersentuh di sini. Snapshot hanya parsel bukti terkini untuk
@@ -433,8 +461,21 @@ func (t *Tracker) ingestLocked(in Input) []Snapshot {
 	e.LastEvidenceTS = now
 	t.reindexLocked(e)
 
+	var trans *Snapshot
 	if s := t.transitionLocked(e, now, ""); s != nil {
 		out = append(out, *s)
+		trans = s
+	}
+	// Tepi-PRELIM Admin (keputusan D-043): PRELIM pertama milik Admin Node
+	// selagi event UNCONFIRMED — dan HANYA bila masukan ini tidak
+	// menghasilkan advisory sendiri (len(out)==0 mencakup transisi paksa
+	// jalur-pembuatan: advisory transisi sudah membawa kabar itu; tepi di
+	// sini akan menduplikasinya). Tepat-sekali per event
+	// (adminPrelimEdgeFired); BUKAN transisi, sama seperti tepi-FINAL.
+	if trans == nil && len(out) == 0 && e.State == StateUnconfirmed && !e.adminPrelimEdgeFired &&
+		in.IsAdminNode && in.Phase == PhasePrelim && !wasPrelim {
+		e.adminPrelimEdgeFired = true
+		t.prelimPending = append(t.prelimPending, e.snapshot(e.State, ""))
 	}
 	return out
 }

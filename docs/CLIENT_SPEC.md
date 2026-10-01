@@ -217,6 +217,7 @@ Payload inti (contoh):
 
 - `type`: `EARTHQUAKE_ALERT` (≥3 node, life-safety) | `EARTHQUAKE_ADVISORY` (1–2 node, banner kuning) | `EVENT_RESOLVED` (all-clear).
 - `event_id` kosong (`""`) pada ADVISORY (tidak dipersistensikan). Gunakan `event_id` untuk **deduplikasi**.
+- **ADVISORY dapat berulang dalam satu event (keputusan D-043):** pada jalur tracker Fase 3, advisory membawa `event_id` + `event_revision` dan dapat dikirim ulang saat bukti baru tiba (mis. PRELIM milik Admin Node). Klien harus me-render advisory terbaru sebagai pembaruan banner — BUKAN sebagai alarm baru, dan tidak boleh menaikkan sirene/notifikasi darurat karenanya. Pengulangan advisory tidak pernah membawa `trusted_local`.
 - `pga_gal` satuan **gal**; `timestamp` **ms epoch UTC**; koordinat = **centroid** (BUKAN episenter — jangan tampilkan sebagai lokasi presisi).
 - Kanal WebSocket/FCM: WebSocket memakai payload JSON yang sama (tipe `AlertMessage`); FCM mengirim data-only (semua nilai string) sesuai `contracts/fcm/alert_payload.json`, `android.priority=HIGH`.
 

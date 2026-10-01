@@ -83,6 +83,10 @@ type NodeSecret struct {
 	// dikonfirmasi operator boleh heartbeat (tampak di /sensors), tetapi
 	// trigger-nya ditolak sehingga tidak pernah ikut voting menuju CONFIRMED.
 	Verified bool
+	// IsAdminNode adalah lencana operator (migrasi 000010): dibaca bersama
+	// secret agar jalur ingest dapat mengenali kontribusi Admin Node tanpa
+	// query tambahan — satu baris yang sama, tanpa I/O baru di hot path.
+	IsAdminNode bool
 }
 
 var ErrNodeNotFound = errors.New("node tidak ditemukan")
@@ -90,13 +94,13 @@ var ErrNodeNotFound = errors.New("node tidak ditemukan")
 // GetNodeSecret mengambil secret terenkripsi + last_seen_ts untuk sebuah node.
 func (s *Store) GetNodeSecret(ctx context.Context, stationID string) (*NodeSecret, error) {
 	const q = `
-		SELECT station_id, secret_key_enc, secret_key_nonce, last_seen_ts, is_active, verified
+		SELECT station_id, secret_key_enc, secret_key_nonce, last_seen_ts, is_active, verified, is_admin_node
 		FROM iot_nodes
 		WHERE station_id = $1`
 	row := s.pool.QueryRow(ctx, q, stationID)
 
 	var n NodeSecret
-	err := row.Scan(&n.StationID, &n.SecretEnc, &n.SecretNonce, &n.LastSeenTS, &n.IsActive, &n.Verified)
+	err := row.Scan(&n.StationID, &n.SecretEnc, &n.SecretNonce, &n.LastSeenTS, &n.IsActive, &n.Verified, &n.IsAdminNode)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNodeNotFound
 	}

@@ -47,6 +47,13 @@ type Trigger struct {
 	AttemptNo   *int   `json:"attempt_no,omitempty"`
 	OnsetTS     *int64 `json:"onset_ts,omitempty"`
 	DetriggerTS *int64 `json:"detrigger_ts,omitempty"`
+
+	// IsAdminNode BUKAN bagian wire (json:"-" mengecualikannya dua arah):
+	// diisi verifier dari baris iot_nodes yang SUDAH dibaca untuk HMAC &
+	// anti-replay, supaya tracker dapat mengenali kontribusi Admin Node
+	// tanpa query tambahan. Kanonik HMAC memakai argumen eksplisit
+	// (canonicalFor) sehingga field ini tidak pernah ikut ditandatangani.
+	IsAdminNode bool `json:"-"`
 }
 
 // IsV2 melaporkan apakah payload ini protokol v2. Deteksi versi adalah

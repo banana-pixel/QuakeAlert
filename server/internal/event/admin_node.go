@@ -57,6 +57,11 @@ const (
 	ReasonAdminNodeNotFinal       = "ADMIN_NOT_FINAL"
 	ReasonAdminNodeBelowFloor     = "ADMIN_PGA_BELOW_FLOOR"
 	ReasonAdminNodeHeartbeatStale = "ADMIN_HEARTBEAT_STALE"
+	// Dua alasan khusus tepi-PRELIM (keputusan D-043): kelayakan advisory
+	// memakai gerbangnya sendiri — tanpa syarat FINAL dan tanpa lantai PGA
+	// alarm — supaya kosakata alarm tidak tercampur kosakata informatif.
+	ReasonAdminNodePrelimEligible = "ADMIN_PRELIM_ELIGIBLE"
+	ReasonAdminNodeNotPrelim      = "ADMIN_NOT_PRELIM"
 )
 
 // AdminNodeState adalah separuh operator dari kelayakan: designation,
@@ -140,6 +145,35 @@ func adminContribution(stationID string, cs []ContributorEvidence) *ContributorE
 	return nil
 }
 
+// EvaluateAdminNodePrelim menilai satu snapshot tepi-PRELIM untuk advisory
+// informatif (keputusan D-043): gerbang otorisasi dan audiens SAMA dengan
+// alarm (designation, verifikasi, UNCONFIRMED, kesegaran heartbeat), tetapi
+// TANPA syarat FINAL dan TANPA lantai PGA alarm — PRELIM adalah pembaruan
+// bukti, bukan peringatan. Hasil layak TIDAK PERNAH membangun
+// EARTHQUAKE_ALERT; pemakaian satu-satunya adalah emitTrustedPrelim di bawah.
+func EvaluateAdminNodePrelim(state AdminNodeState, s Snapshot) AdminNodeDecision {
+	switch {
+	case !state.Designated:
+		return AdminNodeDecision{Reason: ReasonAdminNodeNoneDesignated}
+	case !state.Verified:
+		return AdminNodeDecision{Reason: ReasonAdminNodeUnverified}
+	case s.To != StateUnconfirmed:
+		return AdminNodeDecision{Reason: ReasonAdminNodeNotUnconfirmed}
+	}
+
+	contrib := adminContribution(state.StationID, s.Evidence.Contributors)
+	switch {
+	case contrib == nil:
+		return AdminNodeDecision{Reason: ReasonAdminNodeNoContribution}
+	case contrib.Phase != PhasePrelim:
+		return AdminNodeDecision{Reason: ReasonAdminNodeNotPrelim}
+	case state.HeartbeatAge > AdminNodeHeartbeatMaxAge:
+		return AdminNodeDecision{Reason: ReasonAdminNodeHeartbeatStale}
+	default:
+		return AdminNodeDecision{Eligible: true, Reason: ReasonAdminNodePrelimEligible}
+	}
+}
+
 // TrustedLocalFrameFor membangun frame peringatan lokal dari satu Snapshot
 // bila dan hanya bila memenuhi syarat: tipe tetap EARTHQUAKE_ALERT dengan
 // trusted_local=true, event_id/revisi/timestamp seperti frame normal — tanpa
@@ -209,6 +243,51 @@ func (b *Bridge) emitTrustedLocal(ctx context.Context, s Snapshot) {
 		// yang sama.
 		b.localAlarmed.Store(s.EventID, struct{}{})
 		sink.DispatchTrustedLocalEventFrame(tctx, msg)
+	}()
+}
+
+// emitTrustedPrelim mengevaluasi kelayakan advisory tepi-PRELIM Admin untuk
+// satu Snapshot dan mendispatch pembaruan bukti bila layak (keputusan D-043).
+// Aditif penuh dan gagal-aman seperti emitTrustedLocal: evaluasi berjalan di
+// goroutine sendiri dengan timeout sendiri (S1 — basis data lambat hanya
+// menunda advisory, tidak pernah peringatan), dan ketiadaan hook atau
+// ketidaklayakan tidak menyentuh I/O sama sekali.
+//
+// INVARIAN KESELAMATAN: jalur ini HANYA membangun EARTHQUAKE_ADVISORY lewat
+// FrameFor (WS saja, push=false) dan TIDAK PERNAH menyentuh trusted_local,
+// localAlarmed, maupun sink alarm. Alarm membutuhkan EARTHQUAKE_ALERT yang
+// hanya dibangun jalur CONFIRMED dan jalur tepi-FINAL — keduanya tidak
+// tersentuh di sini. Tanpa alarm lokal sebelumnya, D-040 juga tidak berutang
+// apa pun (reconcileTrustedLocalAllClear tidak dipanggil dan tidak perlu).
+func (b *Bridge) emitTrustedPrelim(ctx context.Context, s Snapshot) {
+	if s.To != StateUnconfirmed {
+		return
+	}
+	src := b.adminSource
+	if src == nil {
+		return
+	}
+	go func() {
+		tctx, cancel := context.WithTimeout(context.Background(), adminNodeLoadTimeout)
+		defer cancel()
+		state, ok := src.GetAdminNodeState(tctx)
+		if !ok {
+			return // gagal-tertutup: tanpa status tepercaya, tanpa advisory
+		}
+		if d := EvaluateAdminNodePrelim(state, s); !d.Eligible {
+			return
+		}
+		msg, push, ok := FrameFor(s)
+		if !ok || push || msg.Type != dispatch.TypeAdvisory {
+			// Sabuk-pengaman struktural: tepi-PRELIM tidak boleh mendorong
+			// (push) dan tidak boleh menjadi apa pun selain advisory, apa
+			// pun yang terjadi pada FrameFor di masa depan.
+			return
+		}
+		if b.sink == nil {
+			return
+		}
+		b.sink.DispatchEventFrame(tctx, msg, push)
 	}()
 }
 

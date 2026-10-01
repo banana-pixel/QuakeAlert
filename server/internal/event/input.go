@@ -32,6 +32,11 @@ type Input struct {
 	AttemptNo   *int
 	DetriggerTS *int64
 
+	// IsAdminNode disalin dari trigger terverifikasi (diisi verifier dari
+	// baris node yang sama): tracker memakainya untuk tepi-PRELIM Admin
+	// tanpa query tambahan.
+	IsAdminNode bool
+
 	// Lat/Lon/LocationName TIDAK diisi ObservationFrom: sumbernya
 	// GetNodeLocation(NodeID), sebuah query yang harus terjadi di Tracker sebelum
 	// lock dan yang gagal-tertutup. Mapper ini sengaja tetap murni.
@@ -51,11 +56,12 @@ type Input struct {
 // sebagai pengukuran.
 func ObservationFrom(t *ingest.Trigger) Input {
 	in := Input{
-		NodeID:    t.NodeID,
-		PGA:       t.PGA,
-		DurMs:     t.DurMs,
-		PublishTS: t.TS,
-		Phase:     t.EffectivePhase(),
+		NodeID:      t.NodeID,
+		PGA:         t.PGA,
+		DurMs:       t.DurMs,
+		PublishTS:   t.TS,
+		Phase:       t.EffectivePhase(),
+		IsAdminNode: t.IsAdminNode,
 	}
 
 	if t.IsV2() && t.OnsetTS != nil {

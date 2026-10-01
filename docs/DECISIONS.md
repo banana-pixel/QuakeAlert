@@ -1145,6 +1145,30 @@ Statements in D-011 … D-016 that "U-001 … U-013 remain unresolved" are read 
 by D-018, U-011 by D-020, U-012 presentation by D-017, U-013 RESOLVED by D-019.
 U-001 … U-009 stay open and must not be resolved by implementation.
 
+### D-042 — CK9 exit criteria adopted (owner decision 2026-09-27; criteria defined, CK9 NOT closed)
+**Status:** ACCEPTED · **Owner-decided:** 2026-09-27 (verbatim owner order; this entry defines the criteria — it does not declare them satisfied).
+
+CK9 may close after the first 7-day post-release observation review, provided:
+
+1. Production health is normal: no unexplained crash/restart/anomaly; heartbeat/uptime operating normally; no known ingestion or ledger integrity issue.
+2. Alert pipeline behavior is normal: below-floor events do not produce trusted-local alarms; no known duplicate publish or abnormal state-transition behavior.
+3. D-040: if a natural never-CONFIRMED trusted-local event occurs and resolves during the observation period, its `EVENT_RESOLVED` must be token-only and reach the expected FCM audience. If no qualifying natural event occurs, D-040 remains DEPLOYED / VALIDATION PENDING and does NOT block CK9 closure.
+4. Real-earthquake validation is NOT required for CK9 closure and remains opportunistic post-release validation.
+5. Phase-F population validation is NOT part of CK9 closure. The newly observed 6 verified nodes / 2 cells must be reassessed separately before changing Phase-F status.
+6. Population-level FP/FN, latency, lead-time, Android release build, two-window PRELIM, and metric-D characterization remain deferred and are not CK9 closure requirements.
+7. CK9 review period starts from the V1 production deployment at 2026-09-27 19:32:35Z and covers the first 7 days (ends 2026-10-04 19:32:35Z).
+
+**CK9 is NOT closed by this decision.** Closure requires a separate owner review against these criteria after the window ends. **Does not decide:** Phase-F status, redeploy timing, or any threshold/contract change.
+
+### D-043 — Admin Node PRELIM edge emits an evidence-update advisory (no alarm)
+**Status:** ACCEPTED · **Implemented:** this session (tracker tepi-PRELIM + evaluator + tests; no firmware/Android/contract/migration change).
+
+The designated Admin Node's first PRELIM contribution while its event is UNCONFIRMED — and only when that input produces no transition of its own — emits exactly one `EARTHQUAKE_ADVISORY` evidence update through the existing async edge path (same pattern as the D-037 FINAL edge: evidence-only snapshot, no log row, no revision, exactly-once in-memory guard, optional emitter interface so replay/harness/probe stay deaf). Rationale: the admin's PRELIM is the highest-value early evidence (~1 s post-confirmation) and previously vanished silently whenever the event was already UNCONFIRMED; the update reaches connected clients as a banner refresh.
+
+Safety posture, all structural: the frame is advisory-shaped (`push=false`, WS-only, no `trusted_local`) so it can neither siren nor wake background devices; eligibility reuses the alarm's authorization gates (designated, verified, UNCONFIRMED, fresh heartbeat) minus the FINAL-phase and 60 gal gates, which belong to alarming, not informing; the evaluator defensively refuses any non-advisory or pushing frame even if `FrameFor` changes. No alarm was ever owed, so D-040 owes no all-clear. The D-037 FINAL edge, trusted-local evaluation, floor, quorum, radius, and the device two-publish contract are byte-for-byte unchanged.
+
+**Reversible:** removing the edge detection restores PRELIM-silence; the evaluator is dead code without it. **Does not decide:** background delivery for advisories (still U-001), any new wire type (frozen per D11), or bench proof of end-to-end PRELIM timing (owed on a dev node, never the production Admin Node).
+
 ## Unresolved questions
 
 **Do not resolve any of these by implementation.** Each requires an explicit

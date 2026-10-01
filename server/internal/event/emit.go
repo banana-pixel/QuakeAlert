@@ -54,6 +54,16 @@ type adminEdgeEmitter interface {
 	EmitAdminEdge(ctx context.Context, s Snapshot)
 }
 
+// adminPrelimEdgeEmitter adalah kapabilitas opsional emitter untuk snapshot
+// non-transisi tepi-PRELIM Admin (keputusan D-043): interface TERPISAH dari
+// adminEdgeEmitter supaya perilaku tepi-FINAL tidak tersentuh — implementor
+// lama tetap kompilasi dan tetap tuli terhadap tepi ini. Snapshot di sini
+// tidak pernah menjadi baris log maupun revisi; ia hanya parsel bukti untuk
+// evaluator advisory.
+type adminPrelimEdgeEmitter interface {
+	EmitAdminPrelimEdge(ctx context.Context, s Snapshot)
+}
+
 // SetAdminNodeHook memasang jalur peringatan lokal: sumber status operator
 // dan sink dispatch lokal. Dipisahkan dari konstruktor seperti SetEmitter —
 // dispatcher dan sumber dibangun pada titik yang berbeda di main.go — dan
@@ -101,6 +111,17 @@ func (b *Bridge) EmitAdminEdge(ctx context.Context, s Snapshot) {
 		return
 	}
 	b.emitTrustedLocal(ctx, s)
+}
+
+// EmitAdminPrelimEdge memenuhi adminPrelimEdgeEmitter: menyalurkan satu
+// snapshot non-transisi tepi-PRELIM Admin (keputusan D-043) ke evaluator
+// advisory — bukan pipa kedua, dan TIDAK PERNAH ke jalur alarm. Snapshot di
+// sini tidak pernah menjadi baris log maupun revisi.
+func (b *Bridge) EmitAdminPrelimEdge(ctx context.Context, s Snapshot) {
+	if b == nil {
+		return
+	}
+	b.emitTrustedPrelim(ctx, s)
 }
 
 // FrameFor memetakan satu transisi ke frame yang diumumkannya, mengikuti tabel
