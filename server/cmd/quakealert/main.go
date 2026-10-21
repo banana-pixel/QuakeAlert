@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -162,8 +163,34 @@ func run(log *slog.Logger) error {
 		// bila PRELIM_TEST_WARNING=test. Tetap terputus (nil) secara default — jalur
 		// FINAL produksi tetap apa adanya (lihat event/prelim_warning.go).
 		if cfg.PrelimTestWarning {
-			bridge.SetPrelimWarningSink(dispatcher)
-			log.Warn("prelim test warning AKTIF (hanya-uji; topik test_alerts; validity placeholder DPE-6 90s)")
+			if cfg.PrelimTestTargetPseudonym != "" {
+				// S4 Tambahan — mode BERTARGET: seluruh frame penadahan
+				// (pengangkatan, upgrade FINAL, penarikan, kedaluwarsa)
+				// menuju EKSKLUSIF satu token milik pseudonim ini. Lookup
+				// SEKALI di boot; token dipatok di dispatcher dan tidak
+				// pernah dilog. Lookup gagal = TIDAK ADA sink yang dipasang
+				// dan TIDAK ADA fallback ke topik (fail-closed, kondisi
+				// pemilik: penadahan tidak boleh menerka jalur kirim).
+				lkCtx, lkCancel := context.WithTimeout(context.Background(), cfg.IOTimeout)
+				tok, terr := st.FcmTokenByPseudonym(lkCtx, cfg.PrelimTestTargetPseudonym)
+				lkCancel()
+				switch {
+				case terr == nil:
+					bridge.SetPrelimWarningSink(dispatcher)
+					bridge.SetPrelimWarningTarget(cfg.PrelimTestTargetPseudonym)
+					dispatcher.SetPrelimTestTargetToken(tok)
+					log.Warn("prelim test warning AKTIF (hanya-uji; bertarget perangkat tunggal; validity placeholder DPE-6 90s)",
+						"target_pseudonym", cfg.PrelimTestTargetPseudonym)
+				case errors.Is(terr, store.ErrUserNotFound):
+					log.Error("prelim test warning MATI (fail-closed): pseudonim target tidak dikenal atau belum membawa token FCM",
+						"target_pseudonym", cfg.PrelimTestTargetPseudonym)
+				default:
+					log.Error("prelim test warning MATI (fail-closed): lookup token gagal", "err", terr)
+				}
+			} else {
+				bridge.SetPrelimWarningSink(dispatcher)
+				log.Warn("prelim test warning AKTIF (hanya-uji; topik test_alerts; validity placeholder DPE-6 90s)")
+			}
 		}
 		tracker.SetEmitter(bridge)
 

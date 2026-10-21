@@ -4,6 +4,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -222,4 +223,75 @@ func TestLoadDefaultAttachRadiusIsAccepted(t *testing.T) {
 	if cfg.AttachRadiusKm > cfg.MaxEventDiameterKm {
 		t.Fatalf("radius baku %g melebihi diameter baku %g", cfg.AttachRadiusKm, cfg.MaxEventDiameterKm)
 	}
+}
+
+// --- S4 Tambahan: mode BERTARGET penadahan pra-wujud ---
+
+// TestLoadPrelimTargetPseudonym: pseudonim target hanya berartu bila
+// PRELIM_TEST_WARNING="test" ATAU topik tetap mode S4 asli; panjang >64
+// ditolak dengan peringatan; mode off membuat nilai diabaikan tanpa mengubah
+// seluruh perilaku.
+func TestLoadPrelimTargetPseudonym(t *testing.T) {
+	t.Run("mode test + pseudonim layak = terisi", func(t *testing.T) {
+		setMinimalEnv(t)
+		t.Setenv("PRELIM_TEST_WARNING", "test")
+		t.Setenv("PRELIM_TEST_TARGET_PSEUDONYM", "Quakezen-6EB53CF4")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if !cfg.PrelimTestWarning {
+			t.Fatal("mode test harus menyala")
+		}
+		if cfg.PrelimTestTargetPseudonym != "Quakezen-6EB53CF4" {
+			t.Fatalf("pseudonim = %q, mau terisi tanpa tambal sulam", cfg.PrelimTestTargetPseudonym)
+		}
+		if len(cfg.Warnings) != 0 {
+			t.Fatalf("keadaan layak tidak boleh berperingatan: %v", cfg.Warnings)
+		}
+	})
+
+	t.Run("mode off + pseudonim diisi = diabaikan berperingatan", func(t *testing.T) {
+		setMinimalEnv(t)
+		t.Setenv("PRELIM_TEST_TARGET_PSEUDONYM", "Quakezen-6EB53CF4")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if cfg.PrelimTestWarning || cfg.PrelimTestTargetPseudonym != "" {
+			t.Fatal("mode OFF tetap OFF dan pseudonim tidak boleh terisi")
+		}
+		if len(cfg.Warnings) != 1 {
+			t.Fatalf("harus berperingatan satu kali, dapat %v", cfg.Warnings)
+		}
+	})
+
+	t.Run("pseudonim lebih dari 64 karakter = diabaikan berperingatan", func(t *testing.T) {
+		setMinimalEnv(t)
+		t.Setenv("PRELIM_TEST_WARNING", "test")
+		t.Setenv("PRELIM_TEST_TARGET_PSEUDONYM", strings.Repeat("x", 65))
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if cfg.PrelimTestTargetPseudonym != "" {
+			t.Fatalf("pseudonim terlalu panjang diterima: %d char", len(cfg.PrelimTestTargetPseudonym))
+		}
+		if len(cfg.Warnings) != 1 {
+			t.Fatalf("harus berperingatan satu kali, dapat %v", cfg.Warnings)
+		}
+	})
+
+	t.Run("tanpa pseudonim sama sekali = mode topik idiomatik", func(t *testing.T) {
+		setMinimalEnv(t)
+		t.Setenv("PRELIM_TEST_WARNING", "test")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if !cfg.PrelimTestWarning || cfg.PrelimTestTargetPseudonym != "" || len(cfg.Warnings) != 0 {
+			t.Fatalf("jumlah tidak sesuai: test=%v ps=%q warn=%v",
+				cfg.PrelimTestWarning, cfg.PrelimTestTargetPseudonym, cfg.Warnings)
+		}
+	})
 }

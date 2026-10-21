@@ -76,6 +76,12 @@ type prelimWarning struct {
 	// DPE-6 placeholder; disuntik di uji agar timer tidak harus 90 s.
 	validityMs int64
 
+	// targetPseudonym (S4 Tambahan): pseudonim target mode BERTARGET.
+	// Kosong = mode topik (perilaku S4 asli). Pseudonim aman untuk log
+	// audit; token ASLI tidak pernah berada di event pkg sama sekali — ia
+	// dipatok di Dispatcher (lihat SetPrelimTestTargetToken).
+	targetPseudonym string
+
 	mu      sync.Mutex
 	pending map[string]*prelimPending // event_id -> pengangkatan yang masih menunggu outcome
 }
@@ -112,10 +118,20 @@ func (pw *prelimWarning) logger() *slog.Logger {
 	return slog.Default()
 }
 
-// prelimTestWarningAttrs menyusun label SETIAP baris penadah uji — topik uji
-// saja, bukan jalur produksi.
+// prelimTestWarningAttrs menyusun label SETIAP baris penadah uji mode topik —
+// topik uji saja, bukan jalur produksi.
 func prelimTestWarningAttrs() []any {
 	return []any{"test_warning", true, "topic", "test_alerts"}
+}
+
+// warnAttrs memilih label mode penadahan: pseudonim target (BERTARGET,
+// S4 Tambahan) atau topik uji (S4 asli). Keduanya saling-mengecualikan;
+// token ASLI tidak pernah nongkol di label apa pun.
+func (pw *prelimWarning) warnAttrs() []any {
+	if pw != nil && pw.targetPseudonym != "" {
+		return []any{"test_warning", true, "target_pseudonym", pw.targetPseudonym}
+	}
+	return prelimTestWarningAttrs()
 }
 
 // prelimTestFrame membangun frame peringatan pra-wujud: bentuk persis
@@ -179,7 +195,7 @@ func (pw *prelimWarning) observePrelim(state AdminNodeState, s Snapshot) {
 	would, reason := shadowPrelimVerdict(state, s)
 	if !would {
 		pw.logger().Info("prelim test warning: tidak diangkat",
-			append(prelimTestWarningAttrs(), "event_id", s.EventID, "reason", reason)...)
+			append(pw.warnAttrs(), "event_id", s.EventID, "reason", reason)...)
 		return
 	}
 	frame := prelimTestFrame(s)
@@ -196,7 +212,7 @@ func (pw *prelimWarning) observePrelim(state AdminNodeState, s Snapshot) {
 	pw.mu.Unlock()
 	pw.send(frame)
 	pw.logger().Info("prelim test warning: diangkat",
-		append(prelimTestWarningAttrs(),
+		append(pw.warnAttrs(),
 			"event_id", s.EventID, "revision", s.Revision, "reason", reason,
 			"validity_ms", prelimTestWarningValidityMs, "validity_basis", "DPE-6-PLACEHOLDER-90S")...)
 }
@@ -224,7 +240,7 @@ func (pw *prelimWarning) observeFinalEval(state AdminNodeState, s Snapshot) {
 		upgraded := prelimTestFrame(s)
 		pw.send(upgraded)
 		pw.logger().Info("prelim test warning: upgrade FINAL",
-			append(prelimTestWarningAttrs(), "event_id", s.EventID, "reason", d.Reason,
+			append(pw.warnAttrs(), "event_id", s.EventID, "reason", d.Reason,
 				"revision", s.Revision)...)
 		return
 	}
@@ -232,7 +248,7 @@ func (pw *prelimWarning) observeFinalEval(state AdminNodeState, s Snapshot) {
 	withdrawn := prelimTestWithdrawFrame(entry.frame, "CANCELLED")
 	pw.send(withdrawn)
 	pw.logger().Info("prelim test warning: ditarik pada re-evaluasi FINAL",
-		append(prelimTestWarningAttrs(), "event_id", s.EventID, "reason", d.Reason,
+		append(pw.warnAttrs(), "event_id", s.EventID, "reason", d.Reason,
 			"event_state", "CANCELLED", "revision", entry.revision)...)
 }
 
@@ -248,7 +264,7 @@ func (pw *prelimWarning) observeTerminal(s Snapshot) {
 	case StateConfirmed:
 		if entry, ok := pw.spend(s.EventID); ok {
 			pw.logger().Info("prelim test warning: absorb CONFIRMED (BISU, tanpa frame dari kami)",
-				append(prelimTestWarningAttrs(), "event_id", s.EventID,
+				append(pw.warnAttrs(), "event_id", s.EventID,
 					"event_state", string(s.To), "revision", entry.revision)...)
 		}
 	case StateResolved, StateCancelled:
@@ -256,7 +272,7 @@ func (pw *prelimWarning) observeTerminal(s Snapshot) {
 			withdrawn := prelimTestWithdrawFrame(entry.frame, string(s.To))
 			pw.send(withdrawn)
 			pw.logger().Info("prelim test warning: penarikan akhir event",
-				append(prelimTestWarningAttrs(), "event_id", s.EventID,
+				append(pw.warnAttrs(), "event_id", s.EventID,
 					"event_state", string(s.To), "revision", entry.revision)...)
 		}
 	}
@@ -273,7 +289,7 @@ func (pw *prelimWarning) expire(eventID string) {
 	withdrawn := prelimTestWithdrawFrame(entry.frame, "CANCELLED")
 	pw.send(withdrawn)
 	pw.logger().Info("prelim test warning: kedaluwarsa placeholder",
-		append(prelimTestWarningAttrs(), "event_id", eventID, "event_state", "CANCELLED",
+		append(pw.warnAttrs(), "event_id", eventID, "event_state", "CANCELLED",
 			"revision", entry.revision, "validity_ms", prelimTestWarningValidityMs,
 			"validity_basis", "DPE-6-PLACEHOLDER-90S")...)
 }

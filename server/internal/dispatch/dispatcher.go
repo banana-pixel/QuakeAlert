@@ -6,6 +6,7 @@ package dispatch
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -113,6 +114,13 @@ type Dispatcher struct {
 	// Default aktif; lihat guardBlocksGeoTopic.
 	singleNodeGeoTopicGuard bool
 
+	// prelimTestTargetToken mematok mode BERTARGET penadahan pra-wujud UJI
+	// (S4 Tambahan — lihat provisional.go): di-set SEKALI di boot dari lookup
+	// pseudonim (store.FcmTokenByPseudonym) SEBELUM satu pun lalu lintas;
+	// kosong = mode topik (perilaku S4 asli). Hanya menyimpan token FCM —
+	// tidak pernah dilog, tidak pernah masuk frame, tidak pernah ke hub.
+	prelimTestTargetToken string
+
 	mu     sync.Mutex
 	active map[string]*AlertMessage // event_id yang menunggu resolusi (dedup timer)
 }
@@ -144,6 +152,21 @@ func (d *Dispatcher) SetLedger(w emissionWriter) { d.ledger = w }
 // pengujian lapangan pada instalasi yang benar-benar hanya punya satu node.
 func (d *Dispatcher) SetSingleNodeGeoTopicGuard(enabled bool) {
 	d.singleNodeGeoTopicGuard = enabled
+}
+
+// SetPrelimTestTargetToken memasang mode BERTARGET penadahan pra-wujud UJI
+// (S4 Tambahan — otorisasi pemilik; efek penuh di provisional.go): token
+// dipatok SEKALI di boot, diperoleh dari lookup pseudonim (cmd/quakealert
+// memakai store.FcmTokenByPseudonym), SEBELUM lalu lintas hidup.
+//
+// Token kosong ditolak (fail-closed: salah konfigurasi tidak boleh diam-diam
+// mengubah mode). Token hanya dipeluk field ini; tidak pernah dilog, tidak
+// pernah masuk frame apa pun, dan tidak pernah disiarkan via hub.
+func (d *Dispatcher) SetPrelimTestTargetToken(token string) {
+	if d == nil || strings.TrimSpace(token) == "" {
+		return
+	}
+	d.prelimTestTargetToken = token
 }
 
 // Dispatch adalah consensus.EventSink: dipanggil engine untuk setiap event yang

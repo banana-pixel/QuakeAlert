@@ -100,6 +100,18 @@ func (b *Bridge) SetPrelimWarningSink(sink PrelimTestWarningSink) {
 	}
 }
 
+// SetPrelimWarningTarget mengunci pseudonim TARGET mode BERTARGET penadah
+// pra-wujud (S4 Tambahan — otorisasi pemilik). Harus dipanggil SETELAH
+// SetPrelimWarningSink; tanpa sink terpasang ini adalah no-op. Pseudonim
+// hanya untuk label log audit — token asli tidak pernah lewat event pkg
+// (lihat dispatch.SetPrelimTestTargetToken).
+func (b *Bridge) SetPrelimWarningTarget(pseudonym string) {
+	if b == nil || pseudonym == "" || b.prelimWarning == nil {
+		return
+	}
+	b.prelimWarning.targetPseudonym = pseudonym
+}
+
 // NewBridge membuat emitter di atas sink. sink nil menghasilkan Bridge yang
 // membuang setiap frame; dipakai bila FCM maupun Hub belum terpasang.
 func NewBridge(sink frameSink) *Bridge { return &Bridge{sink: sink} }

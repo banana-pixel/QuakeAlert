@@ -54,6 +54,16 @@ type Config struct {
 	// = off dan jalur FINAL produksi tetap apa adanya.
 	PrelimTestWarning bool
 
+	// PrelimTestTargetPseudonym (S4 Tambahan — otorisasi pemilik): pseudonim
+	// profil anonim pemilik perangkat uji. Terisi hanya bila PRELIM_TEST_WARNING
+	// = "test" dan PRELIM_TEST_TARGET_PSEUDONYM memenuhi syarat panjang: saat
+	// itu seluruh frame penadahan pra-wujud menuju EKSKLUSIF satu token hasil
+	// lookup pseudonim (store.FcmTokenByPseudonym, dilakukan SEKALI di boot
+	// oleh cmd/quakealert) — tanpa fallback topik/broadcast. Lookup gagal =
+	// penadahan tidak pernah dipasang (fail-closed). Token asli tidak pernah
+	// dilog maupun masuk konfigurasi.
+	PrelimTestTargetPseudonym string
+
 	// FCM (opsional): project ID + path file service account JSON.
 	// Bila keduanya kosong, delivery background dinonaktifkan (hanya WebSocket).
 	FCMProjectID       string
@@ -232,6 +242,25 @@ func Load() (*Config, error) {
 	// OFF — "test" menyala; ketiadaan/nilai lain = off dan perilaku produksi
 	// FINAL tidak berubah.
 	cfg.PrelimTestWarning = strings.TrimSpace(os.Getenv("PRELIM_TEST_WARNING")) == "test"
+
+	// S4 Tambahan (otorisasi pemilik): mode BERTARGET penadahan pra-wujud.
+	// PRELIM_TEST_TARGET_PSEUDONYM hanya berartu BILA mode "test" menyala:
+	// nilainya adalah pseudonim profil anonim pemilik perangkat uji; seluruh
+	// frame penadahan (pengangkatan, upgrade FINAL, penarikan, kedaluwarsa)
+	// dikirim EKSKLUSIF ke SATU token hasil lookup pseudonim di boot — TANPA
+	// fallback topik. Lookup gagal = penadahan mati (fail-closed). Di luar
+	// mode test / pseudonim >64 karakter / kosong → diabaikan dengan peringatan
+	// parse (nilai lain tidak menyala apa pun).
+	if ps := strings.TrimSpace(os.Getenv("PRELIM_TEST_TARGET_PSEUDONYM")); ps != "" {
+		switch {
+		case !cfg.PrelimTestWarning:
+			cfg.Warnings = append(cfg.Warnings, "PRELIM_TEST_TARGET_PSEUDONYM diabaikan: PRELIM_TEST_WARNING bukan \"test\"")
+		case len(ps) > 64:
+			cfg.Warnings = append(cfg.Warnings, "PRELIM_TEST_TARGET_PSEUDONYM diabaikan: >64 karakter")
+		default:
+			cfg.PrelimTestTargetPseudonym = ps
+		}
+	}
 
 	// Master key wajib untuk verifikasi HMAC (decrypt secret node).
 	keyHex := os.Getenv("MASTER_KEY_HEX")

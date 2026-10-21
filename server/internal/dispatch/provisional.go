@@ -17,12 +17,14 @@ const TestProvisionalValidityMs = 90_000
 // (PRELIM sebelum FINAL; otorisasi pemilik S4) mengikuti pola drill di
 // testalert.go, dengan TIGA pagar yang dipegang di sini:
 //
-//   - FCM hanya ke TestAlertsTopic — TANPA fallback GeoTopic, tanpa target
-//     token, tanpa ledger. Build rilis tidak pernah berlangganan topik ini
-//     (data/push/PushRegistrar.debug-only) — pagar #1.
+//   - FCM topik TestAlertsTopic ATAU — bila SetPrelimTestTargetToken
+//     mematok mode BERTARGET — SATU token, EKSKLUSIF. Dua mode tidak pernah
+//     bercampur: cabang di bawah bersifat saling-mengecualikan dan TIDAK ADA
+//     fallback menerka (kegagalan kirim ke token = kegagalan penuh, tanpa
+//     topik). Token tidak pernah dilog dan tidak pernah masuk frame.
 //   - IsTest DIJAMIN true secara defensif: tidak ada satu pun jalur yang
-//     boleh menulis frame non-uji ke topik ini, dan mapper klien menjatuhkan
-//     frame is_test pada build rilis (CLIENT_SPEC §5.8) — pagar #2.
+//     boleh menulis frame non-uji ke penadahan ini, dan mapper klien
+//     menjatuhkan frame is_test pada build rilis (CLIENT_SPEC §5.8).
 //   - TIDAK ADA timer resolusi di sini: penarikan milik event/prelim_warning.go
 //     (spend-once, xor satu-outcome). Timer kedua DI SINI berarti dua penarik
 //     untuk satu pengangkatan — justru perang yang dilarang pemilik.
@@ -46,14 +48,26 @@ func (d *Dispatcher) BroadcastProvisionalTestFrame(ctx context.Context, msg *Ale
 	go func() {
 		tctx, cancel := context.WithTimeout(context.Background(), fcmTimeout)
 		defer cancel()
-		if err := d.fcm.Send(tctx, &FCMMessage{
-			Topic:    TestAlertsTopic,
+		fcmMsg := &FCMMessage{
 			Data:     data,
 			Priority: "HIGH",
-		}); err != nil {
+		}
+		if d.prelimTestTargetToken != "" {
+			// Mode BERTARGET: SATU token, tanpa topik, tanpa fallback.
+			fcmMsg.Token = d.prelimTestTargetToken
+		} else {
+			fcmMsg.Topic = TestAlertsTopic
+		}
+		if err := d.fcm.Send(tctx, fcmMsg); err != nil {
 			d.log.Error("gagal kirim FCM pra-wujud uji", "err", err, "event_id", msg.EventID)
 		}
 	}()
+	if d.prelimTestTargetToken != "" {
+		d.log.Info("frame pra-wujud UJI disiarkan (token bertarget)", "event_id", msg.EventID,
+			"type", msg.Type, "event_state", msg.EventState,
+			"event_revision", msg.EventRevision, "validity_ms", msg.ValidityMs)
+		return
+	}
 	d.log.Info("frame pra-wujud UJI disiarkan (topik uji saja)",
 		"event_id", msg.EventID, "type", msg.Type, "event_state", msg.EventState,
 		"event_revision", msg.EventRevision, "validity_ms", msg.ValidityMs)
