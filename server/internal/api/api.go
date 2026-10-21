@@ -225,6 +225,11 @@ type Server struct {
 	// menjawab 503 alih-alih menerima yang tidak akan terkirim (lihat
 	// SetTestAlertFanout).
 	testAlerts TestAlertFanout
+	// pseudonymTokens membaca token FCM satu profil dari pseudonimnya untuk
+	// drill bertarget (target_pseudonym). nil berarti drill bertarget tidak
+	// tersedia: permintaan yang membawa target menjawab 503 — endpoint drill
+	// biasa tetap berjalan seperti biasa (lihat SetPseudonymTokenFinder).
+	pseudonymTokens PseudonymTokenFinder
 	// mqttHealth menjawab "apakah koneksi ke broker hidup" untuk /healthz.
 	// nil berarti belum dipasang: field mqtt dilaporkan "unknown" dan tidak
 	// ikut menentukan status (lihat SetMQTTHealthCheck).

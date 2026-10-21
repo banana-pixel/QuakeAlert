@@ -22,13 +22,16 @@ import (
 // satu kekeliruan konfigurasi tidak boleh cukup untuk melewati keduanya.
 const TestAlertsTopic = "test_alerts"
 
-// testAlertResolveAfter adalah jarak antara drill dan all-clear-nya.
+// testAlertResolveAfter adalah jarak antara drill dan all-clear-nya. var (bukan
+// const) HANYA agar uji dapat memangkasnya — target maupun janji D-018 tidak
+// berubah: produksi membaca 20 s, dan uji tidak pernah memasang yang lain
+// pada jalur produksi (field-nya tidak diubah dari setter mana pun).
 //
-// Jauh lebih pendek dari defaultResolveAfter (90s): drill tidak punya baris
+// Lebih pendek dari defaultResolveAfter (90s): drill tidak punya baris
 // earthquake_events untuk ditutup, tidak ada state machine yang bergantung
 // padanya, dan penguji yang menunggu satu setengah menit untuk melihat layar
 // siaga mati akan mengira fiturnya rusak.
-const testAlertResolveAfter = 20 * time.Second
+var testAlertResolveAfter = 20 * time.Second
 
 // DispatchTestAlert menyiarkan peringatan LATIHAN.
 //
@@ -69,10 +72,20 @@ func (d *Dispatcher) DispatchTestAlert(msg *AlertMessage) {
 	go d.resolveTestAlert(*msg)
 }
 
-// dispatchTestFCM mengirim drill ke TestAlertsTopic saja, asinkron seperti
-// jalur alert. Priority HIGH: yang sedang diuji justru apakah sebuah
-// peringatan mampu membangunkan perangkat dari Doze, dan drill yang dikirim
-// dengan prioritas lain tidak menguji hal itu.
+// dispatchTestFCM mengirim drill. Target-nya EKSKLUSIF:
+//   - TargetToken kosong (drill biasa) → topic TestAlertsTopic saja.
+//   - TargetToken terisi (drill bertarget per perangkat, target_pseudonym) →
+//     TEPAT SATU token itu — TANPA topic, tanpa fallback broadcast, dan
+//     TANPA jalur alert nyata (fungsi ini tidak pernah menyentuh saver atau
+//     state machine; lihat DispatchTestAlert).
+//
+// Satu kondisi yang sama (msg.TargetToken) menentukan kEDUA sisi eksklusif
+// itu, sehingga satu pesan drill tidak pernah bisa mengisi topic dan token
+// sekaligus — target perangkat tidak mungkin bocor jadi broadcast nasional,
+// dan kesalahan pengiriman ke token tidak pernah memicu fallback ke topic
+// mana pun. Priority HIGH: yang sedang diuji justru apakah sebuah peringatan
+// mampu membangunkan perangkat dari Doze, dan drill yang dikirim dengan
+// prioritas lain tidak menguji hal itu.
 func (d *Dispatcher) dispatchTestFCM(msg *AlertMessage) {
 	if d.fcm == nil {
 		return
@@ -81,11 +94,13 @@ func (d *Dispatcher) dispatchTestFCM(msg *AlertMessage) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), fcmTimeout)
 		defer cancel()
-		if err := d.fcm.Send(ctx, &FCMMessage{
-			Topic:    TestAlertsTopic,
-			Data:     data,
-			Priority: "HIGH",
-		}); err != nil {
+		fcmMsg := &FCMMessage{Data: data, Priority: "HIGH"}
+		if msg.TargetToken != "" {
+			fcmMsg.Token = msg.TargetToken
+		} else {
+			fcmMsg.Topic = TestAlertsTopic
+		}
+		if err := d.fcm.Send(ctx, fcmMsg); err != nil {
 			d.log.Error("gagal kirim FCM latihan", "err", err, "event_id", msg.EventID)
 		}
 	}()

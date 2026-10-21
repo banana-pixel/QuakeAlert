@@ -668,6 +668,33 @@ func (s *Store) UpdateUserFCMToken(ctx context.Context, userID, token string) (t
 	return updatedAt, nil
 }
 
+// FcmTokenByPseudonym membaca registration token FCM satu profil anonim
+// berdasarkan pseudonimnya — jalur drill bertarget (api.testalert target_pseudonym).
+// Read-only penuh: tidak ada kolom yang disentuh, tidak ada last_active yang
+// di-bump, satu-satunya dependensi adalah indeks PRIMARY KEY pseudonim.
+//
+// Mengembalikan ErrUserNotFound bila pseudonim tidak dikenal ATAU profilnya
+// belum membawa token (keduanya sama-sama "tidak ada target yang bisa dikirimi").
+// Token tidak pernah mengalir ke log maupun respons: pemanggil hanya boleh
+// menyimpannya ke penerima FCM.
+func (s *Store) FcmTokenByPseudonym(ctx context.Context, pseudonym string) (string, error) {
+	const q = `
+		SELECT fcm_token
+		FROM user_profiles
+		WHERE pseudonym = $1
+		  AND fcm_token IS NOT NULL
+		  AND fcm_token <> ''`
+	var token string
+	err := s.pool.QueryRow(ctx, q, pseudonym).Scan(&token)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrUserNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("lookup fcm token by pseudonym: %w", err)
+	}
+	return token, nil
+}
+
 // maxFCMTokensPerEvent membatasi jumlah token yang dikembalikan satu query
 // dispatch. FCM HTTP v1 mengirim satu request per token, jadi batas ini menjaga
 // fan-out satu gempa tetap terikat; sisanya tetap terjangkau lewat topic

@@ -306,6 +306,11 @@ func run(log *slog.Logger) error {
 	}
 	apiSrv.SetBroadcastFanout(broadcastFanout{dispatcher: dispatcher})
 	apiSrv.SetTestAlertFanout(testAlertFanout{dispatcher: dispatcher})
+	// Drill bertarget (target_pseudonym): pembaca token read-only untuk
+	// pencarian pseudonim. Token hanya berpindah store→FCM — tidak pernah
+	// masuk log (handler hanya melog pseudonim, dan respons memakai
+	// pseudonim, bukan token).
+	apiSrv.SetPseudonymTokenFinder(st)
 	apiSrv.SetMQTTHealthCheck(func() bool { return client.IsConnected() })
 	hub.SetChannelResolver(func(r *http.Request) []string {
 		userID, ok := api.UserIDFromContext(r.Context())
@@ -586,6 +591,10 @@ func (f testAlertFanout) DispatchTestAlert(t api.TestAlert) {
 		LocationName:   t.LocationName,
 		Timestamp:      t.Timestamp.UnixMilli(),
 		NodeCount:      t.NodeCount,
+		// Drill bertarget (target_pseudonym): token mengalir ke FCM saja —
+		// tag json:"-" pada field itu menjaganya tidak pernah terekspos di
+		// frame WebSocket.
+		TargetToken: t.TargetToken,
 	})
 }
 

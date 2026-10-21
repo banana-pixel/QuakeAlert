@@ -4,11 +4,14 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/banana-pixel/quakealert/server/internal/consensus"
+	"github.com/banana-pixel/quakealert/server/internal/store"
 )
 
 // Batas PGA yang diterima sebuah drill. Bukan batas fisika, melainkan batas
@@ -48,7 +51,29 @@ type TestAlert struct {
 	LocationName   string
 	NodeCount      int
 	Timestamp      time.Time
+	// TargetToken, hanya terisi bila operator meminta drill bertarget
+	// (target_pseudonym): token FCM satu instalasi, dibaca session dari
+	// store. Berarti dispatchTestFCM mengirim ke token itu ALIH-ALIH topic
+	// test_alerts — eksklusif, tanpa topic, tanpa fallback apa pun. Dikosongkan
+	// pada drill biasa. Token TIDAK boleh sampai ke log maupun respons —
+	// perangkat target tidak perlu ikut dikenali dari luar.
+	TargetToken string
+	// TargetPseudonym adalah pseudonim yang diminta operator — untuk log dan
+	// respons, bukan untuk target kirim (kirim memakai Token).
+	TargetPseudonym string
 }
+
+// PseudonymTokenFinder membaca token FCM satu profil anonim dari store, untuk
+// drill bertarget per perangkat. Read-only penuh: implementasinya hanya
+// SELECT, dan token kembaliannya boleh menuju FCM — bukan log, bukan respons.
+type PseudonymTokenFinder interface {
+	FcmTokenByPseudonym(ctx context.Context, pseudonym string) (string, error)
+}
+
+// maxTargetPseudonymLen menahan input operator di kertas: pseudonim tersimpan
+// VARCHAR(32), jadi apa pun yang lebih panjang pasti salah ketik dan tidak
+// perlu menyentuh database.
+const maxTargetPseudonymLen = 64
 
 // TestAlertFanout menyiarkan peringatan latihan. Opsional seperti
 // BroadcastFanout: tanpanya endpoint-nya menjawab 503 alih-alih diam-diam
@@ -63,6 +88,14 @@ func (s *Server) SetTestAlertFanout(f TestAlertFanout) {
 	s.testAlerts = f
 }
 
+// SetPseudonymTokenFinder memasang pembaca token untuk drill bertarget.
+// Setter, bukan parameter NewServer, dengan alasan yang sama dengan
+// SetTestAlertFanout. nil (tidak dipasang) membiarkan drill biasa tetap hidup;
+// hanya permintaan target yang menjawab 503.
+func (s *Server) SetPseudonymTokenFinder(f PseudonymTokenFinder) {
+	s.pseudonymTokens = f
+}
+
 type createTestAlertRequest struct {
 	// PGAGal adalah satu-satunya masukan intensitas: MMI dan intensity_label
 	// diturunkan darinya oleh fungsi yang SAMA dengan jalur konsensus, sehingga
@@ -75,6 +108,14 @@ type createTestAlertRequest struct {
 	Longitude    *float64 `json:"longitude"`
 	LocationName string   `json:"location_name"`
 	NodeCount    int      `json:"node_count"`
+	// TargetPseudonym opsional: bila terisi, drill ini TIDAK masuk topic
+	// test_alerts — ia dikirim tepat satu token FCM milik profil pseudonim itu
+	// (sekali, tanpa fallback topic/broadcast/jalur alert nyata). Dipakai untuk
+	// penguji end-to-end ketika subscription topik perangkat tidak dapat
+	// divalidasi dari luar (mis. tanpa adb). Pseudonim tidak rahasia (identity
+	// anonim yang dilihat pengguna sendiri), tetapi tokennya: token hanya
+	// berpindah store→FCM, tidak pernah ke log/http-log maupun body respons.
+	TargetPseudonym string `json:"target_pseudonym"`
 }
 
 type testAlertResponse struct {
@@ -84,6 +125,10 @@ type testAlertResponse struct {
 	IntensityLabel string `json:"intensity_label"`
 	IsTest         bool   `json:"is_test"`
 	Topic          string `json:"topic"`
+	// Target mengidentifikasi mode pengiriman: kosong = topic test_alerts
+	// (drill biasa); terisi = pseudonim target drill bertarget. Token TIDAK
+	// PERNAH masuk respons — operator mengenal target dari pseudonimnya.
+	Target string `json:"target,omitempty"`
 }
 
 // HandleCreateTestAlert menyiarkan sebuah peringatan LATIHAN.
@@ -153,6 +198,40 @@ func (s *Server) HandleCreateTestAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Target opsional: drill bertarget satu token (tanpa topic sama sekali).
+	targetPseudonym := strings.TrimSpace(req.TargetPseudonym)
+	targetToken := ""
+	if targetPseudonym != "" {
+		if len(targetPseudonym) > maxTargetPseudonymLen {
+			writeError(w, http.StatusBadRequest, "INVALID_ARGUMENT",
+				"target_pseudonym terlalu panjang")
+			return
+		}
+		if s.pseudonymTokens == nil {
+			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE",
+				"drill bertarget tidak terpasang di server ini")
+			return
+		}
+		token, err := s.pseudonymTokens.FcmTokenByPseudonym(r.Context(), targetPseudonym)
+		if errors.Is(err, store.ErrUserNotFound) {
+			// 404 tanpa meng-echo pseudonim maupun bagian token: operator yang
+			// salah mengetik cukup melihat nama request-nya.
+			s.log.Warn("drill bertarget: pseudonim tidak dikenal atau tanpa token")
+			writeError(w, http.StatusNotFound, "NOT_FOUND",
+				"target_pseudonym tidak dikenal (atau profil tanpa token FCM)")
+			return
+		}
+		if err != nil {
+			// err internal dari store: bisa memuat teks query, tidak pernah
+			// memuat nilai token — aman untuk log, alasannya generic di body.
+			s.log.Warn("drill bertarget: pembacaan token gagal", "err", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL",
+				"gagal membaca target drill")
+			return
+		}
+		targetToken = token
+	}
+
 	// event_id bukan UUID dari basis data — tidak ada barisnya — melainkan
 	// diberi awalan yang tidak mungkin bertabrakan dengan gen_random_uuid().
 	// Dedup di klien tetap bekerja, dan sebuah id yang terbaca di log atau
@@ -167,27 +246,41 @@ func (s *Server) HandleCreateTestAlert(w http.ResponseWriter, r *http.Request) {
 
 	mmi, label := consensus.Intensity(req.PGAGal)
 
-	s.log.Warn("peringatan LATIHAN diminta operator",
-		"event_id", eventID, "mmi", mmi, "pga_gal", req.PGAGal, "ip", clientIP(r))
+	logFields := []any{
+		"event_id", eventID, "mmi", mmi, "pga_gal", req.PGAGal, "ip", clientIP(r),
+	}
+	if targetToken != "" {
+		// Token TIDAK pernah masuk log — cukup pseudonimnya (identitas yang
+		// sudah diintip pemiliknya di aplikasi).
+		logFields = append(logFields, "target_pseudonym", targetPseudonym)
+	}
+	s.log.Warn("peringatan LATIHAN diminta operator", logFields...)
 
 	s.testAlerts.DispatchTestAlert(TestAlert{
-		EventID:        eventID,
-		MMI:            mmi,
-		IntensityLabel: label,
-		PGAGal:         req.PGAGal,
-		Latitude:       *req.Latitude,
-		Longitude:      *req.Longitude,
-		LocationName:   location,
-		NodeCount:      nodeCount,
-		Timestamp:      time.Now().UTC(),
+		EventID:         eventID,
+		MMI:             mmi,
+		IntensityLabel:  label,
+		PGAGal:          req.PGAGal,
+		Latitude:        *req.Latitude,
+		Longitude:       *req.Longitude,
+		LocationName:    location,
+		NodeCount:       nodeCount,
+		Timestamp:       time.Now().UTC(),
+		TargetToken:     targetToken,
+		TargetPseudonym: targetPseudonym,
 	})
 
-	writeJSON(w, http.StatusAccepted, testAlertResponse{
+	resp := testAlertResponse{
 		EventID:        eventID,
 		Type:           "EARTHQUAKE_ALERT",
 		MMI:            mmi,
 		IntensityLabel: label,
 		IsTest:         true,
-		Topic:          "test_alerts",
-	})
+	}
+	if targetToken != "" {
+		resp.Target = targetPseudonym
+	} else {
+		resp.Topic = "test_alerts"
+	}
+	writeJSON(w, http.StatusAccepted, resp)
 }

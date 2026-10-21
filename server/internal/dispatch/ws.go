@@ -82,6 +82,13 @@ type AlertMessage struct {
 	// kunci ini (payload lama byte-identik), dan ketiadaannya berarti
 	// peringatan biasa — tidak pernah dibaca sebagai lokal.
 	TrustedLocal bool `json:"trusted_local,omitempty"`
+
+	// TargetToken hanya terisi pada drill bertarget (target_pseudonym): artinya
+	// pesan dikirim tepat ke satu token FCM ALIH-ALIH topic test_alerts.
+	// json:"-" WAJIB: field ini adalah routing internal server, bukan bagian
+	// wire — frame WebSocket/monitoring tidak boleh terekspos isi target.
+	// 0 pada mode biasa: dispatchTestFCM memilih topik seperti semula.
+	TargetToken string `json:"-"`
 }
 
 // chatBufferCeiling menjaga separuh buffer per-klien tetap kosong untuk alert.
