@@ -145,6 +145,11 @@ func run(log *slog.Logger) error {
 	// Fase 2, dan setter di sana memang tidak dipanggil.
 	var tracker *event.Tracker
 
+	// Bridge dibangun hanya di jalur Fase 3; apiSrv.SetPrelimTestBench di
+	// bawah membaca variabel ini (nil di jalur consensus = endpoint bench
+	// tidak pernah tersangkut).
+	var bridge *event.Bridge
+
 	if cfg.EventTrackerEnabled {
 		tracker = event.NewTracker(st, eventOptions(cfg), log)
 
@@ -157,7 +162,7 @@ func run(log *slog.Logger) error {
 		// status operator dari store + sink dispatch lokal. Tanpa designate
 		// aktif kait ini tidak menghasilkan apa pun (gagal-tertutup di
 		// sumber), dan emisi normal di atas tidak berubah karenanya.
-		bridge := event.NewBridge(dispatcher)
+		bridge = event.NewBridge(dispatcher)
 		bridge.SetAdminNodeHook(adminNodeSource(st, log), dispatcher)
 		// Peringatan pra-wujud UJI (S4, otorisasi pemilik): hanya tersambang
 		// bila PRELIM_TEST_WARNING=test. Tetap terputus (nil) secara default — jalur
@@ -338,6 +343,24 @@ func run(log *slog.Logger) error {
 	// masuk log (handler hanya melog pseudonim, dan respons memakai
 	// pseudonim, bukan token).
 	apiSrv.SetPseudonymTokenFinder(st)
+	// Bench pra-wujud uji (S4 Tambahan, Opsi B): endpoint menawarkan SATU
+	// tepi-PRELIM sintetis lewat Bridge — penadahan yang sultan, gate Admin
+	// Node asli (fail-closed), tanpa baris event DB/ledger maupun WS advisory.
+	// Sengaja sekadar cukup dipasang bila mode uji menyala; di mode OFF setter
+	// tidak pernah dipanggil → endpoint menjawab 503 (nol kirim).
+	if cfg.PrelimTestWarning && bridge != nil {
+		apiSrv.SetPrelimTestBench(func(ctx context.Context, in api.PrelimTestBenchInput) (string, string) {
+			outcome, reason := bridge.PrelimTestBench(ctx, event.PrelimTestInput{
+				EventID:      in.EventID,
+				PGAGal:       in.PGAGal,
+				CentroidLat:  in.CentroidLat,
+				CentroidLon:  in.CentroidLon,
+				LocationName: in.LocationName,
+				Timestamp:    in.Timestamp,
+			})
+			return outcome, reason
+		})
+	}
 	apiSrv.SetMQTTHealthCheck(func() bool { return client.IsConnected() })
 	hub.SetChannelResolver(func(r *http.Request) []string {
 		userID, ok := api.UserIDFromContext(r.Context())

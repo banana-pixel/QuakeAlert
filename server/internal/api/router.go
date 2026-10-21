@@ -81,6 +81,10 @@ func (s *Server) Router(wsHandler http.HandlerFunc, log *slog.Logger) http.Handl
 			// lain (topic test_alerts saja, tanpa konsensus dan tanpa baris
 			// earthquake_events). Lihat testalert.go.
 			r.Post("/api/v1/admin/test-alert", s.HandleCreateTestAlert)
+			// Bench pra-wujud uji (S4 Tambahan, otorisasi pemilik): SATU tepi
+			// PRELIM sintetis lewat gate Admin Node asli; tanpa baris event
+			// DB/ledger, tanpa WS advisory. Lihat prelim_bench.go.
+			r.Post("/api/v1/admin/prelim-test", s.HandlePrelimTestBench)
 			// Verifikasi node: sisi lain gerbang konsensus (migrasi 000005).
 			// Daftar pending dulu, konfirmasi satu per satu; body {"verified":
 			// false} menarik kembali kepercayaan pada node yang sudah sah.

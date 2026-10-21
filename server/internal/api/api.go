@@ -242,6 +242,12 @@ type Server struct {
 	// trackerStats menyediakan counter Tracker untuk endpoint observability.
 	// nil berarti EVENT_TRACKER_ENABLED=false; endpoint mengembalikan 503.
 	trackerStats TrackerStatsSource
+
+	// prelimBench adalah jembatan bench pra-wujud uji (S4 Tambahan, Opsi B
+	// — lihat prelim_bench.go). nil berarti mode uji tidak terpasang
+	// (PRELIM_TEST_WARNING off / bridge tanpa penadahan): endpoint menjawab
+	// 503 dan tidak pernah mengirim apa pun (lihat SetPrelimTestBench).
+	prelimBench PrelimTestBenchFunc
 }
 
 // NewServer membuat Server API. TokenTTL yang kosong diisi defaultTokenTTL.

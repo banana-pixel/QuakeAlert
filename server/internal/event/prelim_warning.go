@@ -188,21 +188,24 @@ func (pw *prelimWarning) send(msg *dispatch.AlertMessage) {
 // Tepat-sekali per event: tepi berulang tidak menggandakan pengangkatan.
 // Tanpa designate: kebisingan NO_ADMIN_DESIGNATED per event negara tidak
 // bernilai riset, sama seperti kebijakan bayangan.
-func (pw *prelimWarning) observePrelim(state AdminNodeState, s Snapshot) {
+//
+// Kembalian (would, reason) dibutuhkan bench pra-wujud (prelim_bench.go) untuk
+// melaporkan hasil gate; pemanggil emisi normal mengabaikannya.
+func (pw *prelimWarning) observePrelim(state AdminNodeState, s Snapshot) (bool, string) {
 	if !pw.enabled() || !state.Designated {
-		return
+		return false, ""
 	}
 	would, reason := shadowPrelimVerdict(state, s)
 	if !would {
 		pw.logger().Info("prelim test warning: tidak diangkat",
 			append(pw.warnAttrs(), "event_id", s.EventID, "reason", reason)...)
-		return
+		return false, reason
 	}
 	frame := prelimTestFrame(s)
 	pw.mu.Lock()
 	if _, exists := pw.pending[s.EventID]; exists {
 		pw.mu.Unlock()
-		return // tepat-sekali: episode ini sudah diangkat
+		return true, reason // tepat-sekali: episode ini sudah diangkat
 	}
 	entry := &prelimPending{frame: frame, revision: s.Revision}
 	pw.pending[s.EventID] = entry
@@ -215,6 +218,7 @@ func (pw *prelimWarning) observePrelim(state AdminNodeState, s Snapshot) {
 		append(pw.warnAttrs(),
 			"event_id", s.EventID, "revision", s.Revision, "reason", reason,
 			"validity_ms", prelimTestWarningValidityMs, "validity_basis", "DPE-6-PLACEHOLDER-90S")...)
+	return true, reason
 }
 
 // observeFinalEval menilai outcome kaki FINAL (dipanggil dari emitTrustedLocal
