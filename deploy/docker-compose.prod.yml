@@ -123,6 +123,13 @@ services:
       EVENT_TRACKER_MAX_OPEN: ${EVENT_TRACKER_MAX_OPEN:-256}
       EVENT_TRACKER_MAX_TOMBSTONES: ${EVENT_TRACKER_MAX_TOMBSTONES:-512}
       TERMINAL_RETENTION_MS: ${TERMINAL_RETENTION_MS:-900000}
+
+      # S4 (peringatan pra-wujud UJI, otorisasi pemilik): semuanya diturunkan
+      # eksplisit agar .env.prod adalah konfigurasi yang sebenarnya. Ketiadaan
+      # dua-duanya = mode OFF yang tidak mengirim apa pun; default compose
+      # sengaja kosong, bukan "test".
+      PRELIM_TEST_WARNING: ${PRELIM_TEST_WARNING:-}
+      PRELIM_TEST_TARGET_PSEUDONYM: ${PRELIM_TEST_TARGET_PSEUDONYM:-}
     volumes:
       # Service account FCM, read-only. Path di dalam container harus sama dengan
       # FCM_CREDENTIALS_FILE di .env.prod.
