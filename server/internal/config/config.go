@@ -46,6 +46,14 @@ type Config struct {
 	// Kosong = tolak semua lintas-origin (aman secara default). "*" = izinkan semua.
 	WSAllowedOrigins []string
 
+	// PrelimTestWarning mengaktifkan peringatan pra-wujud UJI (otorisasi
+	// pemilik S4; seluruh pagar di event/prelim_warning.go): PRELIM di atas
+	// lantai 60 gal diberitakan hanya ke topik uji drill + is_test — build
+	// rilis tidak pernah berlangganan topik itu dan menjatuhkan frame
+	// is_test (dua pagar independen). "test" menyala; ketiadaan/nilai lain
+	// = off dan jalur FINAL produksi tetap apa adanya.
+	PrelimTestWarning bool
+
 	// FCM (opsional): project ID + path file service account JSON.
 	// Bila keduanya kosong, delivery background dinonaktifkan (hanya WebSocket).
 	FCMProjectID       string
@@ -219,6 +227,11 @@ func Load() (*Config, error) {
 			}
 		}
 	}
+
+	// Peringatan pra-wujud UJI (S4): hanya lewat PRELIM_TEST_WARNING. Default
+	// OFF — "test" menyala; ketiadaan/nilai lain = off dan perilaku produksi
+	// FINAL tidak berubah.
+	cfg.PrelimTestWarning = strings.TrimSpace(os.Getenv("PRELIM_TEST_WARNING")) == "test"
 
 	// Master key wajib untuk verifikasi HMAC (decrypt secret node).
 	keyHex := os.Getenv("MASTER_KEY_HEX")

@@ -36,6 +36,15 @@ type Bridge struct {
 	// ditarik. Nilai kosong siap pakai; entri dibersihkan pada transisi terminal
 	// maupun CONFIRMED (lihat reconcileTrustedLocalAllClear).
 	localAlarmed sync.Map
+	// prelimShadow adalah state BAYANGAN tepi-PRELIM (S1, hanya-catat — lihat
+	// prelim_shadow.go): peta event_id would-dispatch plus logger opsional.
+	// Nilai nol siap pakai; tidak menyentuh localAlarmed maupun sink mana pun.
+	prelimShadow prelimShadow
+	// prelimWarning adalah penadah peringatan pra-wujud mode UJI (otorisasi
+	// pemilik S4 — lihat prelim_warning.go): topik uji drill + is_test saja,
+	// dipasang lewat SetPrelimWarningSink. Nilai nol berarti tidak aktif sama
+	// sekali: seluruh hook nil-safe dan tidak menyentuh jalur alarm FINAL.
+	prelimWarning *prelimWarning
 }
 
 // trustedLocalSink adalah satu-satunya yang dibutuhkan kait admin dari
@@ -76,6 +85,21 @@ func (b *Bridge) SetAdminNodeHook(src AdminNodeSource, sink trustedLocalSink) {
 	b.adminSink = sink
 }
 
+// SetPrelimWarningSink memasang penadah peringatan pra-wujud mode UJI (S4 —
+// otorisasi pemilik; lihat prelim_warning.go untuk pagar-pagar permanennya).
+// Nilai nol tidak memasang apa pun: penadah tetap tidak aktif dan seluruh
+// perilaku produksi FINAL tetap utuh.
+func (b *Bridge) SetPrelimWarningSink(sink PrelimTestWarningSink) {
+	if b == nil || sink == nil {
+		return
+	}
+	b.prelimWarning = &prelimWarning{
+		sink:       sink,
+		validityMs: prelimTestWarningValidityMs,
+		pending:    map[string]*prelimPending{},
+	}
+}
+
 // NewBridge membuat emitter di atas sink. sink nil menghasilkan Bridge yang
 // membuang setiap frame; dipakai bila FCM maupun Hub belum terpasang.
 func NewBridge(sink frameSink) *Bridge { return &Bridge{sink: sink} }
@@ -100,6 +124,14 @@ func (b *Bridge) EmitTransition(ctx context.Context, s Snapshot) {
 	// Aditif dan gagal-aman: tanpa alarm lokal sebelumnya ini tidak melakukan
 	// apa pun (lihat reconcileTrustedLocalAllClear di admin_node.go).
 	b.reconcileTrustedLocalAllClear(ctx, s)
+	// Bayangan tepi-PRELIM (S1, hanya-catat): outcome DPE-4 bila event ini
+	// punya catatan would-dispatch dan berpindah CONFIRMED/RESOLVED/CANCELLED.
+	// Murni di atas state bayangan sendiri — lihat prelim_shadow.go.
+	b.prelimShadow.observeTerminal(s)
+	// Peringatan pra-wujud UJI (S4 — pemilik menyetujui; disciplin penarikan
+	// anti-clear-baru: CONFIRMED BISU). Subset terbatas dari jalur ini — lihat
+	// prelim_warning.go.
+	b.prelimWarning.observeTerminal(s)
 }
 
 // EmitAdminEdge memenuhi adminEdgeEmitter: menyalurkan satu snapshot

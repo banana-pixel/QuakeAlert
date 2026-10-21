@@ -158,6 +158,13 @@ func run(log *slog.Logger) error {
 		// sumber), dan emisi normal di atas tidak berubah karenanya.
 		bridge := event.NewBridge(dispatcher)
 		bridge.SetAdminNodeHook(adminNodeSource(st, log), dispatcher)
+		// Peringatan pra-wujud UJI (S4, otorisasi pemilik): hanya tersambang
+		// bila PRELIM_TEST_WARNING=test. Tetap terputus (nil) secara default — jalur
+		// FINAL produksi tetap apa adanya (lihat event/prelim_warning.go).
+		if cfg.PrelimTestWarning {
+			bridge.SetPrelimWarningSink(dispatcher)
+			log.Warn("prelim test warning AKTIF (hanya-uji; topik test_alerts; validity placeholder DPE-6 90s)")
+		}
 		tracker.SetEmitter(bridge)
 
 		if ledgerWriter != nil {

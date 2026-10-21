@@ -232,6 +232,14 @@ func (b *Bridge) emitTrustedLocal(ctx context.Context, s Snapshot) {
 		if !ok {
 			return // gagal-tertutup: tanpa status tepercaya, tanpa frame lokal
 		}
+		// Bayangan tepi-PRELIM (S1, hanya-catat): hasil re-evaluasi FINAL untuk
+		// episode yang catatan PRELIM-nya would-dispatch. Murni di atas state
+		// yang sama — nol I/O tambahan, nol sink, lihat prelim_shadow.go.
+		b.prelimShadow.observeLocalEval(state, s)
+		// Peringatan pra-wujud UJI (S4): satu outcome tepat-sekali — salinan
+		// upgrade FINAL ATAU all-clear; disiplin penarikan anti-clear-baru di
+		// observeTerminal, bukan di sini. Lihat prelim_warning.go.
+		b.prelimWarning.observeFinalEval(state, s)
 		msg, ok := TrustedLocalFrameFor(state, s)
 		if !ok {
 			return
@@ -274,6 +282,14 @@ func (b *Bridge) emitTrustedPrelim(ctx context.Context, s Snapshot) {
 		if !ok {
 			return // gagal-tertutup: tanpa status tepercaya, tanpa advisory
 		}
+		// Bayangan tepi-PRELIM (S1, hanya-catat): evaluasi BAYANGAN alarm di
+		// tepi PRELIM pada state yang SAMA — nol I/O tambahan, nol sink,
+		// TIDAK mengubah evaluasi advisory di bawah. Lihat prelim_shadow.go.
+		b.prelimShadow.observePrelim(state, s)
+		// Peringatan pra-wujud UJI (S4, pemilik menyetujui): pengangkatan hanya
+		// ketika gate bayangan layak; topik uji drill + is_test; Android dan
+		// jalur FINAL sama sekali tidak sentuh. Lihat prelim_warning.go.
+		b.prelimWarning.observePrelim(state, s)
 		if d := EvaluateAdminNodePrelim(state, s); !d.Eligible {
 			return
 		}
